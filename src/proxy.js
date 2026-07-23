@@ -19,14 +19,43 @@ function csrfProtection(request) {
   }
 }
 
-export function proxy(request) {
-  const responseNext = NextResponse.next();
+async function verifyJwtWithAuthServer(jwt) {
+  // Placeholder for actual JWT verification logic with your auth server.
+  // This could involve sending a request to your auth server to validate the JWT.
+  // For demonstration purposes, we'll assume the JWT is valid if it exists and is not expired.
+  return true; // Replace with actual verification logic
+}
 
+async function verifyJwt(request) {
+  const { pathname, search } = request.nextUrl;
+
+  // Check if the current route is /dashboard or a sub-route (/dashboard/*)
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+    const jwt = request.cookies.get('jwt')?.value;
+    const isJwtValid = await verifyJwtWithAuthServer(jwt);
+
+    if (!jwt || !isJwtValid) {
+      const currentPath = pathname + search;
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', currentPath);
+
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+}
+
+export async function proxy(request) {
   const csrfInvalidResponse = csrfProtection(request);
   if (csrfInvalidResponse) {
     return csrfInvalidResponse;
   }
 
+  const jwtInvalidResponse = await verifyJwt(request);
+  if (jwtInvalidResponse) {
+    return jwtInvalidResponse;
+  }
+  
+  const responseNext = NextResponse.next();
   return responseNext;
 }
 
