@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "csrf": "^3.1.0",
+    "js-cookie": "^3.0.8",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4"
