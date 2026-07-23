@@ -4,8 +4,6 @@ import { CSRF_COOKIE_NAME } from "@/constants";
 import { secret, tokens } from "@/utils/csrfTokens";
 
 export async function GET(request) {
-  console.log("CSRF secret:", secret);
-
   const token = tokens.create(secret);
   const cookieStore = await cookies();
   cookieStore.set(CSRF_COOKIE_NAME, token, {
