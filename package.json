@@ -16,11 +16,13 @@
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
     "@mui/material-nextjs": "^9.1.1",
+    "@mui/stylis-plugin-rtl": "^9.1.1",
     "csrf": "^3.1.0",
     "js-cookie": "^3.0.8",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "stylis": "^4.4.0"
   },
   "devDependencies": {
     "eslint": "^9",

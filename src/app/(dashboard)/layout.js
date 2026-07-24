@@ -1,14 +1,12 @@
 import "@/app/globals.css";
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-import { Roboto } from 'next/font/google';
-import { ThemeProvider } from '@mui/material/styles';
-import theme from '@/theme';
+import { Cairo } from 'next/font/google';
+import MuiProvider from "@/components/MuiProvider";
 
-const roboto = Roboto({
-  weight: ['300', '400', '500', '700'],
-  subsets: ['latin'],
+const cairo = Cairo({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['arabic', 'latin'],
   display: 'swap',
-  variable: '--font-roboto',
+  variable: '--font-cairo',
 });
 
 export const metadata = {
@@ -18,12 +16,10 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   return (
-    <html>
-      <AppRouterCacheProvider className={roboto.variable}>
-        <ThemeProvider theme={theme}>
-          <body>{children}</body>
-        </ThemeProvider>
-      </AppRouterCacheProvider>
+    <html dir="rtl" className={cairo.variable}>
+      <body>
+        <MuiProvider>{children}</MuiProvider>
+      </body>
     </html>
   );
 }

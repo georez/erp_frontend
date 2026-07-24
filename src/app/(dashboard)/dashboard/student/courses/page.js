@@ -1,4 +1,4 @@
 
 export default function CoursesPage() {
-  return <>This is student's courses page.</>
+  return <>هذه صفحة كورسات الطالب</>
 }

@@ -1,7 +1,7 @@
 'use client';
 
-export default function Home() {
+export default function Page() {
   return (
-    <>This is Dashboard</>
+    <>هذه صفحة السابورة</>
   );
 }
