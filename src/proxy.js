@@ -19,20 +19,20 @@ function csrfProtection(request) {
   }
 }
 
-async function verifyJwtWithAuthServer(jwt) {
-  // Placeholder for actual JWT verification logic with your auth server.
-  // This could involve sending a request to your auth server to validate the JWT.
-  // For demonstration purposes, we'll assume the JWT is valid if it exists and is not expired.
+async function verifyAccessTokenWithAuthServer(accessToken) {
+  // Placeholder for actual access token verification logic with your auth server.
+  // This could involve sending a request to your auth server to validate the access token.
+  // For demonstration purposes, we'll assume the access token is valid if it exists and is not expired.
   return true; // Replace with actual verification logic
 }
 
-async function verifyJwt(request) {
+async function verifyAccessToken(request) {
   const { pathname, search } = request.nextUrl;
 
   // Check if the current route is /dashboard or a sub-route (/dashboard/*)
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
-    const jwt = request.cookies.get('jwt')?.value;
-    const isJwtValid = await verifyJwtWithAuthServer(jwt);
+    const jwt = request.cookies.get('access_token')?.value;
+    const isJwtValid = await verifyAccessTokenWithAuthServer(jwt);
 
     if (!jwt || !isJwtValid) {
       const currentPath = pathname + search;
@@ -50,7 +50,7 @@ export async function proxy(request) {
     return csrfInvalidResponse;
   }
 
-  const jwtInvalidResponse = await verifyJwt(request);
+  const jwtInvalidResponse = await verifyAccessToken(request);
   if (jwtInvalidResponse) {
     return jwtInvalidResponse;
   }
