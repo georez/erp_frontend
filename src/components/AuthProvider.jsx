@@ -21,10 +21,13 @@ function expireWithinOneMinute(token) {
   }
 }
 
-async function refreshTokenIfNeeded(csrfToken, router) {
+async function refreshTokenIfNeeded(csrfToken, router, setAccessToken) {
   const verifyResponse = await fetch('/api/login/verify', {
-    method: 'GET',
-    credentials: 'include'
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      [CSRF_HEADER_NAME]: csrfToken
+    }
   });
 
   if (verifyResponse.ok) {
@@ -48,17 +51,23 @@ async function refreshTokenIfNeeded(csrfToken, router) {
   if (refreshResponse.ok) {
     const data = await refreshResponse.json();
     if (data && data.accessToken) {
+      setAccessToken(data.accessToken);
       return;
+    } else {
+      setAccessToken(null);
     }
   }
 
   router.push('/login');
 }
 
-async function loadMe(setAccessToken) {
+async function loadMe(csrfToken, setAccessToken) {
   const response = await fetch('/api/login/verify', {
-    method: 'GET',
-    credentials: 'include'
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      [CSRF_HEADER_NAME]: csrfToken
+    }
   });
 
   if (!response.ok) {
@@ -84,17 +93,19 @@ export default function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    const interval = setInterval(() => refreshTokenIfNeeded(csrfToken, router), 60 * 1000);
-    return () => clearInterval(interval);
-  }, [csrfToken, router]);
-
-  useEffect(() => {
     getNewCsrfToken(setCsrfToken);
   }, [setCsrfToken]);
 
   useEffect(() => {
-    loadMe(setAccessToken);
-  }, [setAccessToken]);
+    if (!csrfToken) return;
+    const interval = setInterval(() => refreshTokenIfNeeded(csrfToken, router, setAccessToken), 60 * 1000);
+    return () => clearInterval(interval);
+  }, [csrfToken, router]);
+
+  useEffect(() => {
+    if (!csrfToken) return;
+    loadMe(csrfToken, setAccessToken);
+  }, [csrfToken, setAccessToken]);
 
   return (
     <AuthContext value={{ accessToken, csrfToken }}>

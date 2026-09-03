@@ -23,7 +23,16 @@ async function verifyAccessTokenWithAuthServer(accessToken) {
   // Placeholder for actual access token verification logic with your auth server.
   // This could involve sending a request to your auth server to validate the access token.
   // For demonstration purposes, we'll assume the access token is valid if it exists and is not expired.
-  return true; // Replace with actual verification logic
+  // return true; // Replace with actual verification logic
+  const response = await fetch('http://localhost:4000/api/login/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ accessToken })
+  });
+
+  return response.ok;
 }
 
 async function verifyAccessToken(request) {
@@ -54,7 +63,7 @@ export async function proxy(request) {
   if (jwtInvalidResponse) {
     return jwtInvalidResponse;
   }
-  
+
   const responseNext = NextResponse.next();
   return responseNext;
 }
