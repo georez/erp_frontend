@@ -3,7 +3,7 @@
 import { CSRF_HEADER_NAME } from '@/constants';
 import { getNewCsrfToken } from '@/utils/csrfClientUtils';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
 function expireWithinOneMinute(token) {
@@ -73,6 +73,11 @@ async function loadMe(setAccessToken) {
   }
 }
 
+export const AuthContext = createContext({
+  accessToken: null,
+  csrfToken: null
+});
+
 export default function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null);
   const [csrfToken, setCsrfToken] = useState(null);
@@ -92,8 +97,8 @@ export default function AuthProvider({ children }) {
   }, [setAccessToken]);
 
   return (
-    <>
+    <AuthContext value={{ accessToken, csrfToken }}>
       {children}
-    </>
+    </AuthContext>
   );
 }
