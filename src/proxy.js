@@ -20,10 +20,6 @@ function csrfProtection(request) {
 }
 
 async function verifyAccessTokenWithAuthServer(accessToken) {
-  // Placeholder for actual access token verification logic with your auth server.
-  // This could involve sending a request to your auth server to validate the access token.
-  // For demonstration purposes, we'll assume the access token is valid if it exists and is not expired.
-  // return true; // Replace with actual verification logic
   const response = await fetch('http://localhost:4000/api/login/verify', {
     method: 'POST',
     headers: {
@@ -35,15 +31,42 @@ async function verifyAccessTokenWithAuthServer(accessToken) {
   return response.ok;
 }
 
+async function refreshAccessTokenWithAuthServer(request) {
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+  const response = await fetch('http://localhost:4000/api/login/refresh', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    return { accessToken: data.accessToken, refreshToken: data.refreshToken };
+  }
+}
+
 async function verifyAccessToken(request) {
   const { pathname, search } = request.nextUrl;
 
   // Check if the current route is /dashboard or a sub-route (/dashboard/*)
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
-    const jwt = request.cookies.get('access_token')?.value;
-    const isJwtValid = await verifyAccessTokenWithAuthServer(jwt);
+    const accessToken = request.cookies.get('access_token')?.value;
+    const isAccessTokenValid = await verifyAccessTokenWithAuthServer(accessToken);
 
-    if (!jwt || !isJwtValid) {
+    if (!accessToken || !isAccessTokenValid) {
+      const refreshedTokens = await refreshAccessTokenWithAuthServer(request);
+      if (refreshedTokens) {
+        const response = NextResponse.next();
+        response.cookies.set('access_token', refreshedTokens.accessToken,
+          { httpOnly: true, secure: false, path: '/', maxAge: 24 * 60 * 60, sameSite: 'strict' }
+        );
+        response.cookies.set('refresh_token', refreshedTokens.refreshToken,
+          { httpOnly: true, secure: false, path: '/', maxAge: 24 * 60 * 60, sameSite: 'strict' });
+        return response;
+      }
+
       const currentPath = pathname + search;
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('callbackUrl', currentPath);
@@ -59,9 +82,9 @@ export async function proxy(request) {
     return csrfInvalidResponse;
   }
 
-  const jwtInvalidResponse = await verifyAccessToken(request);
-  if (jwtInvalidResponse) {
-    return jwtInvalidResponse;
+  const jwtResponse = await verifyAccessToken(request);
+  if (jwtResponse) {
+    return jwtResponse;
   }
 
   const responseNext = NextResponse.next();
