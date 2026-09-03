@@ -36,9 +36,7 @@ export default function LoginPage() {
       body: JSON.stringify({ username, password })
     });
 
-    console.log("1");
     if (response.ok) {
-      console.log("2", callbackUrl);
       // Refresh Server Component cache so RootLayout sees the new cookie
       router.refresh();
       router.push(callbackUrl);
