@@ -5,7 +5,6 @@ import DrawerForm from "@/components/DrawerForm";
 import { useSearchParams } from "next/navigation";
 
 export default function Page() {
-
   const urlSearchParams = useSearchParams();
   const openForms = JSON.parse(urlSearchParams.get('openForms') || '[]');
   const draggableForms = openForms.map(({ formId, url }, index) => (
