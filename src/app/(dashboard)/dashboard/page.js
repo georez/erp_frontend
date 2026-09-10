@@ -1,8 +1,11 @@
 'use client';
 
-import { AuthContext } from "@/components/AuthProvider";
-import { AppBar, Box, Button, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography } from "@mui/material";
-import { useContext, useState } from "react";
+import {
+  AppBar, Box, Divider, Drawer, IconButton,
+  List, ListItem, ListItemButton, ListItemIcon,
+  ListItemText, Toolbar, Typography
+} from "@mui/material";
+import { useState } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 
 const drawerWidth = 240;
@@ -51,9 +54,6 @@ export default function Page() {
     </div>
   );
 
-  // Remove this const when copying and pasting into your project.
-  const container = undefined;
-
   return (
     <Box sx={{ display: 'flex' }}>
       <AppBar
@@ -77,11 +77,9 @@ export default function Page() {
       <Box
         component="nav"
         sx={{ flexShrink: { sm: 0 } }}
-        aria-label="mailbox folders"
+        aria-label="menu items"
       >
-        {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
         <Drawer
-          // container={container}
           variant="temporary"
           open={mobileOpen}
           onTransitionEnd={handleDrawerTransitionEnd}
