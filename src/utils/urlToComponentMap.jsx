@@ -1,7 +1,7 @@
-import Form from '@/components/Form';
+import AccForm from '@/components/AccForm';
 
 const urlToComponentMap = {
-  '/dashboard/form': Form,
+  '/dashboard/accForm': AccForm,
 };
 
 export default function getComponentForUrl(url) {
