@@ -25,7 +25,7 @@ export function useUpdateSearchParams() {
     const newQuery = createQueryString(name, value);
 
     // Navigate without triggering a full page reload
-    router.push(`${pathname}?${newQuery}`, { scroll: false });
+    router.replace(`${pathname}?${newQuery}`, { scroll: false });
   };
 
   return handleFilterChange;
