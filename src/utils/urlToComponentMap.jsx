@@ -1,4 +1,4 @@
-import AccForm from '@/components/AccForm';
+import AccForm from '@/components/forms/AccForm';
 
 const urlToComponentMap = {
   '/dashboard/accForm': AccForm,

@@ -2,4 +2,5 @@
 export const CSRF_COOKIE_NAME = "csrfToken";
 export const CSRF_HEADER_NAME = "x-csrf-token";
 
-export const JWT_COOKIE_NAME = "jwt";
+export const ACCESS_TOKEN_COOKIE_NAME = "access_token";
+export const REFRESH_TOKEN_COOKIE_NAME = "refresh_token";

@@ -2,13 +2,16 @@
 
 import { cookies } from 'next/headers'
 
-import { JWT_COOKIE_NAME } from '@/constants'
+import { ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME } from '@/constants'
 
-export async function deleteJwtCookieAction() {
+export async function deleteJwtCookiesAction() {
   const cookieStore = await cookies()
-  const jwtCookie = cookieStore.get(JWT_COOKIE_NAME);
-
-  if (jwtCookie) {
-    cookieStore.delete(JWT_COOKIE_NAME)
+  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE_NAME);
+  if (accessToken) {
+    cookieStore.delete(ACCESS_TOKEN_COOKIE_NAME)
+  }
+  const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE_NAME);
+  if (refreshToken) {
+    cookieStore.delete(REFRESH_TOKEN_COOKIE_NAME)
   }
 }

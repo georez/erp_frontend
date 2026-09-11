@@ -1,7 +1,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-export function useUpdateSearchParams() {
+export function useUpdateSearchParam() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -26,6 +26,28 @@ export function useUpdateSearchParams() {
 
     // Navigate without triggering a full page reload
     router.replace(`${pathname}?${newQuery}`, { scroll: false });
+  };
+
+  return handleFilterChange;
+}
+
+export function useUpdateMultipleSearchParams() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const handleFilterChange = (newParams) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value === null || value === '') {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   return handleFilterChange;

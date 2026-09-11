@@ -11,7 +11,7 @@ export default function Page() {
   const draggableForms = openForms.map(({ formId, url }, index) => {
 
     const Component = getComponentForUrl(url);
-    const resolvedParams = Object.fromEntries(new URLSearchParams(url.split('?')[1]));
+    const resolvedSearchParams = Object.fromEntries(new URLSearchParams(url.split('?')[1]));
 
     return <DraggableForm
       key={formId}
@@ -22,7 +22,7 @@ export default function Page() {
       formId={formId}
       url={url}
     >
-      {Component ? <Component url={url} {...resolvedParams} /> : <div>Not found 404</div>}
+      {Component ? <Component url={url} {...resolvedSearchParams} /> : <div>Not found 404</div>}
     </DraggableForm>
   }
   );

@@ -5,7 +5,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
 import FilterNoneIcon from '@mui/icons-material/FilterNone';
 import { useSearchParams } from "next/navigation";
-import { useUpdateSearchParams } from "@/utils/useUpdateSearchParams";
+import { useUpdateSearchParam } from "@/utils/useUpdateSearchParams";
 import { useCallback, useEffect, useState } from "react";
 
 export default function DraggableForm({
@@ -23,7 +23,7 @@ export default function DraggableForm({
   const [sizeHeight, setSizeHeight] = useState(height);
   const [maximized, setMaximized] = useState(false);
 
-  const handleFilterChange = useUpdateSearchParams();
+  const handleFilterChange = useUpdateSearchParam();
   const handleCloseForm = () => {
     const updatedOpenForms = openForms.filter(form => form.formId !== formId);
     handleFilterChange('openForms', JSON.stringify(updatedOpenForms));
