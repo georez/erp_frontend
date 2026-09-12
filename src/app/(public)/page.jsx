@@ -2,6 +2,13 @@
 
 import ComboBox from "@/components/ui/ComboBox";
 
+const choices = [];
+
+console.log('generating choices');
+for (let i = 0; i < 20000; i++) {
+  choices.push({ id: i, text: i.toString() });
+}
+
 export default function Home() {
   return (
     <>
@@ -9,8 +16,39 @@ export default function Home() {
         هذه الصفحة الرئيسية
       </div>
       <div>
-        <ComboBox />
-        <ComboBox />
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
+        <ComboBox choices={choices}/>
       </div>
     </>
   );
