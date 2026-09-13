@@ -11,8 +11,8 @@ const cairo = Cairo({
 });
 
 export const metadata = {
-  title: "Example App (Dashboard)",
-  description: "Example App Description (Dashboard)",
+  title: "ERP (Dashboard)",
+  description: "ERP Description (Dashboard)",
 };
 
 export default async function RootLayout({ children }) {

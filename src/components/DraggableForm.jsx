@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export default function DraggableForm({
   x = 20, y = 60, width = 320, height = 200,
-  url, formId,
+  url, formId, formTitle,
   children
 }) {
 
@@ -109,7 +109,7 @@ export default function DraggableForm({
               </IconButton>
             </Tooltip>
             <Typography variant="h7" component="div">
-              Test
+              {formTitle}
             </Typography>
           </Box>
         </Box>

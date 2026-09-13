@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 export default function Page() {
   const urlSearchParams = useSearchParams();
   const openForms = JSON.parse(urlSearchParams.get('openForms') || '[]');
-  const draggableForms = openForms.map(({ formId, url }, index) => {
+  const draggableForms = openForms.map(({ formId, url, formTitle }, index) => {
 
     const Component = getComponentForUrl(url);
     const resolvedSearchParams = Object.fromEntries(new URLSearchParams(url.split('?')[1]));
@@ -21,11 +21,11 @@ export default function Page() {
       height={200}
       formId={formId}
       url={url}
+      formTitle={formTitle}
     >
       {Component ? <Component url={url} {...resolvedSearchParams} /> : <div>Not found 404</div>}
     </DraggableForm>
-  }
-  );
+  });
   return (
     <DrawerForm>
       {draggableForms}

@@ -10,8 +10,8 @@ const cairo = Cairo({
 });
 
 export const metadata = {
-  title: "Example App",
-  description: "Example App Description",
+  title: "ERP",
+  description: "ERP Description",
 };
 
 export default function RootLayout({ children }) {

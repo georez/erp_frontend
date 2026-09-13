@@ -30,8 +30,8 @@ function useOpenForm() {
   const searchParams = useSearchParams();
   const openForms = JSON.parse(searchParams.get('openForms') || '[]');
   const handleFilterChange = useUpdateMultipleSearchParams();
-  return (formId, url) => {
-    const updatedOpenForms = [...openForms, { formId, url }];
+  return (formId, url, formTitle) => {
+    const updatedOpenForms = [...openForms, { formId, url, formTitle }];
     handleFilterChange({ 'openForms': JSON.stringify(updatedOpenForms), 'focusedForm': formId });
   };
 }
@@ -87,19 +87,21 @@ export default function DrawerForm({ children }) {
       </Toolbar>
       <Divider />
       <List>
-        {[{ linkText: 'عرض الحسابات', linkAddr: "/dashboard/accForm" }].map(({ linkText, linkAddr }, index) => (
-          isTabletOrSmaller ?
-            <ListItem key={index} disablePadding>
-              <ListItemButton component={Link} href={linkAddr}>
-                <ListItemText primary={linkText} />
-              </ListItemButton>
-            </ListItem> :
-            <ListItem key={index} disablePadding onClick={() => openFormFn(uuidv4(), linkAddr)}>
-              <ListItemButton>
-                <ListItemText primary={linkText} />
-              </ListItemButton>
-            </ListItem>
-        ))}
+        {[{ linkText: 'ادخال الحسابات', linkAddr: "/dashboard/accForm" },
+        { linkText: 'ادخال الاصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الاصناف')}` }]
+          .map(({ linkText, linkAddr }, index) => (
+            isTabletOrSmaller ?
+              <ListItem key={index} disablePadding>
+                <ListItemButton component={Link} href={linkAddr}>
+                  <ListItemText primary={linkText} />
+                </ListItemButton>
+              </ListItem> :
+              <ListItem key={index} disablePadding onClick={() => openFormFn(uuidv4(), linkAddr, linkText)}>
+                <ListItemButton>
+                  <ListItemText primary={linkText} />
+                </ListItemButton>
+              </ListItem>
+          ))}
       </List>
     </div>
   );
