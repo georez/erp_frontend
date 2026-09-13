@@ -13,7 +13,7 @@ function csrfProtection(request) {
     request.method === "PATCH"
   ) {
     const csrfToken = request.headers.get(CSRF_HEADER_NAME);
-    if (!csrfToken || !tokens.verify(secret, csrfToken) || csrfToken !== csrfTokenInCookie) {
+    if (!csrfToken || !tokens.verify(secret, csrfToken)) {
       return new NextResponse("Invalid CSRF token", { status: 403 });
     }
   }

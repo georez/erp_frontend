@@ -94,7 +94,7 @@ export default function AuthProvider({ children }) {
 
   useEffect(() => {
     getNewCsrfToken(setCsrfToken);
-  }, [setCsrfToken]);
+  }, []);
 
   useEffect(() => {
     if (!csrfToken) return;
