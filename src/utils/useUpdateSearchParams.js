@@ -47,7 +47,7 @@ export function useUpdateMultipleSearchParams() {
       }
     });
 
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   return handleFilterChange;

@@ -11,7 +11,7 @@ import { useContext, useState } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { jwtDecode } from "jwt-decode";
-import { AuthContext } from "./AuthProvider";
+import { AuthContext } from "../AuthProvider";
 import { deleteJwtCookiesAction } from "@/actions/deleteJwtCookieAction";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
