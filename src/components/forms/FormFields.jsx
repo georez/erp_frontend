@@ -1,5 +1,5 @@
 import { validateFormField } from "@/utils/formValidation";
-import { Container, Stack, TextField } from "@mui/material";
+import { TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 
 
@@ -47,29 +47,24 @@ export default function FormFields({
   isValid,
   setIsValid
 }) {
-  return <Container maxWidth="sm">
-    <Stack spacing={2} sx={{ p: 1 }}>
-      {formFields.map(formField => {
-        if (
-          formField.validationType === "id" ||
-          formField.validationType === 'number' ||
-          formField.validationType === 'string'
-        ) {
-          return <TextFieldAdapter
-            key={formField.fieldName}
-            fieldName={formField.fieldName}
-            displayName={formField.displayName}
-            validationType={formField.validationType}
-            validation={formField.validation}
-            required={formField.required}
-            disabled={formField.disabled}
-            value={formValues[formField.fieldName] || ''}
-            setFormValues={setFormValues}
-            isValid={!!isValid[formField.fieldName]}
-            setIsValid={setIsValid} />
-        }
-      })}
-    </Stack>
-  </Container>
-
+  return formFields.map(formField => {
+    if (
+      formField.validationType === "id" ||
+      formField.validationType === 'number' ||
+      formField.validationType === 'string'
+    ) {
+      return <TextFieldAdapter
+        key={formField.fieldName}
+        fieldName={formField.fieldName}
+        displayName={formField.displayName}
+        validationType={formField.validationType}
+        validation={formField.validation}
+        required={formField.required}
+        disabled={formField.disabled}
+        value={formValues[formField.fieldName] || ''}
+        setFormValues={setFormValues}
+        isValid={!!isValid[formField.fieldName]}
+        setIsValid={setIsValid} />
+    }
+  });
 }

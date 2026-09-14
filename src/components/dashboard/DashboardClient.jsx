@@ -23,7 +23,7 @@ export default function DashboardClient() {
       url={url}
       formTitle={formTitle}
     >
-      {Component ? <Component url={url} {...resolvedSearchParams} /> : <div>Not found 404</div>}
+      {Component ? <Component url={url} formTitle={formTitle} {...resolvedSearchParams} /> : <div>Not found 404</div>}
     </DraggableForm>
   });
   return (

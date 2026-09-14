@@ -29,7 +29,6 @@ export default function DraggableForm({
     handleFilterChange('openForms', JSON.stringify(updatedOpenForms));
   }
 
-  // Helper to apply maximize dimensions
   const applyMaximize = useCallback(() => {
     if (typeof window !== 'undefined') {
       setSizeWidth(window.innerWidth - 20);
@@ -39,7 +38,6 @@ export default function DraggableForm({
     }
   }, []);
 
-  // Handle window resize dynamically when maximized is active
   useEffect(() => {
     if (!maximized) return;
 
@@ -71,48 +69,67 @@ export default function DraggableForm({
     dragHandleClassName="rnd-drag-handle"
     disableDragging={maximized}
   >
-    <Paper elevation={3} sx={{ width: '100%', height: '100%', overflow: 'auto' }}>
-      <Box>
-        <Box
-          className="rnd-drag-handle"
-          sx={{
-            cursor: 'move',
-            backgroundColor: 'primary.light',
-          }}
-          onMouseDown={() => handleFilterChange('focusedForm', formId)}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-            <IconButton aria-label="close" size="small" onClick={handleCloseForm}>
-              <CloseIcon fontSize="inherit" color="secondary" />
+    {/* 1. Set Paper as a Column Flexbox with overflow: 'hidden' */}
+    <Paper
+      elevation={3}
+      sx={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 2. Prevent the Header from shrinking */}
+      <Box
+        className="rnd-drag-handle"
+        sx={{
+          cursor: 'move',
+          backgroundColor: 'primary.light',
+          flexShrink: 0,
+        }}
+        onMouseDown={() => handleFilterChange('focusedForm', formId)}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          <IconButton aria-label="close" size="small" onClick={handleCloseForm}>
+            <CloseIcon fontSize="inherit" color="secondary" />
+          </IconButton>
+          {maximized ? (
+            <IconButton aria-label="minimize" size="small" onClick={() => {
+              setSizeWidth(width);
+              setSizeHeight(height);
+              setPositionX(x);
+              setPositionY(y);
+              setMaximized(false);
+            }}>
+              <FilterNoneIcon fontSize="inherit" color="secondary" />
             </IconButton>
-            {maximized ? (
-              <IconButton aria-label="minimize" size="small" onClick={() => {
-                setSizeWidth(width);
-                setSizeHeight(height);
-                setPositionX(x);
-                setPositionY(y);
-                setMaximized(false);
-              }}>
-                <FilterNoneIcon fontSize="inherit" color="secondary" />
-              </IconButton>
-            ) : (
-              <IconButton aria-label="maximize" size="small" onClick={() => {
-                applyMaximize();
-                setMaximized(true);
-              }}>
-                <CropSquareIcon fontSize="inherit" color="secondary" />
-              </IconButton>
-            )}
-            <Tooltip title={<span dir="ltr" style={{ display: 'inline-block', textAlign: 'left' }}>{url}</span>}>
-              <IconButton aria-label="open in new" size="small" onClick={() => window.open(url, '_blank')}>
-                <OpenInNewIcon fontSize="inherit" color="secondary" />
-              </IconButton>
-            </Tooltip>
-            <Typography variant="h7" component="div">
-              {formTitle}
-            </Typography>
-          </Box>
+          ) : (
+            <IconButton aria-label="maximize" size="small" onClick={() => {
+              applyMaximize();
+              setMaximized(true);
+            }}>
+              <CropSquareIcon fontSize="inherit" color="secondary" />
+            </IconButton>
+          )}
+          <Tooltip title={<span dir="ltr" style={{ display: 'inline-block', textAlign: 'left' }}>{url}</span>}>
+            <IconButton aria-label="open in new" size="small" onClick={() => window.open(url, '_blank')}>
+              <OpenInNewIcon fontSize="inherit" color="secondary" />
+            </IconButton>
+          </Tooltip>
+          <Typography variant="h7" component="div">
+            {formTitle}
+          </Typography>
         </Box>
+      </Box>
+
+      {/* 3. Make only the body wrapper scrollable */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          overflow: 'auto',
+        }}
+      >
         {children}
       </Box>
     </Paper>

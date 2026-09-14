@@ -12,12 +12,15 @@ export default async function Page({ params, searchParams }) {
     notFound();
   }
 
-  return <Component key={uuidv4()} url={urlToResolve} {...resolvedSearchParams} />;
+  return <Component key={uuidv4()}
+    url={urlToResolve}
+    formTitle={resolvedSearchParams.formTitle}
+    {...resolvedSearchParams} />;
 }
 
 export async function generateMetadata({ searchParams }) {
   const { formTitle } = await searchParams;
-  
+
   return {
     title: formTitle,
   };

@@ -3,7 +3,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { SpeedDial, SpeedDialAction, SpeedDialIcon } from '@mui/material';
+import { Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography } from '@mui/material';
 import FormFields from './FormFields';
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
@@ -38,7 +38,7 @@ const fetcher = (url) => fetch(url, {
   credentials: 'include',
 }).then((res) => res.json());
 
-export default function SchemaCrud({ schemaName, entityId }) {
+export default function SchemaCrud({ schemaName, entityId, formTitle }) {
   const isAddNew = !entityId;
   const { data: formFieldsAndValues, isValidating } = useSWR(
     `/api/schemacrud/${schemaName}${entityId ? `/${entityId}` : ''}`,
@@ -51,15 +51,18 @@ export default function SchemaCrud({ schemaName, entityId }) {
     setFormValues(formFieldsAndValues?.values)
   }, [formFieldsAndValues?.values])
 
-  return <>
-    {!isValidating && formFieldsAndValues && formValues &&
-      <FormFields
-        formFields={formFieldsAndValues.fields}
-        formValues={formValues}
-        setFormValues={setFormValues}
-        isValid={isValid}
-        setIsValid={setIsValid}
-      />}
+  return <Container maxWidth="sm">
+    <Stack spacing={2} sx={{ p: 1 }}>
+      <Typography variant="h7" component="div">{formTitle}</Typography>
+      {!isValidating && formFieldsAndValues && formValues &&
+        <FormFields
+          formFields={formFieldsAndValues.fields}
+          formValues={formValues}
+          setFormValues={setFormValues}
+          isValid={isValid}
+          setIsValid={setIsValid}
+        />}
+    </Stack>
     <SpeedDial
       ariaLabel="SpeedDial basic example"
       sx={{ position: 'absolute', bottom: 10, right: 16 }}
@@ -77,5 +80,5 @@ export default function SchemaCrud({ schemaName, entityId }) {
         />
       ))}
     </SpeedDial>
-  </>
+  </Container>
 }
