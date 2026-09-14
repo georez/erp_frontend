@@ -7,6 +7,7 @@ import { Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography
 import FormFields from './FormFields';
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
+import { validateFormField } from '@/utils/formValidation';
 
 const allActions = [
   { icon: <AddIcon />, name: 'جديد' },
@@ -16,7 +17,6 @@ const allActions = [
 
 const isAddNewActions = [
   { icon: <SaveIcon />, name: 'حفظ' },
-  { icon: <DeleteIcon />, name: 'حذف' },
 ];
 
 // function useFormFields(schemaName, entityId) {
@@ -46,10 +46,28 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
   );
   const [formValues, setFormValues] = useState({});
   const [isValid, setIsValid] = useState({});
+  const [tryToSubmit, setTryToSubmit] = useState(false);
 
   useEffect(() => {
     setFormValues(formFieldsAndValues?.values)
   }, [formFieldsAndValues?.values])
+
+  console.log(isValid);
+
+  const validateFields = () => {
+    const newIsValid = formFieldsAndValues.fields.reduce((acc, {
+      fieldName, validationType, validation, required, disabled
+    }) => ({
+      ...acc,
+      [fieldName]: !!disabled || validateFormField(
+        validationType, required, validation, formValues[fieldName]
+      )
+    }), {});
+    setIsValid(newIsValid);
+    const areAllFieldsValid = Object.entries(newIsValid).every(([k, v]) => v);
+    return areAllFieldsValid;
+  };
+
 
   return <Container maxWidth="sm">
     <Stack spacing={2} sx={{ p: 1 }}>
@@ -61,6 +79,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
           setFormValues={setFormValues}
           isValid={isValid}
           setIsValid={setIsValid}
+          tryToSubmit={tryToSubmit}
         />}
     </Stack>
     <SpeedDial
@@ -68,17 +87,48 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
       sx={{ position: 'absolute', bottom: 10, right: 16 }}
       icon={<SpeedDialIcon />}
     >
-      {(isAddNew ? isAddNewActions : allActions).map((action) => (
+      {(isAddNew ?
         <SpeedDialAction
-          key={action.name}
-          icon={action.icon}
+          icon={<SaveIcon />}
           slotProps={{
             tooltip: {
-              title: action.name,
+              title: 'حفظ',
             },
           }}
+          onClick={() => {
+            setTryToSubmit(true);
+            if (validateFields()) {
+              console.log('submit:', formValues);
+            }
+          }}
         />
-      ))}
+        : <>
+          <SpeedDialAction
+            icon={<AddIcon />}
+            slotProps={{
+              tooltip: {
+                title: 'جديد',
+              },
+            }} />
+          <SpeedDialAction
+            icon={<SaveIcon />}
+            slotProps={{
+              tooltip: {
+                title: 'حفظ',
+              },
+            }}
+            onClick={() => {
+              validateFields();
+            }}
+          />
+          <SpeedDialAction
+            icon={<DeleteIcon />}
+            slotProps={{
+              tooltip: {
+                title: 'حذف',
+              },
+            }} />
+        </>)}
     </SpeedDial>
   </Container>
 }

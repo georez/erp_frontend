@@ -1,7 +1,40 @@
+import dayjs from "dayjs";
+
+function getDateTimeFormat(fieldType) {
+  let format;
+  switch (fieldType) {
+    case "date":
+      format = "YYYY-MM-DD";
+      break;
+    case "time":
+      format = "HH:mm:ss";
+      break;
+    case "datetime":
+      format = "YYYY-MM-DDTHH:mm:ss";
+      break;
+    default:
+      throw new Error(
+        "Illegal state exception: unknown validation type " + fieldType
+      );
+  }
+  return format;
+}
+
+export function createDateTime(fieldType, value) {
+  return dayjs(value, getDateTimeFormat(fieldType), true);
+}
+
+export function formatDateTime(fieldType, value) {
+  return dayjs(value).format(getDateTimeFormat(fieldType));
+}
 
 export function validateFormField(validationType, fieldRequired, validation, value) {
   if (!fieldRequired && (value === null || value === '')) {
     return true;
+  }
+
+  if (fieldRequired && !value) {
+    return false;
   }
 
   if (validationType === "id") {
@@ -46,6 +79,16 @@ export function validateFormField(validationType, fieldRequired, validation, val
     }
 
     return /^(0|([1-9][0-9]*))$/.test(value);
+  } else if (
+    validationType === 'datetime' ||
+    validationType === 'date' ||
+    validationType === 'time'
+  ) {
+    if (typeof value !== 'string') {
+      return false;
+    }
+
+    return dayjs(value, getDateTimeFormat(validationType), true).isValid();
   }
 
   return false;

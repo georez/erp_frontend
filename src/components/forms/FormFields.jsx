@@ -1,5 +1,8 @@
-import { validateFormField } from "@/utils/formValidation";
+import { createDateTime, formatDateTime, validateFormField } from "@/utils/formValidation";
 import { TextField } from "@mui/material";
+import { DatePicker, DateTimePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 
 
@@ -13,20 +16,31 @@ function TextFieldAdapter({
   value,
   setFormValues,
   isValid,
-  setIsValid
+  setIsValid,
+  tryToSubmit
 }) {
 
   const [isValueChanged, setIsValueChanged] = useState(false);
 
   useEffect(() => {
     if (isValueChanged) {
-      setIsValid((prev) => ({ ...prev, [fieldName]: validateFormField(validationType, required, validation, value) }));
+      setIsValid((prev) => ({
+        ...prev,
+        [fieldName]: !!disabled || validateFormField(validationType, required, validation, value)
+      }));
     }
   }, [isValueChanged, validationType, value])
 
   return <TextField
-    error={isValueChanged && !isValid}
-    helperText={isValueChanged && !isValid && `${displayName} غير صحيح`}
+    error={
+      (isValueChanged && !isValid) ||
+      (tryToSubmit && !isValid)
+    }
+    helperText={
+      (isValueChanged && !isValid) ||
+        (tryToSubmit && !isValid) ?
+        `${displayName} غير صحيح` :
+        null}
     size="small"
     label={displayName}
     value={value}
@@ -40,12 +54,86 @@ function TextFieldAdapter({
   />
 }
 
+function getDateTimeFieldComponent(fieldType) {
+  switch (fieldType) {
+    case "date":
+      return DatePicker;
+    case "time":
+      return TimePicker;
+    case "datetime":
+      return DateTimePicker;
+    default:
+      return null;
+  }
+}
+
+function DateTimePickerAdapter({
+  fieldType,
+  fieldName,
+  displayName,
+  validationType,
+  validation,
+  required,
+  disabled,
+  value,
+  setFormValues,
+  isValid,
+  setIsValid,
+  tryToSubmit
+}) {
+  const [isValueChanged, setIsValueChanged] = useState(false);
+  const DateTimeComponent = getDateTimeFieldComponent(fieldType);
+
+  useEffect(() => {
+    if (isValueChanged) {
+      setIsValid((prev) => ({
+        ...prev,
+        [fieldName]: !!disabled || validateFormField(validationType, required, validation, value)
+      }));
+    }
+  }, [isValueChanged, validationType, value])
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <DateTimeComponent
+        name={fieldName}
+        value={value ? createDateTime(fieldType, value) : null}
+        disabled={disabled}
+        onChange={(newValue) => {
+          setFormValues((prev) => ({ ...prev, [fieldName]: newValue ? formatDateTime(fieldType, newValue) : null }));
+          setIsValueChanged(true);
+        }}
+        label={displayName}
+        slotProps={{
+          field: {
+            clearable: !required,
+          },
+          textField: {
+            size: "small",
+            required: required,
+            error:
+              (isValueChanged && !isValid) ||
+              (tryToSubmit && !isValid),
+            helperText:
+              (isValueChanged && !isValid) ||
+                (tryToSubmit && !isValid) ?
+                `${displayName} غير صحيح` :
+                null,
+          },
+        }}
+      />
+    </LocalizationProvider>
+  );
+}
+
+
 export default function FormFields({
   formFields,
   formValues,
   setFormValues,
   isValid,
-  setIsValid
+  setIsValid,
+  tryToSubmit
 }) {
   return formFields.map(formField => {
     if (
@@ -64,7 +152,27 @@ export default function FormFields({
         value={formValues[formField.fieldName] || ''}
         setFormValues={setFormValues}
         isValid={!!isValid[formField.fieldName]}
-        setIsValid={setIsValid} />
+        setIsValid={setIsValid}
+        tryToSubmit={tryToSubmit} />
+    } else if (
+      formField.validationType === 'datetime' ||
+      formField.validationType === 'date' ||
+      formField.validationType === 'time'
+    ) {
+      return <DateTimePickerAdapter
+        key={formField.fieldName}
+        fieldType={formField.validationType}
+        fieldName={formField.fieldName}
+        displayName={formField.displayName}
+        validationType={formField.validationType}
+        validation={formField.validation}
+        required={formField.required}
+        disabled={formField.disabled}
+        value={formValues[formField.fieldName] || null}
+        setFormValues={setFormValues}
+        isValid={!!isValid[formField.fieldName]}
+        setIsValid={setIsValid}
+        tryToSubmit={tryToSubmit} />
     }
   });
 }
