@@ -41,7 +41,7 @@ export default function LoginClient() {
       router.refresh();
       router.push(callbackUrl);
     } else {
-      setError("Login failed. Please check your credentials.");
+      setError("بيانات دخول غير صحيحة.");
     }
   }
 

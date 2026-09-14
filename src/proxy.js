@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from "@/constants";
+import { CSRF_TOKEN_JSON_NAME, CSRF_HEADER_NAME } from "@/constants";
 import { secret, tokens } from "./utils/csrfTokens";
 
 function csrfProtection(request) {
   // Check if this request is calling a Server Action
   const isServerAction = request.headers.has('next-action')
-  const csrfTokenInCookie = request.cookies.get(CSRF_COOKIE_NAME)?.value;
+  const csrfTokenInCookie = request.cookies.get(CSRF_TOKEN_JSON_NAME)?.value;
   if (
     (request.method === "POST" && !isServerAction) ||
     request.method === "PUT" ||

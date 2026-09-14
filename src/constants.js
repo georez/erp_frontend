@@ -1,5 +1,5 @@
 
-export const CSRF_COOKIE_NAME = "csrfToken";
+export const CSRF_TOKEN_JSON_NAME = "csrfToken";
 export const CSRF_HEADER_NAME = "x-csrf-token";
 
 export const ACCESS_TOKEN_COOKIE_NAME = "access_token";

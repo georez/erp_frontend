@@ -1,3 +1,4 @@
+import { validateFormField } from "@/utils/formValidation";
 import { Container, Stack, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 
@@ -6,6 +7,7 @@ function TextFieldAdapter({
   fieldName,
   displayName,
   validationType,
+  validation,
   required,
   disabled,
   value,
@@ -18,9 +20,7 @@ function TextFieldAdapter({
 
   useEffect(() => {
     if (isValueChanged) {
-      if (validationType === "id") {
-        setIsValid((prev) => ({ ...prev, [fieldName]: /^(0|([1-9][0-9]*))$/.test(value) || (!required && value === '') }));
-      }
+      setIsValid((prev) => ({ ...prev, [fieldName]: validateFormField(validationType, required, validation, value) }));
     }
   }, [isValueChanged, validationType, value])
 
@@ -33,7 +33,8 @@ function TextFieldAdapter({
     required={required}
     disabled={disabled}
     onChange={(event) => {
-      setFormValues((prev) => ({ ...prev, [fieldName]: event.target.value }));
+      const newValue = event.target.value;
+      setFormValues((prev) => ({ ...prev, [fieldName]: newValue === '' ? null : newValue }));
       setIsValueChanged(true);
     }}
   />
@@ -49,12 +50,17 @@ export default function FormFields({
   return <Container maxWidth="sm">
     <Stack spacing={2} sx={{ p: 1 }}>
       {formFields.map(formField => {
-        if (formField.validationType === "id") {
+        if (
+          formField.validationType === "id" ||
+          formField.validationType === 'number' ||
+          formField.validationType === 'string'
+        ) {
           return <TextFieldAdapter
             key={formField.fieldName}
             fieldName={formField.fieldName}
             displayName={formField.displayName}
             validationType={formField.validationType}
+            validation={formField.validation}
             required={formField.required}
             disabled={formField.disabled}
             value={formValues[formField.fieldName] || ''}
