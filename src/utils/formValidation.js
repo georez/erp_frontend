@@ -61,7 +61,7 @@ export function validateFormField(validationType, fieldRequired, validation, val
       pattern = `^-?\\d{1,${maxIntegerDigits}}$`;
     } else if (maxIntegerDigits === 0) {
       // Scale equals precision: e.g. NUMERIC(2,2) -> max 0 integer digits (0.12 or .12)
-      pattern = `^-?0?\\.\\d{1,${scale}}$`;
+      pattern = `^-?0\\.\\d{1,${scale}}$`;
     } else {
       // Standard case: e.g. NUMERIC(5,2) -> max 3 integer digits, max 2 decimal digits
       pattern = `^-?\\d{1,${maxIntegerDigits}}(\\.\\d{1,${scale}})?$`;

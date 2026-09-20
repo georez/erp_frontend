@@ -8,6 +8,7 @@ import FormFields from './FormFields';
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
 import { validateFormField } from '@/utils/formValidation';
+import { useDebouncedCallback } from 'use-debounce';
 
 const allActions = [
   { icon: <AddIcon />, name: 'جديد' },
@@ -52,8 +53,6 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
     setFormValues(formFieldsAndValues?.values)
   }, [formFieldsAndValues?.values])
 
-  console.log(isValid);
-
   const validateFields = () => {
     const newIsValid = formFieldsAndValues.fields.reduce((acc, {
       fieldName, validationType, validation, required, disabled
@@ -68,6 +67,12 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
     return areAllFieldsValid;
   };
 
+  const debouncedSaveNew = useDebouncedCallback(() => {
+    setTryToSubmit(true);
+    if (validateFields()) {
+      console.log('submit:', formValues);
+    }
+  }, 300);
 
   return <Container maxWidth="sm">
     <Stack spacing={2} sx={{ p: 1 }}>
@@ -95,12 +100,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
               title: 'حفظ',
             },
           }}
-          onClick={() => {
-            setTryToSubmit(true);
-            if (validateFields()) {
-              console.log('submit:', formValues);
-            }
-          }}
+          onClick={debouncedSaveNew}
         />
         : <>
           <SpeedDialAction

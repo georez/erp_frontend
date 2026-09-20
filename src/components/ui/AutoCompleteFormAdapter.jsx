@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { validateFormField } from '@/utils/formValidation';
 
 function getObjectId(option) {
-  const idK = Object.keys(option).filter(k => k.endsWith('_id'))[0];
+  const idK = Object.keys(option).filter(k => k === 'id')[0];
   return option[idK];
 }
 
