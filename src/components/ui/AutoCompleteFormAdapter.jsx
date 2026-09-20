@@ -81,6 +81,7 @@ export default function AutoCompleteFormAdapter({
         // the selected object.
         const results = await fetch(
           `/api/schemacrud/search/entity/${linkEntity}?${queryParams}`,
+          { credentials: "include" }
         );
         const jsonList = await results.json();
         const selectedObject = jsonList[0];

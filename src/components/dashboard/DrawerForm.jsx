@@ -87,21 +87,24 @@ export default function DrawerForm({ children }) {
       </Toolbar>
       <Divider />
       <List>
-        {[{ linkText: 'ادخال الحسابات', linkAddr: "/dashboard/accForm" },
-        { linkText: 'ادخال الاصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الاصناف')}` }]
-          .map(({ linkText, linkAddr }, index) => (
-            isTabletOrSmaller ?
-              <ListItem key={index} disablePadding>
-                <ListItemButton component={Link} href={linkAddr}>
-                  <ListItemText primary={linkText} />
-                </ListItemButton>
-              </ListItem> :
-              <ListItem key={index} disablePadding onClick={() => openFormFn(uuidv4(), linkAddr, linkText)}>
-                <ListItemButton>
-                  <ListItemText primary={linkText} />
-                </ListItemButton>
-              </ListItem>
-          ))}
+        {[
+          { linkText: 'ادخال الحسابات', linkAddr: "/dashboard/accForm" },
+          { linkText: 'ادخال الاصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الاصناف')}` },
+          { linkText: 'ادخال العملاء', linkAddr: `/dashboard/form?schemaName=customers&formTitle=${encodeURIComponent('ادخال العملاء')}` },
+          { linkText: 'ادخال تصنيف العملاء', linkAddr: `/dashboard/form?schemaName=customer_categories&formTitle=${encodeURIComponent('ادخال تصنيف العملاء')}` },
+        ].map(({ linkText, linkAddr }, index) => (
+          isTabletOrSmaller ?
+            <ListItem key={index} disablePadding>
+              <ListItemButton component={Link} href={linkAddr}>
+                <ListItemText primary={linkText} />
+              </ListItemButton>
+            </ListItem> :
+            <ListItem key={index} disablePadding onClick={() => openFormFn(uuidv4(), linkAddr, linkText)}>
+              <ListItemButton>
+                <ListItemText primary={linkText} />
+              </ListItemButton>
+            </ListItem>
+        ))}
       </List>
     </div>
   );

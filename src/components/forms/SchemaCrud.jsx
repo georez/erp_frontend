@@ -9,6 +9,10 @@ import useSWR from 'swr';
 import { useEffect, useState } from 'react';
 import { validateFormField } from '@/utils/formValidation';
 import { useDebouncedCallback } from 'use-debounce';
+import { useUpdateMultipleSearchParams, useUpdateSearchParam } from '@/utils/useUpdateSearchParams';
+import { CSRF_HEADER_NAME } from '@/constants';
+import { getNewCsrfToken } from '@/utils/csrfClientUtils';
+import { useSearchParams } from 'next/navigation';
 
 const allActions = [
   { icon: <AddIcon />, name: 'جديد' },
@@ -39,7 +43,10 @@ const fetcher = (url) => fetch(url, {
   credentials: 'include',
 }).then((res) => res.json());
 
-export default function SchemaCrud({ schemaName, entityId, formTitle }) {
+export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) {
+  const urlSearchParams = useSearchParams();
+  const openForms = JSON.parse(urlSearchParams.get('openForms') || '[]');
+  const handleFilterChange = useUpdateSearchParam();
   const isAddNew = !entityId;
   const { data: formFieldsAndValues, isValidating } = useSWR(
     `/api/schemacrud/${schemaName}${entityId ? `/${entityId}` : ''}`,
@@ -52,6 +59,11 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
   useEffect(() => {
     setFormValues(formFieldsAndValues?.values)
   }, [formFieldsAndValues?.values])
+
+  const [csrfToken, setCsrfToken] = useState(null);
+  useEffect(() => {
+    getNewCsrfToken(setCsrfToken);
+  }, []);
 
   const validateFields = () => {
     const newIsValid = formFieldsAndValues.fields.reduce((acc, {
@@ -67,10 +79,29 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
     return areAllFieldsValid;
   };
 
-  const debouncedSaveNew = useDebouncedCallback(() => {
+  const debouncedSaveNew = useDebouncedCallback(async () => {
     setTryToSubmit(true);
     if (validateFields()) {
-      console.log('submit:', formValues);
+      const res = await fetch(`/api/schemacrud/${schemaName}`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          [CSRF_HEADER_NAME]: csrfToken
+        },
+        body: JSON.stringify(formValues)
+      });
+      const { id: objectNewId } = await res.json();
+      const newOpenForms = openForms.map(openForm =>
+        openForm.formId !== formId ?
+          openForm :
+          ({
+            ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+              }&formTitle=${encodeURIComponent(formTitle)
+              }&entityId=${encodeURIComponent(objectNewId)
+              }`
+          })
+      );
+      handleFilterChange('openForms', JSON.stringify(newOpenForms));
     }
   }, 300);
 
@@ -88,7 +119,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
         />}
     </Stack>
     <SpeedDial
-      ariaLabel="SpeedDial basic example"
+      ariaLabel="Page SpeedDial"
       sx={{ position: 'absolute', bottom: 10, right: 16 }}
       icon={<SpeedDialIcon />}
     >
@@ -102,33 +133,36 @@ export default function SchemaCrud({ schemaName, entityId, formTitle }) {
           }}
           onClick={debouncedSaveNew}
         />
-        : <>
-          <SpeedDialAction
-            icon={<AddIcon />}
-            slotProps={{
-              tooltip: {
-                title: 'جديد',
-              },
-            }} />
-          <SpeedDialAction
-            icon={<SaveIcon />}
-            slotProps={{
-              tooltip: {
-                title: 'حفظ',
-              },
-            }}
-            onClick={() => {
-              validateFields();
-            }}
-          />
-          <SpeedDialAction
-            icon={<DeleteIcon />}
-            slotProps={{
-              tooltip: {
-                title: 'حذف',
-              },
-            }} />
-        </>)}
+        :
+        [<SpeedDialAction
+          key="add"
+          icon={<AddIcon />}
+          slotProps={{
+            tooltip: {
+              title: 'جديد',
+            },
+          }} />,
+        <SpeedDialAction
+          key="save"
+          icon={<SaveIcon />}
+          slotProps={{
+            tooltip: {
+              title: 'حفظ',
+            },
+          }}
+          onClick={() => {
+            validateFields();
+          }}
+        />,
+        <SpeedDialAction
+          key="delete"
+          icon={<DeleteIcon />}
+          slotProps={{
+            tooltip: {
+              title: 'حذف',
+            },
+          }} />]
+      )}
     </SpeedDial>
   </Container>
 }
