@@ -4,6 +4,7 @@ import { DatePicker, DateTimePicker, LocalizationProvider, TimePicker } from "@m
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
+import AutoCompleteFormAdapter from "../ui/AutoCompleteFormAdapter";
 
 
 function TextFieldAdapter({
@@ -173,6 +174,21 @@ export default function FormFields({
         isValid={!!isValid[formField.fieldName]}
         setIsValid={setIsValid}
         tryToSubmit={tryToSubmit} />
+    } else if (formField.validationType === 'link') {
+      return <AutoCompleteFormAdapter 
+        key={formField.fieldName}
+        fieldName={formField.fieldName}
+        displayName={formField.displayName}
+        validationType={formField.validationType}
+        linkEntity={formField.linkEntity}
+        required={formField.required}
+        disabled={formField.disabled}
+        value={formValues[formField.fieldName] || null}
+        setFormValues={setFormValues}
+        isValid={!!isValid[formField.fieldName]}
+        setIsValid={setIsValid}
+        tryToSubmit={tryToSubmit} 
+      />
     }
   });
 }
