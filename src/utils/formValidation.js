@@ -72,7 +72,8 @@ export function validateFormField(validationType, fieldRequired, validation, val
     if (typeof value !== 'string') {
       return false;
     }
-    return true;
+    const maxCharNumber = validation;
+    return (new RegExp(`^.{1,${maxCharNumber}}$`)).test(value);
   } else if (validationType === "link") {
     if (typeof value !== 'string') {
       return false;
@@ -89,12 +90,6 @@ export function validateFormField(validationType, fieldRequired, validation, val
     }
 
     return dayjs(value, getDateTimeFormat(validationType), true).isValid();
-  } else if (validationType === 'link') {
-    if (typeof value !== 'string') {
-      return false;
-    }
-
-    return /^(0|([1-9][0-9]*))$/.test(value);
   }
 
   return false;
