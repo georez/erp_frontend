@@ -105,6 +105,66 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     }
   }, 300);
 
+  const debouncedAddNew = useDebouncedCallback(() => {
+    const newOpenForms = openForms.map(openForm =>
+      openForm.formId !== formId ?
+        openForm :
+        ({
+          ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+            }&formTitle=${encodeURIComponent(formTitle)}`
+        })
+    );
+    handleFilterChange('openForms', JSON.stringify(newOpenForms));
+  }, 300);
+
+  const debouncedSaveExisting = useDebouncedCallback(async () => {
+    setTryToSubmit(true);
+    if (validateFields()) {
+      const res = await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
+        method: "PUT",
+        headers: {
+          'Content-Type': 'application/json',
+          [CSRF_HEADER_NAME]: csrfToken
+        },
+        body: JSON.stringify(formValues)
+      });
+      const { id: objectNewId } = await res.json();
+      const newOpenForms = openForms.map(openForm =>
+        openForm.formId !== formId ?
+          openForm :
+          ({
+            ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+              }&formTitle=${encodeURIComponent(formTitle)
+              }&entityId=${encodeURIComponent(objectNewId)
+              }`
+          })
+      );
+      handleFilterChange('openForms', JSON.stringify(newOpenForms));
+    }
+  }, 300);
+
+  const debouncedDeleteExisting = useDebouncedCallback(async () => {
+    setTryToSubmit(true);
+    if (validateFields()) {
+      await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
+        method: "DELETE",
+        headers: {
+          'Content-Type': 'application/json',
+          [CSRF_HEADER_NAME]: csrfToken
+        }
+      });
+      const newOpenForms = openForms.map(openForm =>
+        openForm.formId !== formId ?
+          openForm :
+          ({
+            ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+              }&formTitle=${encodeURIComponent(formTitle)}`
+          })
+      );
+      handleFilterChange('openForms', JSON.stringify(newOpenForms));
+    }
+  }, 300);
+
   return <Container maxWidth="sm">
     <Stack spacing={2} sx={{ p: 1 }}>
       <Typography variant="h7" component="div">{formTitle}</Typography>
@@ -141,7 +201,8 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
             tooltip: {
               title: 'جديد',
             },
-          }} />,
+          }}
+          onClick={debouncedAddNew} />,
         <SpeedDialAction
           key="save"
           icon={<SaveIcon />}
@@ -150,9 +211,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
               title: 'حفظ',
             },
           }}
-          onClick={() => {
-            validateFields();
-          }}
+          onClick={debouncedSaveExisting}
         />,
         <SpeedDialAction
           key="delete"
@@ -161,7 +220,8 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
             tooltip: {
               title: 'حذف',
             },
-          }} />]
+          }}
+          onClick={debouncedDeleteExisting} />]
       )}
     </SpeedDial>
   </Container>
