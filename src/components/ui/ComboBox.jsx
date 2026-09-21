@@ -19,9 +19,9 @@ export default function ComboBox({ choices = [] }) {
   const currentLettersPressedStr = currentLettersPressed.join('');
   const currentChoiceIndex = choices.findIndex((choice) => choice === selectedChoice);
 
-  const style = !selected ?
-    { backgroundColor: "white", color: "black" } :
-    { backgroundColor: "darkblue", color: "white" };
+  // const style = !selected ?
+  //   { backgroundColor: "white", color: "black" } :
+  //   { backgroundColor: "darkblue", color: "white" };
 
   useEffect(() => {
     const search = (e) => {
