@@ -149,7 +149,6 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
       await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
         method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
           [CSRF_HEADER_NAME]: csrfToken
         }
       });
