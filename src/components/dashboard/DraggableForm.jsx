@@ -112,11 +112,11 @@ export default function DraggableForm({
               <CropSquareIcon fontSize="inherit" color="secondary" />
             </IconButton>
           )}
-          <Tooltip title={<span dir="ltr" style={{ display: 'inline-block', textAlign: 'left' }}>{url}</span>}>
+          {/* <Tooltip title={<span dir="ltr" style={{ display: 'inline-block', textAlign: 'left' }}>{url}</span>}> */}
             <IconButton aria-label="open in new" size="small" onClick={() => window.open(url, '_blank')}>
               <OpenInNewIcon fontSize="inherit" color="secondary" />
             </IconButton>
-          </Tooltip>
+          {/* </Tooltip> */}
           <Typography variant="h7" component="div">
             {formTitle}
           </Typography>

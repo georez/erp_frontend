@@ -88,10 +88,11 @@ export default function DrawerForm({ children }) {
       <Divider />
       <List>
         {[
-          { linkText: 'ادخال الحسابات', linkAddr: "/dashboard/accForm" },
-          { linkText: 'ادخال الاصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الاصناف')}` },
+          // { linkText: 'ادخال الحسابات', linkAddr: "/dashboard/accForm" },
+          // { linkText: 'ادخال الاصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الاصناف')}` },
           { linkText: 'ادخال العملاء', linkAddr: `/dashboard/form?schemaName=customers&formTitle=${encodeURIComponent('ادخال العملاء')}` },
           { linkText: 'ادخال تصنيف العملاء', linkAddr: `/dashboard/form?schemaName=customer_categories&formTitle=${encodeURIComponent('ادخال تصنيف العملاء')}` },
+          { linkText: 'تقرير تصنيف العملاء', linkAddr: `/dashboard/report?reportName=customer_categories&formTitle=${encodeURIComponent('تقرير تصنيف العملاء')}` },
         ].map(({ linkText, linkAddr }, index) => (
           isTabletOrSmaller ?
             <ListItem key={index} disablePadding>
