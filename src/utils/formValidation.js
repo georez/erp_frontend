@@ -90,6 +90,12 @@ export function validateFormField(validationType, fieldRequired, validation, val
     }
 
     return dayjs(value, getDateTimeFormat(validationType), true).isValid();
+  } else if (validationType === "choices") {
+    if (typeof value !== 'string') {
+      return false;
+    }
+
+    return true;
   }
 
   return false;

@@ -1,5 +1,5 @@
 import { createDateTime, formatDateTime, validateFormField } from "@/utils/formValidation";
-import { TextField } from "@mui/material";
+import { FormControl, FormHelperText, InputLabel, MenuItem, Select, TextField } from "@mui/material";
 import { DatePicker, DateTimePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -53,6 +53,60 @@ function TextFieldAdapter({
       setIsValueChanged(true);
     }}
   />
+}
+
+function SelectFieldAdapter({
+  fieldName,
+  displayName,
+  validationType,
+  choices,
+  validation,
+  required,
+  disabled,
+  value,
+  setFormValues,
+  isValid,
+  setIsValid,
+  tryToSubmit
+}) {
+
+  const [isValueChanged, setIsValueChanged] = useState(false);
+
+  useEffect(() => {
+    if (isValueChanged) {
+      setIsValid((prev) => ({
+        ...prev,
+        [fieldName]: !!disabled || validateFormField(validationType, required, validation, value)
+      }));
+    }
+  }, [isValueChanged, validationType, value])
+
+  return <FormControl
+    variant="outlined"
+    fullWidth
+    error={(isValueChanged && !isValid) ||
+      (tryToSubmit && !isValid)}
+    size="small"
+  >
+    <InputLabel id={fieldName}>{displayName}</InputLabel>
+    <Select
+      labelId={fieldName}
+      value={value}
+      onChange={(event) => {
+        const newValue = event.target.value;
+        setFormValues((prev) => ({ ...prev, [fieldName]: newValue === '' ? null : newValue }));
+        setIsValueChanged(true);
+      }}
+      label={displayName}
+    >
+      {!required && <MenuItem value=""><em>لا شيء</em></MenuItem>}
+      {choices.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+    </Select>
+    {(isValueChanged && !isValid) ||
+      (tryToSubmit && !isValid) ?
+      <FormHelperText>{`${displayName} غير صحيح`}</FormHelperText> :
+      null}
+  </FormControl>
 }
 
 function getDateTimeFieldComponent(fieldType) {
@@ -175,7 +229,7 @@ export default function FormFields({
         setIsValid={setIsValid}
         tryToSubmit={tryToSubmit} />
     } else if (formField.validationType === 'link') {
-      return <AutoCompleteFormAdapter 
+      return <AutoCompleteFormAdapter
         key={formField.fieldName}
         fieldName={formField.fieldName}
         displayName={formField.displayName}
@@ -187,8 +241,23 @@ export default function FormFields({
         setFormValues={setFormValues}
         isValid={!!isValid[formField.fieldName]}
         setIsValid={setIsValid}
-        tryToSubmit={tryToSubmit} 
+        tryToSubmit={tryToSubmit}
       />
+    } else if (formField.validationType === "choices") {
+      return <SelectFieldAdapter
+        key={formField.fieldName}
+        fieldName={formField.fieldName}
+        displayName={formField.displayName}
+        validationType={formField.validationType}
+        choices={formField.choices}
+        validation={formField.validation}
+        required={formField.required}
+        disabled={formField.disabled}
+        value={formValues[formField.fieldName] || ''}
+        setFormValues={setFormValues}
+        isValid={!!isValid[formField.fieldName]}
+        setIsValid={setIsValid}
+        tryToSubmit={tryToSubmit} />
     }
   });
 }
