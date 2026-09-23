@@ -93,6 +93,10 @@ export default function AutoCompleteFormAdapter({
     updateSelectedObject();
   }, [value, linkEntity, setSelectedObj]);
 
+  useEffect(() => {
+    setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
+  }, [value, setFormValues]);
+
   return (
     <Autocomplete
       {...otherAutoCompleteProps}

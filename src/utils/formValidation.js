@@ -33,7 +33,7 @@ export function validateFormField(validationType, fieldRequired, validation, val
     return true;
   }
 
-  if (fieldRequired && !value) {
+  if (fieldRequired && (value === null || value === '')) {
     return false;
   }
 
@@ -92,6 +92,12 @@ export function validateFormField(validationType, fieldRequired, validation, val
     return dayjs(value, getDateTimeFormat(validationType), true).isValid();
   } else if (validationType === "choices") {
     if (typeof value !== 'string') {
+      return false;
+    }
+
+    return true;
+  } else if (validationType === "boolean") {
+    if (typeof value !== 'boolean') {
       return false;
     }
 

@@ -76,6 +76,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
       )
     }), {});
     setIsValid(newIsValid);
+    console.log(newIsValid);
     const areAllFieldsValid = Object.entries(newIsValid).every(([k, v]) => v);
     return areAllFieldsValid;
   };

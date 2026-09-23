@@ -1,8 +1,7 @@
 import { createDateTime, formatDateTime, validateFormField } from "@/utils/formValidation";
-import { FormControl, FormHelperText, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { Checkbox, FormControl, FormControlLabel, FormHelperText, InputLabel, MenuItem, Select, TextField } from "@mui/material";
 import { DatePicker, DateTimePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import AutoCompleteFormAdapter from "../ui/AutoCompleteFormAdapter";
 
@@ -32,6 +31,10 @@ function TextFieldAdapter({
     }
   }, [isValueChanged, validationType, value])
 
+  useEffect(() => {
+    setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
+  }, [value, setFormValues]);
+  
   return <TextField
     error={
       (isValueChanged && !isValid) ||
@@ -81,12 +84,17 @@ function SelectFieldAdapter({
     }
   }, [isValueChanged, validationType, value])
 
+  useEffect(() => {
+    setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
+  }, [value, setFormValues]);
+
   return <FormControl
     variant="outlined"
     fullWidth
     error={(isValueChanged && !isValid) ||
       (tryToSubmit && !isValid)}
     size="small"
+    required={required}
   >
     <InputLabel id={fieldName}>{displayName}</InputLabel>
     <Select
@@ -107,6 +115,29 @@ function SelectFieldAdapter({
       <FormHelperText>{`${displayName} غير صحيح`}</FormHelperText> :
       null}
   </FormControl>
+}
+
+function CheckBoxAdapter({
+  fieldName,
+  displayName,
+  disabled,
+  value,
+  setFormValues,
+}) {
+
+  useEffect(() => {
+    setFormValues((prev) => ({ ...prev, [fieldName]: value || false }));
+  }, [value]);
+
+  return <FormControlLabel
+    disabled={disabled}
+    control={<Checkbox />}
+    label={displayName}
+    checked={value}
+    onChange={(e) => {
+      setFormValues((prev) => ({ ...prev, [fieldName]: e.target.checked }));
+    }}
+  />
 }
 
 function getDateTimeFieldComponent(fieldType) {
@@ -147,6 +178,10 @@ function DateTimePickerAdapter({
       }));
     }
   }, [isValueChanged, validationType, value])
+
+  useEffect(() => {
+    setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
+  }, [value, setFormValues]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -258,6 +293,14 @@ export default function FormFields({
         isValid={!!isValid[formField.fieldName]}
         setIsValid={setIsValid}
         tryToSubmit={tryToSubmit} />
+    } else if (formField.validationType === "boolean") {
+      return <CheckBoxAdapter
+        key={formField.fieldName}
+        fieldName={formField.fieldName}
+        displayName={formField.displayName}
+        disabled={formField.disabled}
+        value={formValues[formField.fieldName] || false}
+        setFormValues={setFormValues} />
     }
   });
 }
