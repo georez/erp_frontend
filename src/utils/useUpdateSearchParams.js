@@ -68,6 +68,11 @@ export function useUpdateOpenForms(formId) {
       handleFilterChange('openForms', JSON.stringify(newOpenForms));
     }
   } else {
-    return (url) => router.push(url);
+    return (url, refresh) => {
+      router.push(url);
+      if (refresh) {
+        window.location.reload()
+      }
+    };
   }
 }

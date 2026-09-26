@@ -9,7 +9,7 @@ import useSWR from 'swr';
 import { useEffect, useState } from 'react';
 import { validateFormField } from '@/utils/formValidation';
 import { useDebouncedCallback } from 'use-debounce';
-import { useUpdateMultipleSearchParams, useUpdateSearchParam } from '@/utils/useUpdateSearchParams';
+import { useUpdateMultipleSearchParams, useUpdateOpenForms, useUpdateSearchParam } from '@/utils/useUpdateSearchParams';
 import { CSRF_HEADER_NAME } from '@/constants';
 import { getNewCsrfToken } from '@/utils/csrfClientUtils';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -44,9 +44,11 @@ const fetcher = (url) => fetch(url, {
 }).then((res) => res.json());
 
 export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) {
-  const urlSearchParams = useSearchParams();
-  const router = useRouter();
-  const openForms = JSON.parse(urlSearchParams.get('openForms'));
+  // const urlSearchParams = useSearchParams();
+  // const router = useRouter();
+  // const openForms = JSON.parse(urlSearchParams.get('openForms'));
+  const updateOpenFormUrl = useUpdateOpenForms(formId);
+
   const handleFilterChange = useUpdateSearchParam();
   const isAddNew = !entityId;
   const { data: formFieldsAndValues, isValidating } = useSWR(
@@ -77,7 +79,6 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
       )
     }), {});
     setIsValid(newIsValid);
-    console.log(newIsValid);
     const areAllFieldsValid = Object.entries(newIsValid).every(([k, v]) => v);
     return areAllFieldsValid;
   };
@@ -100,44 +101,19 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         return;
       }
       const { id: objectNewId } = await res.json();
-      if (openForms) {
-        const newOpenForms = openForms.map(openForm =>
-          openForm.formId !== formId ?
-            openForm :
-            ({
-              ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-                }&formTitle=${encodeURIComponent(formTitle)
-                }&entityId=${encodeURIComponent(objectNewId)
-                }`
-            })
-        );
-        handleFilterChange('openForms', JSON.stringify(newOpenForms));
-      } else {
-        router.push(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-          }&formTitle=${encodeURIComponent(formTitle)
-          }&entityId=${encodeURIComponent(objectNewId)
-          }`);
-      }
+      updateOpenFormUrl(
+        `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+        }&formTitle=${encodeURIComponent(formTitle)
+        }&entityId=${encodeURIComponent(objectNewId)
+        }`
+      );
 
     }
   }, 300);
 
   const debouncedAddNew = useDebouncedCallback(() => {
-    if (openForms) {
-      const newOpenForms = openForms.map(openForm =>
-        openForm.formId !== formId ?
-          openForm :
-          ({
-            ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-              }&formTitle=${encodeURIComponent(formTitle)}`
-          })
-      );
-      handleFilterChange('openForms', JSON.stringify(newOpenForms));
-    } else {
-      router.push(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-        }&formTitle=${encodeURIComponent(formTitle)}`)
-    }
-
+    updateOpenFormUrl(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+      }&formTitle=${encodeURIComponent(formTitle)}`);
   }, 300);
 
   const debouncedSaveExisting = useDebouncedCallback(async () => {
@@ -158,25 +134,11 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         return;
       }
       const { id: objectNewId } = await res.json();
-      if (openForms) {
-        const newOpenForms = openForms.map(openForm =>
-          openForm.formId !== formId ?
-            openForm :
-            ({
-              ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-                }&formTitle=${encodeURIComponent(formTitle)
-                }&entityId=${encodeURIComponent(objectNewId)
-                }`
-            })
-        );
-        handleFilterChange('openForms', JSON.stringify(newOpenForms));
-      } else {
-        router.push(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-          }&formTitle=${encodeURIComponent(formTitle)
-          }&entityId=${encodeURIComponent(objectNewId)
-          }`);
-      }
-
+      updateOpenFormUrl(
+        `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+        }&formTitle=${encodeURIComponent(formTitle)
+        }&entityId=${encodeURIComponent(objectNewId)
+        }`, true);
     }
   }, 300);
 
@@ -194,21 +156,8 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         setErrorMessage(errorMessage || res.statusText);
         return;
       }
-      if (openForms) {
-        const newOpenForms = openForms.map(openForm =>
-          openForm.formId !== formId ?
-            openForm :
-            ({
-              ...openForm, url: `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-                }&formTitle=${encodeURIComponent(formTitle)}`
-            })
-        );
-        handleFilterChange('openForms', JSON.stringify(newOpenForms));
-      } else {
-        router.push(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-          }&formTitle=${encodeURIComponent(formTitle)}`);
-      }
-
+      updateOpenFormUrl(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
+        }&formTitle=${encodeURIComponent(formTitle)}`);
     }
   }, 300);
 
