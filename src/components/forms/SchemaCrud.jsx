@@ -3,7 +3,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography } from '@mui/material';
+import { Alert, Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography } from '@mui/material';
 import FormFields from './FormFields';
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
@@ -56,6 +56,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   const [formValues, setFormValues] = useState({});
   const [isValid, setIsValid] = useState({});
   const [tryToSubmit, setTryToSubmit] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
     setFormValues(formFieldsAndValues?.values)
@@ -83,6 +84,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
 
   const debouncedSaveNew = useDebouncedCallback(async () => {
     setTryToSubmit(true);
+    setErrorMessage(null);
     if (validateFields()) {
       const res = await fetch(`/api/schemacrud/${schemaName}`, {
         method: "POST",
@@ -92,6 +94,11 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         },
         body: JSON.stringify(formValues)
       });
+      if (!res.ok) {
+        const { errorMessage } = await res.json();
+        setErrorMessage(errorMessage || res.statusText);
+        return;
+      }
       const { id: objectNewId } = await res.json();
       if (openForms) {
         const newOpenForms = openForms.map(openForm =>
@@ -135,6 +142,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
 
   const debouncedSaveExisting = useDebouncedCallback(async () => {
     setTryToSubmit(true);
+    setErrorMessage(null);
     if (validateFields()) {
       const res = await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
         method: "PUT",
@@ -144,6 +152,11 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         },
         body: JSON.stringify(formValues)
       });
+      if (!res.ok) {
+        const { errorMessage } = await res.json();
+        setErrorMessage(errorMessage || res.statusText);
+        return;
+      }
       const { id: objectNewId } = await res.json();
       if (openForms) {
         const newOpenForms = openForms.map(openForm =>
@@ -170,12 +183,17 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   const debouncedDeleteExisting = useDebouncedCallback(async () => {
     setTryToSubmit(true);
     if (validateFields()) {
-      await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
+      const res = await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
         method: "DELETE",
         headers: {
           [CSRF_HEADER_NAME]: csrfToken
         }
       });
+      if (!res.ok) {
+        const { errorMessage } = await res.json();
+        setErrorMessage(errorMessage || res.statusText);
+        return;
+      }
       if (openForms) {
         const newOpenForms = openForms.map(openForm =>
           openForm.formId !== formId ?
@@ -195,6 +213,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   }, 300);
 
   return <Container maxWidth="sm">
+    {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
     <Stack spacing={2} sx={{ p: 1 }}>
       <Typography variant="h7" component="div">{formTitle}</Typography>
       {!isValidating && formFieldsAndValues && formValues &&
