@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { defaultValidator } from 'react-querybuilder';
 import 'react-querybuilder/dist/query-builder.css';
 import './styles.css';
 import dynamic from 'next/dynamic';
 import { defaultOperators, toFullOption } from 'react-querybuilder';
-import { Box, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Button, Stack, Tab, Tabs, Typography } from '@mui/material';
+import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 
 // To fix server side renddering hydration error
 const QueryBuilder = dynamic(
@@ -313,10 +314,15 @@ function a11yProps(index) {
   };
 }
 
-export default function Report({ formId, formTitle, reportName }) {
+export default function Report({ formId, formTitle, reportName, execute, requestTime, query }) {
+  const updateOpenFormsUrl = useUpdateOpenForms(formId);
 
-  const [query, setQuery] = useState(initialQuery);
-  const [tabValue, setTabValue] = useState(0);
+  const [queryLocal, setQueryLocal] = useState(JSON.parse(query || null) || initialQuery);
+  const [tabValue, setTabValue] = useState(query && execute ? 3 : 0);
+
+  useEffect(() => {
+    console.log(query, execute, requestTime);
+  }, [query, execute, requestTime]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -324,9 +330,16 @@ export default function Report({ formId, formTitle, reportName }) {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography variant='h8' component='div'>
-        {formTitle}
-      </Typography>
+      <Stack direction='row' spacing={1}>
+        <Typography variant='h8' component='div'>
+          {formTitle}
+        </Typography>
+        <Button variant='contained' size='small'
+          onClick={() => {
+            updateOpenFormsUrl(`/dashboard/report?reportName=${encodeURIComponent(reportName)}&formTitle=${encodeURIComponent(formTitle)}&query=${encodeURIComponent(JSON.stringify(queryLocal))}&execute=true&requestTime=${Date.now()}`);
+            setTabValue(3);
+          }}>تنفيذ</Button>
+      </Stack>
       <Tabs
         value={tabValue}
         onChange={handleTabChange}
@@ -337,8 +350,8 @@ export default function Report({ formId, formTitle, reportName }) {
       >
         <Tab label="استعلام 1" {...a11yProps(0)} />
         <Tab label="استعلام 2" {...a11yProps(1)} />
-        <Tab label="ترتيب حسب" {...a11yProps(1)} />
-        <Tab label="النتيجة" {...a11yProps(1)} />
+        <Tab label="ترتيب حسب" {...a11yProps(2)} />
+        <Tab label="النتيجة" {...a11yProps(3)} />
       </Tabs>
       <CustomTabPanel value={tabValue} index={0}>
 
@@ -346,8 +359,8 @@ export default function Report({ formId, formTitle, reportName }) {
       <CustomTabPanel value={tabValue} index={1}>
         <QueryBuilder
           fields={fields}
-          query={query}
-          onQueryChange={setQuery}
+          query={queryLocal}
+          onQueryChange={setQueryLocal}
           validator={defaultValidator}
         />
       </CustomTabPanel>

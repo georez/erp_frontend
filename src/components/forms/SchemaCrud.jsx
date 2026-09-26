@@ -138,7 +138,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
         }&formTitle=${encodeURIComponent(formTitle)
         }&entityId=${encodeURIComponent(objectNewId)
-        }`, true);
+        }`);
     }
   }, 300);
 

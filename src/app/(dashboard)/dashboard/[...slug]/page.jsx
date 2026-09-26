@@ -1,6 +1,6 @@
 import getComponentForUrl from "@/utils/urlToComponentMap";
 import { notFound } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 
 export default async function Page({ params, searchParams }) {
   const { slug } = await params;
@@ -12,7 +12,7 @@ export default async function Page({ params, searchParams }) {
     notFound();
   }
 
-  return <Component key={uuidv4()}
+  return <Component
     url={urlToResolve}
     formTitle={resolvedSearchParams.formTitle}
     {...resolvedSearchParams} />;
