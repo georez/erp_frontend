@@ -313,13 +313,13 @@ function a11yProps(index) {
   };
 }
 
-export default function Report({ formTitle, reportName }) {
+export default function Report({ formId, formTitle, reportName }) {
 
   const [query, setQuery] = useState(initialQuery);
-  const [value, setValue] = useState(0);
+  const [tabValue, setTabValue] = useState(0);
 
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
   };
 
   return (
@@ -328,8 +328,8 @@ export default function Report({ formTitle, reportName }) {
         {formTitle}
       </Typography>
       <Tabs
-        value={value}
-        onChange={handleChange}
+        value={tabValue}
+        onChange={handleTabChange}
         variant="scrollable"
         scrollButtons="auto"
         aria-label="tabs"
@@ -340,10 +340,10 @@ export default function Report({ formTitle, reportName }) {
         <Tab label="ترتيب حسب" {...a11yProps(1)} />
         <Tab label="النتيجة" {...a11yProps(1)} />
       </Tabs>
-      <CustomTabPanel value={value} index={0}>
+      <CustomTabPanel value={tabValue} index={0}>
 
       </CustomTabPanel>
-      <CustomTabPanel value={value} index={1}>
+      <CustomTabPanel value={tabValue} index={1}>
         <QueryBuilder
           fields={fields}
           query={query}

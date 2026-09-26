@@ -52,3 +52,22 @@ export function useUpdateMultipleSearchParams() {
 
   return handleFilterChange;
 }
+
+export function useUpdateOpenForms(formId) {
+  const router = useRouter();
+  const urlSearchParams = useSearchParams();
+  const openForms = JSON.parse(urlSearchParams.get('openForms'));
+  const handleFilterChange = useUpdateSearchParam();
+  if (openForms) {
+    return (url) => {
+      const newOpenForms = openForms.map(openForm =>
+        openForm.formId !== formId ?
+          openForm :
+          ({ ...openForm, url })
+      );
+      handleFilterChange('openForms', JSON.stringify(newOpenForms));
+    }
+  } else {
+    return (url) => router.push(url);
+  }
+}
