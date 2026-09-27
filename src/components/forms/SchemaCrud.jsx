@@ -9,10 +9,9 @@ import useSWR from 'swr';
 import { useEffect, useState } from 'react';
 import { validateFormField } from '@/utils/formValidation';
 import { useDebouncedCallback } from 'use-debounce';
-import { useUpdateMultipleSearchParams, useUpdateOpenForms, useUpdateSearchParam } from '@/utils/useUpdateSearchParams';
+import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { CSRF_HEADER_NAME } from '@/constants';
 import { getNewCsrfToken } from '@/utils/csrfClientUtils';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 const allActions = [
   { icon: <AddIcon />, name: 'جديد' },
@@ -44,12 +43,8 @@ const fetcher = (url) => fetch(url, {
 }).then((res) => res.json());
 
 export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) {
-  // const urlSearchParams = useSearchParams();
-  // const router = useRouter();
-  // const openForms = JSON.parse(urlSearchParams.get('openForms'));
   const updateOpenFormUrl = useUpdateOpenForms(formId);
 
-  const handleFilterChange = useUpdateSearchParam();
   const isAddNew = !entityId;
   const { data: formFieldsAndValues, isValidating } = useSWR(
     `/api/schemacrud/${schemaName}${entityId ? `/${entityId}` : ''}`,

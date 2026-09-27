@@ -7,6 +7,7 @@ import FilterNoneIcon from '@mui/icons-material/FilterNone';
 import { useSearchParams } from "next/navigation";
 import { useUpdateSearchParam } from "@/utils/useUpdateSearchParams";
 import { useCallback, useEffect, useState } from "react";
+import LZString from 'lz-string';
 
 export default function DraggableForm({
   x = 20, y = 60, width = 320, height = 200,
@@ -15,7 +16,9 @@ export default function DraggableForm({
 }) {
 
   const searchParams = useSearchParams();
-  const openForms = JSON.parse(searchParams.get('openForms') || '[]');
+  const openForms = JSON.parse(searchParams.get('openForms') ?
+    LZString.decompressFromEncodedURIComponent(searchParams.get('openForms')) :
+    '[]');
   const focusedForm = searchParams.get('focusedForm') || null;
   const [positionX, setPositionX] = useState(x);
   const [positionY, setPositionY] = useState(y);
@@ -26,7 +29,7 @@ export default function DraggableForm({
   const handleFilterChange = useUpdateSearchParam();
   const handleCloseForm = () => {
     const updatedOpenForms = openForms.filter(form => form.formId !== formId);
-    handleFilterChange('openForms', JSON.stringify(updatedOpenForms));
+    handleFilterChange('openForms', LZString.compressToEncodedURIComponent(JSON.stringify(updatedOpenForms)));
   }
 
   const applyMaximize = useCallback(() => {
@@ -113,9 +116,9 @@ export default function DraggableForm({
             </IconButton>
           )}
           {/* <Tooltip title={<span dir="ltr" style={{ display: 'inline-block', textAlign: 'left' }}>{url}</span>}> */}
-            <IconButton aria-label="open in new" size="small" onClick={() => window.open(url, '_blank')}>
-              <OpenInNewIcon fontSize="inherit" color="secondary" />
-            </IconButton>
+          <IconButton aria-label="open in new" size="small" onClick={() => window.open(url, '_blank')}>
+            <OpenInNewIcon fontSize="inherit" color="secondary" />
+          </IconButton>
           {/* </Tooltip> */}
           <Typography variant="h7" component="div">
             {formTitle}

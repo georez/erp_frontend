@@ -1,5 +1,6 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import LZString from 'lz-string';
 
 export function useUpdateSearchParam() {
   const router = useRouter();
@@ -56,7 +57,9 @@ export function useUpdateMultipleSearchParams() {
 export function useUpdateOpenForms(formId) {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
-  const openForms = JSON.parse(urlSearchParams.get('openForms'));
+  const openForms = JSON.parse(urlSearchParams.get('openForms') ?
+    LZString.decompressFromEncodedURIComponent(urlSearchParams.get('openForms')) :
+    null);
   const handleFilterChange = useUpdateSearchParam();
   if (openForms) {
     return (url) => {
@@ -65,7 +68,7 @@ export function useUpdateOpenForms(formId) {
           openForm :
           ({ ...openForm, url })
       );
-      handleFilterChange('openForms', JSON.stringify(newOpenForms));
+      handleFilterChange('openForms', LZString.compressToEncodedURIComponent(JSON.stringify(newOpenForms)));
     }
   } else {
     return (url, refresh) => {

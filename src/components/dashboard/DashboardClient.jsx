@@ -4,10 +4,13 @@ import DraggableForm from "@/components/dashboard/DraggableForm";
 import DrawerForm from "@/components/dashboard/DrawerForm";
 import getComponentForUrl from "@/utils/urlToComponentMap";
 import { useSearchParams } from "next/navigation";
+import LZString from 'lz-string';
 
 export default function DashboardClient() {
   const urlSearchParams = useSearchParams();
-  const openForms = JSON.parse(urlSearchParams.get('openForms') || '[]');
+  const openForms = JSON.parse(urlSearchParams.get('openForms') ?
+    LZString.decompressFromEncodedURIComponent(urlSearchParams.get('openForms')) :
+    '[]');
   const draggableForms = openForms.map(({ formId, url, formTitle }, index) => {
 
     const Component = getComponentForUrl(url);

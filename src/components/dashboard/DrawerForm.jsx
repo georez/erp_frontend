@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { v4 as uuidv4 } from 'uuid';
 import { useUpdateMultipleSearchParams } from "@/utils/useUpdateSearchParams";
+import LZString from 'lz-string';
 
 const drawerWidth = 240;
 
@@ -28,11 +29,11 @@ function useIsTabletOrSmaller() {
 
 function useOpenForm() {
   const searchParams = useSearchParams();
-  const openForms = JSON.parse(searchParams.get('openForms') || '[]');
+  const openForms = JSON.parse(searchParams.get('openForms') ? LZString.decompressFromEncodedURIComponent(searchParams.get('openForms')) : '[]');
   const handleFilterChange = useUpdateMultipleSearchParams();
   return (formId, url, formTitle) => {
     const updatedOpenForms = [...openForms, { formId, url, formTitle }];
-    handleFilterChange({ 'openForms': JSON.stringify(updatedOpenForms), 'focusedForm': formId });
+    handleFilterChange({ 'openForms': LZString.compressToEncodedURIComponent(JSON.stringify(updatedOpenForms)), 'focusedForm': formId });
   };
 }
 
