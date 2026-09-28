@@ -30,7 +30,7 @@ export default function DashboardClient() {
     </DraggableForm>
   });
   return (
-    <DrawerForm>
+    <DrawerForm backgroundColor={'#008cff46'}>
       {draggableForms}
     </DrawerForm>
   );

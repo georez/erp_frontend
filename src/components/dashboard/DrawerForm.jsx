@@ -43,7 +43,7 @@ function useUsername() {
   return username;
 }
 
-export default function DrawerForm({ children }) {
+export default function DrawerForm({ children, backgroundColor }) {
   const username = useUsername();
   const router = useRouter();
   const isTabletOrSmaller = useIsTabletOrSmaller();
@@ -92,7 +92,7 @@ export default function DrawerForm({ children }) {
           { linkText: 'ادخال الحسابات', linkAddr: `/dashboard/form?schemaName=accounts&formTitle=${encodeURIComponent('ادخال الحسابات')}` },
           { linkText: 'ادخال العملاء', linkAddr: `/dashboard/form?schemaName=customers&formTitle=${encodeURIComponent('ادخال العملاء')}` },
           { linkText: 'ادخال تصنيف العملاء', linkAddr: `/dashboard/form?schemaName=customer_categories&formTitle=${encodeURIComponent('ادخال تصنيف العملاء')}` },
-          { linkText: 'تقرير تصنيف العملاء', linkAddr: `/dashboard/report?reportName=customer_categories&formTitle=${encodeURIComponent('تقرير تصنيف العملاء')}` },
+          { linkText: 'تقرير تصنيف العملاء', linkAddr: `/dashboard/report?reportName=customerCategoriesReport&formTitle=${encodeURIComponent('تقرير تصنيف العملاء')}` },
         ].map(({ linkText, linkAddr }, index) => (
           isTabletOrSmaller ?
             <ListItem key={index} disablePadding>
@@ -155,7 +155,7 @@ export default function DrawerForm({ children }) {
       </Box>
       <Box
         component="main"
-        sx={{ flexGrow: 1, height: '100vh', overflow: 'auto', bgcolor: '#008cff46' }}
+        sx={{ flexGrow: 1, height: '100vh', overflow: 'auto', ...{ bgcolor: backgroundColor ? backgroundColor : null } }}
       >
         <Toolbar variant="dense" />
         {children}
