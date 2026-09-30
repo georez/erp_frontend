@@ -40,6 +40,8 @@ import {
   transformFields,
   arabicOperators,
 } from '@/utils/reportutils';
+import { CSRF_HEADER_NAME } from '@/constants';
+import { getNewCsrfToken } from '@/utils/csrfClientUtils';
 
 const modules = [AllCommunityModule];
 const QueryBuilder = dynamic(
@@ -284,19 +286,21 @@ async function fetchReportColumnsApi(
 */
 
 async function executeReportApi({
+  csrfToken,
   reportName,
   query,
   columns,
   sort,
 }) {
   const response = await fetch(
-    `/api/report/${encodeURIComponent(reportName)}/execute`,
+    `/custom/api/report/${encodeURIComponent(reportName)}/execute`,
     {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        [CSRF_HEADER_NAME]: csrfToken
       },
       body: JSON.stringify({
         query,
@@ -414,6 +418,10 @@ export default function Report({
 }) {
   const updateOpenFormsUrl = useUpdateOpenForms(formId);
 
+  const [csrfToken, setCsrfToken] = useState(null);
+  useEffect(() => {
+      getNewCsrfToken(setCsrfToken);
+    }, []);
   /*
    * ==========================================================
    * QueryBuilder fields
@@ -523,8 +531,7 @@ export default function Report({
    *
    */
 
-  const [sort, setSort] =
-    useState([]);
+  const [sort, setSort] = useState([]);
 
   /*
    * ==========================================================
@@ -706,6 +713,7 @@ export default function Report({
          */
 
         const result = await executeReportApi({
+          csrfToken,
           reportName,
           query: parsedQuery,
           columns: selectedColumns,
