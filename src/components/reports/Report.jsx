@@ -260,7 +260,7 @@ async function fetchReportColumnsApi(
 |
 | Suggested request:
 |
-| POST /api/report/{reportName}/execute
+| POST /internal/report/{reportName}/execute
 |
 | Body:
 |

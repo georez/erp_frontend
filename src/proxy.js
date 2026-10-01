@@ -20,7 +20,7 @@ function csrfProtection(request) {
 }
 
 async function verifyAccessTokenWithAuthServer(accessToken) {
-  const response = await fetch('http://localhost:4000/api/login/verify', {
+  const response = await fetch('http://127.0.0.1:4000/api/login/verify', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -33,7 +33,7 @@ async function verifyAccessTokenWithAuthServer(accessToken) {
 
 async function refreshAccessTokenWithAuthServer(request) {
   const refreshToken = request.cookies.get('refresh_token')?.value;
-  const response = await fetch('http://localhost:4000/api/login/refresh', {
+  const response = await fetch('http://127.0.0.1:4000/api/login/refresh', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

@@ -5,7 +5,8 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:4000/api/:path*',
+        // 127.0.0.1, not localhost: the backend binds IPv4 loopback only, and localhost may resolve to ::1
+        destination: 'http://127.0.0.1:4000/api/:path*',
       },
     ];
   },

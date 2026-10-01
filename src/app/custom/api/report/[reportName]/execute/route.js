@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { transformFields } from "@/utils/reportutils";
 import { cookies } from "next/headers";
 import { formatQuery } from "react-querybuilder";
@@ -14,7 +15,7 @@ export async function POST(request, { params }) {
     .join('; ');
 
   const searchParams = await fetch(
-    `http://localhost:4000/api/report/${encodeURIComponent(reportName)}/searchparams2`,
+    `http://127.0.0.1:4000/api/report/${encodeURIComponent(reportName)}/searchparams2`,
     {
       headers: {
         Cookie: cookieHeader,
@@ -37,16 +38,27 @@ export async function POST(request, { params }) {
 
   const {sql, params: sqlParams} = formatQuery(query, { format: 'parameterized_named', fields: transformedFields });
 
+  // Sign the exact body so the backend only runs SQL produced by this route
+  const signingSecret = process.env.REPORT_SIGNING_SECRET;
+  if (!signingSecret) {
+    return Response.json({ success: false, message: 'Report signing is not configured' }, { status: 500 });
+  }
+  const body = JSON.stringify({sql, params: sqlParams});
+  const signature = createHmac('sha256', signingSecret)
+    .update(`${reportName}\n${body}`)
+    .digest('hex');
+
   const response = await fetch(
-    `http://localhost:4000/api/report/${encodeURIComponent(reportName)}/execute`,
+    `http://127.0.0.1:4000/internal/report/${encodeURIComponent(reportName)}/execute`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Report-Signature': signature,
         Cookie: cookieHeader,
       },
       cache: 'no-store',
-      body: JSON.stringify({sql, params: sqlParams})
+      body
     }
   );
 
