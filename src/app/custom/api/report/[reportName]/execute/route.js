@@ -51,8 +51,6 @@ export async function POST(request, { params }) {
   );
 
   const reportBody = await response.json();
-
-  console.log('reportBody:', reportBody);
   
   return Response.json(reportBody);
 }
