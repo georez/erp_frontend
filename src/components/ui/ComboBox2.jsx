@@ -1,3 +1,4 @@
+"use client";
 import {
   useState,
   useRef,
@@ -23,6 +24,10 @@ import { createPortal } from "react-dom";
  *   name           renders a hidden <input> so the value is submitted with a <form>
  *   id, aria-label, aria-labelledby   for <label htmlFor> / screen readers
  *   portalTarget   element the popup is rendered into (default document.body)
+ *   dir            "ltr" | "rtl"; default: inherit from the surrounding page
+ *   messages       { clear, typeToJump(count), jumpedBy(text) } to translate the UI strings
+ *   Keys: type to jump, arrows/Home/End/PageUp/PageDown, Enter selects (popup open), Esc closes,
+ *         Alt+Down or F4 opens, Delete clears (clearable)
  *   ref            forwarded to the <input>, so ref.current.focus() works
  *
  * The popup is rendered in a portal with position: fixed, so it is never clipped by
@@ -30,6 +35,18 @@ import { createPortal } from "react-dom";
  */
 
 const CHROME = 28; // popup height besides the rows: footer (26) + borders (2)
+
+// UI strings. Override any of them with the `messages` prop (they may return JSX).
+const DEFAULT_MESSAGES = {
+  clear: "Clear selection",
+  typeToJump: (count) => `${count.toLocaleString()} items · type to jump`,
+  // <bdi> isolates what was typed, so it can't scramble the surrounding sentence in RTL
+  jumpedBy: (text) => (
+    <>
+      Jumped by “<bdi>{text}</bdi>”
+    </>
+  ),
+};
 
 // First index whose key is >= prefix (keys must be sorted).
 function lowerBound(keys, prefix) {
@@ -59,6 +76,8 @@ export const Combobox = forwardRef(function Combobox(
     name,
     id,
     portalTarget,
+    dir,
+    messages: messagesProp,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
   },
@@ -89,6 +108,7 @@ export const Combobox = forwardRef(function Combobox(
   );
   const selectedLabel = selectedIndex >= 0 ? items[selectedIndex].label : "";
 
+  const msg = { ...DEFAULT_MESSAGES, ...messagesProp };
   const uid = useId(); // unique ids, so several comboboxes can share a page
   const listId = `${uid}-list`;
   const optId = (i) => `${uid}-opt-${i}`;
@@ -97,7 +117,7 @@ export const Combobox = forwardRef(function Combobox(
   const [active, setActive] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [hint, setHint] = useState("");
-  const [pos, setPos] = useState(null); // { left, top, width, rows }
+  const [pos, setPos] = useState(null); // { left, top, width, rows, dir }
   const inputRef = useRef(null);
   const popRef = useRef(null);
   const listRef = useRef(null);
@@ -135,6 +155,8 @@ export const Combobox = forwardRef(function Combobox(
       width: r.width,
       top: up ? r.top - gap - h : r.bottom + gap,
       rows: fit,
+      // The popup is portaled to <body>, so copy the field's direction onto it.
+      dir: window.getComputedStyle(el).direction,
     });
   }
 
@@ -239,6 +261,7 @@ export const Combobox = forwardRef(function Combobox(
   // land in the field.
   beforeInput.current = (e) => {
     if (disabled || !n) return;
+    if (e.inputType === "insertLineBreak") return; // Enter: leave it alone (form submit)
     e.preventDefault();
     if (e.inputType === "insertText" && e.data) for (const ch of e.data) typeKey(ch);
     else if (e.inputType === "insertCompositionText" && e.data)
@@ -254,6 +277,13 @@ export const Combobox = forwardRef(function Combobox(
 
   function onKeyDown(e) {
     if (disabled || !n) return;
+    // Open the list from the keyboard: Alt+Down, or F4 (which also closes it)
+    if ((e.altKey && e.key === "ArrowDown") || e.key === "F4") {
+      e.preventDefault();
+      if (!open) openList();
+      else if (e.key === "F4") setOpen(false);
+      return;
+    }
     // AltGr reports ctrl+alt; it types characters, so let it through.
     const altGr = e.getModifierState?.("AltGraph");
     if (e.metaKey || ((e.ctrlKey || e.altKey) && !altGr)) return;
@@ -278,9 +308,10 @@ export const Combobox = forwardRef(function Combobox(
     if (target !== undefined) {
       e.preventDefault();
       go(Math.min(n - 1, Math.max(0, target)));
-    } else if (e.key === "Enter") {
+    } else if (e.key === "Enter" && open) {
+      // Closed: Enter does nothing here and is left alone (e.g. it can submit a form).
       e.preventDefault();
-      open ? commit(active) : openList();
+      commit(active);
     } else if (e.key === "Escape") {
       const hadBuffer = typed.current !== "";
       clearTimeout(timer.current);
@@ -297,7 +328,7 @@ export const Combobox = forwardRef(function Combobox(
     .join(" ");
 
   return (
-    <div className={rootClass}>
+    <div className={rootClass} dir={dir}>
       <style>{css}</style>
       <input
         ref={inputRef}
@@ -332,7 +363,7 @@ export const Combobox = forwardRef(function Combobox(
         <button
           type="button"
           className="tac-clear"
-          aria-label="Clear selection"
+          aria-label={msg.clear}
           tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
           onClick={clear}
@@ -351,6 +382,7 @@ export const Combobox = forwardRef(function Combobox(
           <div
             ref={popRef}
             className="tac-pop"
+            dir={pos.dir}
             style={{ left: pos.left, top: pos.top, width: pos.width }}
             onMouseDown={(e) => e.preventDefault()}
           >
@@ -386,7 +418,7 @@ export const Combobox = forwardRef(function Combobox(
               </div>
             </div>
             <div className="tac-foot">
-              {hint ? `Jumped by “${hint}”` : `${n.toLocaleString()} items · type to jump`}
+              {hint ? msg.jumpedBy(hint) : msg.typeToJump(n)}
             </div>
           </div>,
           portalTarget ?? document.body
@@ -396,81 +428,28 @@ export const Combobox = forwardRef(function Combobox(
 });
 
 const css = `
-.tac{position:relative;width:280px;font:14px/1.3 system-ui,sans-serif;color:#1b2733}
+.tac{position:relative;width:280px;font:14px/1.3 system-ui,sans-serif;color:#1b2733;text-align:start}
 .tac-full{width:100%}
-.tac-input{width:100%;height:36px;box-sizing:border-box;padding:0 30px 0 10px;border:1px solid #b8c1cc;
-  border-radius:6px;background:#fff;color:inherit;font:inherit;text-align:left;cursor:pointer;
+.tac-input{width:100%;height:36px;box-sizing:border-box;padding-block:0;padding-inline:10px 30px;border:1px solid #b8c1cc;
+  border-radius:6px;background:#fff;color:inherit;font:inherit;text-align:start;cursor:pointer;
   caret-color:transparent;text-overflow:ellipsis}
-.tac-has-clear .tac-input{padding-right:54px}
+.tac-has-clear .tac-input{padding-inline-end:54px}
 .tac-input::placeholder{color:#7a8794;opacity:1}
 .tac-input::selection{background:transparent}
 .tac-input:focus-visible{outline:2px solid #2f6fed;outline-offset:1px}
 .tac-input:disabled{opacity:.55;cursor:not-allowed}
-.tac-caret{position:absolute;right:10px;top:0;height:36px;display:flex;align-items:center;pointer-events:none}
-.tac-clear{position:absolute;right:28px;top:6px;width:24px;height:24px;padding:0;border:0;border-radius:4px;
+.tac-caret{position:absolute;inset-inline-end:10px;top:0;height:36px;display:flex;align-items:center;pointer-events:none}
+.tac-clear{position:absolute;inset-inline-end:28px;top:6px;width:24px;height:24px;padding:0;border:0;border-radius:4px;
   background:transparent;color:#5b6876;font-size:16px;line-height:1;cursor:pointer}
 .tac-clear:hover{background:#eef1f5}
 .tac-pop{position:fixed;z-index:1000;box-sizing:border-box;background:#fff;color:#1b2733;
-  font:14px/1.3 system-ui,sans-serif;border:1px solid #b8c1cc;border-radius:6px;
+  font:14px/1.3 system-ui,sans-serif;text-align:start;border:1px solid #b8c1cc;border-radius:6px;
   box-shadow:0 8px 24px rgba(27,39,51,.14);overflow:hidden}
 .tac-list{overflow-y:auto;position:relative}
-.tac-opt{position:absolute;left:0;right:0;padding:0 10px;display:flex;align-items:center;
+.tac-opt{position:absolute;left:0;right:0;padding-block:0;padding-inline:10px;display:flex;align-items:center;
   cursor:pointer;white-space:pre;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
 .tac-opt[data-active="true"]{background:#e6eefc}
 .tac-opt[aria-selected="true"]{font-weight:600}
-.tac-foot{box-sizing:border-box;height:26px;line-height:25px;padding:0 10px;font-size:12px;color:#5b6876;
+.tac-foot{box-sizing:border-box;height:26px;line-height:25px;padding-block:0;padding-inline:10px;font-size:12px;color:#5b6876;
   border-top:1px solid #e3e8ee;white-space:pre;overflow:hidden;text-overflow:ellipsis}
 `;
-
-/* ---------- Demo: 100,000 items ---------- */
-
-const SYL = ["ka", "lo", "mi", "ra", "ten", "sol", "dan", "vi", "or", "el", "nu", "bar"];
-
-function makeData(count) {
-  let seed = 12345;
-  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
-  const word = () => {
-    let w = "";
-    for (let p = 1 + Math.floor(rnd() * 2); p > 0; p--)
-      w += SYL[Math.floor(rnd() * SYL.length)];
-    return w[0].toUpperCase() + w.slice(1);
-  };
-  // Every 5th label has a double space, every 7th a leading space (to test spaces)
-  return Array.from({ length: count }, (_, id) => {
-    const gap = id % 5 === 0 ? "  " : " ";
-    return {
-      value: id,
-      label: `${id % 7 === 0 ? " " : ""}${word()}${gap}${word()}`,
-    };
-  });
-}
-
-export default function App() {
-  const options = useMemo(() => makeData(100000), []);
-  const [value, setValue] = useState(null);
-  const comboRef = useRef(null);
-
-  return (
-    <div style={{ padding: 32, fontFamily: "system-ui, sans-serif", maxWidth: 360 }}>
-      <label htmlFor="demo-contact" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>
-        Contact
-      </label>
-      <Combobox
-        ref={comboRef}
-        id="demo-contact"
-        options={options}
-        value={value}
-        onChange={setValue}
-        fullWidth
-        clearable
-      />
-      <p style={{ fontSize: 13, color: "#5b6876" }}>
-        Focus the field and type; spaces count, so “kalo mi” and “kalo  mi” match different
-        labels. Delete clears. Selected id: {value ?? "none"}
-      </p>
-      <button type="button" onClick={() => comboRef.current?.focus()}>
-        Focus combobox
-      </button>
-    </div>
-  );
-}
