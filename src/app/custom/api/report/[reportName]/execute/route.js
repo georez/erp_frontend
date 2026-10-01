@@ -24,6 +24,10 @@ export async function POST(request, { params }) {
     }
   );
 
+  if (!searchParams.ok) {
+    return backendError(searchParams);
+  }
+
   const fields = await searchParams.json();
   const transformedFields = transformFields(fields);
   const diagnostics = formatQuery(query, { format: 'diagnostics', fields: transformedFields });
@@ -62,7 +66,20 @@ export async function POST(request, { params }) {
     }
   );
 
+  if (!response.ok) {
+    return backendError(response);
+  }
+
   const reportBody = await response.json();
-  
+
   return Response.json(reportBody);
+}
+
+// Passes the backend's status through, with its errorMessage as `message` (what Report.jsx displays)
+async function backendError(response) {
+  const errorBody = await response.json().catch(() => null);
+  return Response.json({
+    success: false,
+    message: errorBody?.errorMessage ?? `Report request failed (${response.status})`,
+  }, { status: response.status });
 }
