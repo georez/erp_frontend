@@ -13,6 +13,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { jwtDecode } from "jwt-decode";
 import { AuthContext } from "../AuthProvider";
 import { deleteJwtCookiesAction } from "@/actions/deleteJwtCookieAction";
+import { CSRF_HEADER_NAME } from "@/constants";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { v4 as uuidv4 } from 'uuid';
@@ -37,6 +38,30 @@ function useOpenForm() {
   };
 }
 
+function useLogout() {
+  const { csrfToken } = useContext(AuthContext);
+  const router = useRouter();
+  return async () => {
+    // Ends the session on the server (its refresh tokens stop working) and clears the auth cookies
+    let loggedOut = false;
+    try {
+      const res = await fetch('/api/login/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { [CSRF_HEADER_NAME]: csrfToken },
+      });
+      loggedOut = res.ok;
+    } catch {
+      loggedOut = false;
+    }
+    if (!loggedOut) {
+      // Backend unreachable or request rejected: at least remove the cookies from this browser
+      await deleteJwtCookiesAction();
+    }
+    router.push('/login');
+  };
+}
+
 function useUsername() {
   const { accessToken, csrfToken } = useContext(AuthContext);
   const { sub: username } = accessToken ? jwtDecode(accessToken) : {};
@@ -45,7 +70,7 @@ function useUsername() {
 
 export default function DrawerForm({ children, backgroundColor }) {
   const username = useUsername();
-  const router = useRouter();
+  const logout = useLogout();
   const isTabletOrSmaller = useIsTabletOrSmaller();
   const openFormFn = useOpenForm();
 
@@ -74,10 +99,7 @@ export default function DrawerForm({ children, backgroundColor }) {
           color="inherit"
           aria-label="open drawer"
           edge="start"
-          onClick={async() => {
-            await deleteJwtCookiesAction();
-            router.push('/login')
-          }}
+          onClick={logout}
           sx={{ mr: 2 }}
         >
           <LogoutIcon />

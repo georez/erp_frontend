@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { CSRF_TOKEN_JSON_NAME, CSRF_HEADER_NAME } from "@/constants";
 import { secret, tokens } from "./utils/csrfTokens";
 
+// Secure cookies are only sent over HTTPS. Set COOKIE_SECURE=true wherever the app is served over HTTPS
+// (together with app.cookies.secure=true in the backend); leave unset for local development over HTTP.
+const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
+
 function csrfProtection(request) {
   // Check if this request is calling a Server Action
   const isServerAction = request.headers.has('next-action')
@@ -60,10 +64,10 @@ async function verifyAccessToken(request) {
       if (refreshedTokens) {
         const response = NextResponse.next();
         response.cookies.set('access_token', refreshedTokens.accessToken,
-          { httpOnly: true, secure: false, path: '/', maxAge: 24 * 60 * 60, sameSite: 'strict' }
+          { httpOnly: true, secure: COOKIE_SECURE, path: '/', maxAge: 24 * 60 * 60, sameSite: 'strict' }
         );
         response.cookies.set('refresh_token', refreshedTokens.refreshToken,
-          { httpOnly: true, secure: false, path: '/', maxAge: 24 * 60 * 60, sameSite: 'strict' });
+          { httpOnly: true, secure: COOKIE_SECURE, path: '/', maxAge: 24 * 60 * 60, sameSite: 'strict' });
         return response;
       }
 

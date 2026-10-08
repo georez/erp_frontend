@@ -40,6 +40,9 @@ export default function LoginClient() {
       // Refresh Server Component cache so RootLayout sees the new cookie
       router.refresh();
       router.push(callbackUrl);
+    } else if (response.status === 429) {
+      // Too many failed attempts for this username; the backend blocks it for a few minutes
+      setError("محاولات دخول فاشلة كثيرة. حاول مرة أخرى بعد عدة دقائق.");
     } else {
       setError("بيانات دخول غير صحيحة.");
     }
