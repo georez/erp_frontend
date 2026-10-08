@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 import {
@@ -44,6 +44,8 @@ import { CSRF_HEADER_NAME } from '@/constants';
 import { getNewCsrfToken } from '@/utils/csrfClientUtils';
 
 const modules = [AllCommunityModule];
+
+// react-querybuilder touches the DOM on load, so it is only rendered in the browser
 const QueryBuilder = dynamic(
   () =>
     import('react-querybuilder').then(
@@ -53,174 +55,31 @@ const QueryBuilder = dynamic(
     ssr: false,
   }
 );
+
+/** Query used when the URL has none (or an unreadable one): no conditions, i.e. all rows. */
 const initialQuery = {
   combinator: 'and',
   rules: [],
 };
 
-/*
-|--------------------------------------------------------------------------
-| FALLBACK COLUMNS
-|--------------------------------------------------------------------------
-|
-| Used until your API returns real column definitions.
-|
-| Your API can eventually return something like:
-|
-| [
-|   {
-|     field: 'make',
-|     headerName: 'الشركة',
-|     visibleByDefault: true
-|   }
-| ]
-|
-*/
+/** Tab order in the report screen. */
+const TABS = {
+  QUERY_1: 0, // not implemented yet
+  QUERY_2: 1, // the query builder
+  COLUMNS: 2,
+  SORT: 3,    // not implemented yet
+  RESULT: 4,
+};
 
-const fallbackColumns = [
-  {
-    field: 'make',
-    headerName: 'الشركة',
-    visibleByDefault: true,
-    type: undefined,
-    width: 150,
-  },
-  {
-    field: 'model',
-    headerName: 'الموديل',
-    visibleByDefault: true,
-    type: undefined,
-    width: 150,
-  },
-  {
-    field: 'price',
-    headerName: 'السعر',
-    visibleByDefault: true,
-    type: 'numericColumn',
-    width: 120,
-  },
-  {
-    field: 'electric',
-    headerName: 'كهربائية',
-    visibleByDefault: false,
-    type: undefined,
-    width: 120,
-  },
-];
-
-/*
-|--------------------------------------------------------------------------
-| FALLBACK DATA
-|--------------------------------------------------------------------------
-|
-| Remove this when your execute API is ready.
-|
-*/
-
-const fallbackRows = [
-  {
-    make: 'Tesla',
-    model: 'Model Y',
-    price: 64950,
-    electric: true,
-  },
-  {
-    make: 'Ford',
-    model: 'F-Series',
-    price: 33850,
-    electric: false,
-  },
-  {
-    make: 'Toyota',
-    model: 'Corolla',
-    price: 29600,
-    electric: false,
-  },
-  {
-    make: 'Mercedes',
-    model: 'EQA',
-    price: 48890,
-    electric: true,
-  },
-  {
-    make: 'Fiat',
-    model: '500',
-    price: 15774,
-    electric: false,
-  },
-  {
-    make: 'Nissan',
-    model: 'Juke',
-    price: 20675,
-    electric: false,
-  },
-];
-
-/*
-|--------------------------------------------------------------------------
-| API PLACEHOLDERS
-|--------------------------------------------------------------------------
-|
-| Replace the URLs and response handling here with your backend.
-|
-| There are three API operations:
-|
-| 1. Get query-builder fields
-| 2. Get report columns
-| 3. Execute report
-|
-|--------------------------------------------------------------------------
-*/
-
-async function fetchReportFieldsApi(
-  reportName
-) {
-  const response = await fetch(
-    `/api/report/${encodeURIComponent(reportName)}/searchparams2`,
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load fields (${response.status})`
-    );
-  }
-
-  return response.json();
-}
-
-/*
-|--------------------------------------------------------------------------
-| 2. GET REPORT COLUMNS
-|--------------------------------------------------------------------------
-|
-| PLACEHOLDER API
-|
-| Suggested response:
-|
-| [
-|   {
-|     field: "make",
-|     headerName: "الشركة",
-|     visibleByDefault: true,
-|     type: null,
-|     width: 150
-|   },
-|   {
-|     field: "model",
-|     headerName: "الموديل",
-|     visibleByDefault: true
-|   }
-| ]
-|
-*/
-
+/**
+ * Loads the report's column list from the backend. One list serves both the query builder (every column
+ * can be filtered on, see transformFields) and the result grid (every column can be shown, see
+ * toGridColumns).
+ *
+ * @param {string} reportName
+ * @returns {Promise<Array<{name: string, label: string, inputType?: string, valueEditorType?: string}>>}
+ *   one entry per report column; inputType is e.g. 'number', 'date', 'datetime-local'
+ */
 async function fetchReportColumnsApi(
   reportName
 ) {
@@ -237,54 +96,47 @@ async function fetchReportColumnsApi(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load columns (${response.status})`
+      `Failed to load report columns (${response.status})`
     );
   }
 
-  const data = await response.json();
-  return data.map(field => ({
-    field: field.name,
-    headerName: field.label,
-    visibleByDefault: true,
-    type: field.inputType === 'number' ? 'numericColumn' : null
-  }));
-
+  return response.json();
 }
 
-/*
-|--------------------------------------------------------------------------
-| 3. EXECUTE REPORT
-|--------------------------------------------------------------------------
-|
-| PLACEHOLDER API
-|
-| Suggested request:
-|
-| POST /internal/report/{reportName}/execute
-|
-| Body:
-|
-| {
-|   query: {...},
-|   columns: ["make", "model", "price"],
-|   sort: [...]
-| }
-|
-| Suggested response:
-|
-| {
-|   rows: [
-|     {
-|       make: "Tesla",
-|       model: "Model Y",
-|       price: 64950
-|     }
-|   ]
-| }
-|
-|--------------------------------------------------------------------------
-*/
+/**
+ * Turns the backend's column list into the result grid's columns. Width, filtering, sorting and resizing
+ * are left to the grid defaults (see columnDefs and defaultColDef).
+ *
+ * @param {Array<{name: string, label?: string, inputType?: string}>} backendColumns
+ * @returns {Array<{field: string, headerName: string, visibleByDefault: boolean, type: string|null}>}
+ *   `type` is 'numericColumn' for numbers (right-aligned in AG Grid), otherwise null
+ */
+function toGridColumns(backendColumns) {
+  return backendColumns.map((column) => ({
+    field: column.name,
+    headerName: column.label ?? column.name,
+    visibleByDefault: true,
+    type: column.inputType === 'number' ? 'numericColumn' : null,
+  }));
+}
 
+/**
+ * Runs the report through the Next.js route /custom/api/report/{reportName}/execute. That route checks the
+ * query against the report's fields, turns it into parameterized SQL, signs the request and forwards it to
+ * the backend, which runs it as a read-only database role.
+ *
+ * `columns` and `sort` are sent for future use; the route and backend currently ignore them and return every
+ * column, unsorted.
+ *
+ * @param {object} args
+ * @param {string} args.csrfToken  required for the POST (checked by the proxy)
+ * @param {string} args.reportName
+ * @param {object} args.query  react-querybuilder query
+ * @param {string[]} args.columns  fields of the currently visible columns
+ * @param {Array<{field: string, direction: 'asc'|'desc'}>} args.sort
+ * @returns {Promise<Array<object>>} result rows, one object per row keyed by column field
+ * @throws {Error} with the route's error message when the request fails
+ */
 async function executeReportApi({
   csrfToken,
   reportName,
@@ -318,25 +170,14 @@ async function executeReportApi({
         errorMessage = errorData.message;
       }
     } catch {
-      // Ignore invalid error response.
+      // Not JSON: keep the status-based message
     }
     throw new Error(errorMessage);
   }
 
   const data = await response.json();
 
-  /*
-   * Support:
-   *
-   * {
-   *   rows: [...]
-   * }
-   *
-   * or:
-   *
-   * [...]
-   */
-
+  // The route returns the rows as an array; { rows } and { data } wrappers are accepted as well
   if (Array.isArray(data)) {
     return data;
   }
@@ -354,12 +195,7 @@ async function executeReportApi({
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| TAB PANEL
-|--------------------------------------------------------------------------
-*/
-
+/** One tab's content area; stays mounted while hidden so each tab keeps its state. */
 function CustomTabPanel({
   children,
   value,
@@ -401,10 +237,13 @@ function CustomTabPanel({
   );
 }
 
-/*
- * Visibility for a freshly loaded column list: keeps the user's
- * current choice for columns that still exist, and uses each new
- * column's default otherwise.
+/**
+ * Visibility for a freshly loaded column list: keeps the user's current choice for columns that still
+ * exist, and uses each new column's default otherwise.
+ *
+ * @param {Object<string, boolean>} previous  current visibility, keyed by column field
+ * @param {Array<{field: string, visibleByDefault?: boolean}>} columns
+ * @returns {Object<string, boolean>}
  */
 function mergeColumnVisibility(previous, columns) {
   const next = {};
@@ -418,6 +257,7 @@ function mergeColumnVisibility(previous, columns) {
   return next;
 }
 
+/** Accessibility attributes linking a tab to its panel. */
 function a11yProps(index) {
   return {
     id: `report-tab-${index}`,
@@ -425,6 +265,32 @@ function a11yProps(index) {
   };
 }
 
+/**
+ * Report screen: build a filter with the query builder, choose which columns to show, run the report and
+ * see the result in a grid.
+ *
+ * The report's state lives in its dashboard URL (updated through useUpdateOpenForms), so a report link can be
+ * reopened or shared and runs itself again:
+ * - `query`: the query-builder query, JSON-encoded
+ * - `execute`: "true" once the report has been run
+ * - `requestTime`: set on every Run, so running the same query again still triggers a new run
+ *
+ * Flow:
+ * 1. On load, the report's columns are fetched from the backend once; both the query-builder fields and the
+ *    grid columns are derived from them.
+ * 2. Run writes the query into the URL; the execute effect sees the new URL values and runs the report.
+ * 3. The rows are shown in AG Grid. Showing or hiding columns happens in the grid only and doesn't re-run.
+ *
+ * All props come from the dashboard URL's search parameters, so they are strings.
+ *
+ * @param {object} props
+ * @param {string} props.formId  id of this open form in the dashboard, used to update its URL
+ * @param {string} props.formTitle
+ * @param {string} props.reportName  backend report name, e.g. "customerCategoriesReport"
+ * @param {string} [props.execute]  "true" to run the report
+ * @param {string} [props.requestTime]  time of the last Run
+ * @param {string} [props.query]  JSON-encoded react-querybuilder query
+ */
 export default function Report({
   formId,
   formTitle,
@@ -435,33 +301,22 @@ export default function Report({
 }) {
   const updateOpenFormsUrl = useUpdateOpenForms(formId);
 
+  // Needed for every POST; the report only runs once it has arrived
   const [csrfToken, setCsrfToken] = useState(null);
   useEffect(() => {
-      getNewCsrfToken(setCsrfToken);
-    }, []);
-  /*
-   * ==========================================================
-   * QueryBuilder fields
-   * ==========================================================
-   */
+    getNewCsrfToken(setCsrfToken);
+  }, []);
 
+  /** Query-builder field definitions (from transformFields). */
   const [fields, setFields] = useState([]);
 
-  /*
-   * ==========================================================
-   * Report columns
-   * ==========================================================
-   */
-
+  /** Grid columns, from toGridColumns. */
   const [reportColumns, setReportColumns] = useState([]);
-  // useState(fallbackColumns);
 
-  /*
-   * ==========================================================
-   * Query
-   * ==========================================================
+  /**
+   * The query being edited in the query builder. Starts from the URL's query; only becomes the report's
+   * query when Run writes it back into the URL.
    */
-
   const [queryLocal, setQueryLocal] = useState(() => {
     try {
       if (!query) {
@@ -474,163 +329,53 @@ export default function Report({
     }
   });
 
-  /*
-   * ==========================================================
-   * Current tab
-   *
-   * 0 = Query 1
-   * 1 = Query 2
-   * 2 = Columns
-   * 3 = Sort
-   * 4 = Result
-   * ==========================================================
-   */
+  // A link that runs the report opens on the result tab
+  const [tabValue, setTabValue] = useState(query && execute ? TABS.RESULT : TABS.QUERY_1);
 
-  const [tabValue, setTabValue] = useState(query && execute ? 4 : 0);
-
-  /*
-   * ==========================================================
-   * Result rows
-   * ==========================================================
-   */
-
+  /** Result rows of the last run. */
   const [rows, setRows] = useState([]);
 
-  /*
-   * ==========================================================
-   * Loading states
-   * ==========================================================
-   */
-
-  const [fieldsLoading, setFieldsLoading] = useState(false);
+  /** True while the report's columns (and with them the query-builder fields) are loading. */
   const [columnsLoading, setColumnsLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
 
-  /*
-   * ==========================================================
-   * Errors
-   * ==========================================================
-   */
+  /** Error while loading the report's columns; the report can't be used until a reload. */
+  const [loadError, setLoadError] = useState('');
 
+  /** Error from the last run, shown on the result tab. */
   const [reportError, setReportError] = useState('');
 
-  /*
-   * ==========================================================
-   * Column visibility
-   * ==========================================================
-   *
-   * {
-   *   make: true,
-   *   model: true,
-   *   price: true,
-   *   electric: false
-   * }
-   *
-   */
-
+  /** Which columns are shown, keyed by column field: { [field]: true | false }. */
   const [visibleColumns, setVisibleColumns] = useState({});
 
-  /*
-   * ==========================================================
-   * Sorting
-   * ==========================================================
-   *
-   * Placeholder for your future "ترتيب حسب" tab.
-   *
-   * Example:
-   *
-   * [
-   *   {
-   *     field: 'price',
-   *     direction: 'desc'
-   *   }
-   * ]
-   *
+  /**
+   * Sort order, [{ field, direction: 'asc' | 'desc' }]. Sent with each run but not used yet:
+   * the sort tab has no controls and the backend ignores it.
    */
-
   const [sort, setSort] = useState([]);
 
   /*
-   * ==========================================================
-   * LOAD QUERY BUILDER FIELDS
-   * ==========================================================
+   * Loads the report's columns whenever the report changes (one request), and derives from them both the
+   * query-builder fields and the grid columns. The user's column choices are kept where possible.
    */
-  useEffect(() => {
-    let cancelled = false;
-    async function loadFields() {
-      setFieldsLoading(true);
-      try {
-        const data = await fetchReportFieldsApi(reportName);
-        if (cancelled) {
-          return;
-        }
-        setFields(transformFields(data));
-      } catch (error) {
-        console.error('Fields API error:', error);
-      } finally {
-        if (!cancelled) {
-          setFieldsLoading(false);
-        }
-      }
-    }
-
-    if (reportName) {
-      loadFields();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reportName]);
-
-  /*
-   * ==========================================================
-   * LOAD REPORT COLUMNS
-   * ==========================================================
-   */
-
   useEffect(() => {
     let cancelled = false;
     async function loadColumns() {
       setColumnsLoading(true);
       try {
-        const data = await fetchReportColumnsApi(reportName);
+        const backendColumns = await fetchReportColumnsApi(reportName);
         if (cancelled) {
           return;
         }
 
-        /*
-         * Normalize the API response.
-         */
-
-        const normalized = data.map(
-          (column) => ({
-            field: column.field,
-            headerName: column.headerName ?? column.label ?? column.field,
-            visibleByDefault: column.visibleByDefault ?? true,
-            type: column.type,
-            width: column.width,
-            minWidth: column.minWidth,
-            filter: column.filter ?? true,
-            sortable: column.sortable ?? true,
-            resizable: column.resizable ?? true,
-          })
-        );
-
-        setReportColumns(normalized);
-        setVisibleColumns((previous) => mergeColumnVisibility(previous, normalized));
+        const gridColumns = toGridColumns(backendColumns);
+        setFields(transformFields(backendColumns));
+        setReportColumns(gridColumns);
+        setVisibleColumns((previous) => mergeColumnVisibility(previous, gridColumns));
       } catch (error) {
-        /*
-         * Keep the fallback columns.
-         *
-         * This is useful while the API is
-         * still being implemented.
-         */
-
-        console.warn('Columns API unavailable. Using fallback columns.', error);
+        console.error('Report columns API error:', error);
         if (!cancelled) {
-          setReportColumns(fallbackColumns);
-          setVisibleColumns((previous) => mergeColumnVisibility(previous, fallbackColumns));
+          setLoadError('تعذر تحميل أعمدة التقرير.');
         }
       } finally {
         if (!cancelled) {
@@ -649,21 +394,20 @@ export default function Report({
   }, [reportName]);
 
   /*
-   * ==========================================================
-   * EXECUTE REPORT
-   * ==========================================================
-   *
-   * This is triggered when:
-   *
-   * execute === true
-   *
-   * and requestTime changes.
-   *
-   * That means your existing URL-driven
-   * architecture continues to work.
-   * ==========================================================
+   * Column visibility is read through a ref so that checking or unchecking a column doesn't re-run the
+   * report: the grid already shows/hides columns itself (see columnDefs), and the request still sends the
+   * selection that is current when it runs. Declared before the execute effect so it's updated first.
    */
+  const visibleColumnsRef = useRef(visibleColumns);
+  useEffect(() => {
+    visibleColumnsRef.current = visibleColumns;
+  }, [visibleColumns]);
 
+  /*
+   * Runs the report when the URL asks for it (execute is set), and again on every Run (requestTime changes).
+   * Waits until the columns and the CSRF token have loaded; without the token the request would be rejected.
+   * A newer run cancels the result of an older one that is still in flight.
+   */
   useEffect(() => {
     let cancelled = false;
 
@@ -675,20 +419,12 @@ export default function Report({
       setReportLoading(true);
       setReportError('');
 
-      /*
-       * Get only currently visible columns.
-       */
-
       const selectedColumns = reportColumns
-        .filter((column) => visibleColumns[column.field])
+        .filter((column) => visibleColumnsRef.current[column.field])
         .map((column) => column.field);
 
       try {
-        /*
-         * The query comes from the URL (the Run button writes it there),
-         * so the report always matches the link that was opened.
-         */
-
+        // The query comes from the URL (Run writes it there), so the report always matches the open link
         let parsedQuery = initialQuery;
         try {
           if (query) {
@@ -697,10 +433,6 @@ export default function Report({
         } catch {
           parsedQuery = initialQuery;
         }
-
-        /*
-         * Call your API.
-         */
 
         const result = await executeReportApi({
           csrfToken,
@@ -715,12 +447,7 @@ export default function Report({
         }
 
         setRows(result);
-
-        /*
-         * Automatically show result tab.
-         */
-
-        setTabValue(4);
+        setTabValue(TABS.RESULT);
       } catch (error) {
         console.error('Execute report error:', error);
 
@@ -734,11 +461,6 @@ export default function Report({
         }
       }
     }
-
-    /*
-     * Only execute once the column definitions and the CSRF token
-     * are available (without the token the request is rejected).
-     */
 
     if (
       execute &&
@@ -757,17 +479,11 @@ export default function Report({
     reportName,
     query,
     reportColumns,
-    visibleColumns,
     sort,
     csrfToken,
   ]);
 
-  /*
-   * ==========================================================
-   * AG GRID COLUMN DEFINITION
-   * ==========================================================
-   */
-
+  /** AG Grid column definitions; hidden columns stay defined (with hide) so toggling needs no new data. */
   const columnDefs =
     useMemo(() => {
       return reportColumns.map(
@@ -788,12 +504,7 @@ export default function Report({
       visibleColumns,
     ]);
 
-  /*
-   * ==========================================================
-   * DEFAULT AG GRID COLUMN DEFINITION
-   * ==========================================================
-   */
-
+  /** Defaults for every grid column; flex: 1 lets the columns share the available width. */
   const defaultColDef =
     useMemo(
       () => ({
@@ -801,39 +512,21 @@ export default function Report({
         resizable: true,
         sortable: true,
         filter: true,
-        /*
-         * Let columns share available width.
-         */
         flex: 1,
       }),
       []
     );
 
-  /*
-   * ==========================================================
-   * TAB CHANGE
-   * ==========================================================
-   */
-
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
 
-  /*
-   * ==========================================================
-   * EXECUTE BUTTON
-   * ==========================================================
+  /**
+   * Run: writes the edited query into this form's URL with execute=true and a new requestTime.
+   * The execute effect reacts to the new URL values and runs the report.
    */
-
   const handleExecute =
     () => {
-      /*
-       * Save the query into the URL.
-       *
-       * Your existing custom hook should
-       * handle navigation/update.
-       */
-
       updateOpenFormsUrl(
         `/dashboard/report` +
         `?reportName=${encodeURIComponent(
@@ -851,17 +544,8 @@ export default function Report({
         `&requestTime=${Date.now()}`
       );
 
-      /*
-       * Result tab.
-       */
-      setTabValue(4);
+      setTabValue(TABS.RESULT);
     };
-
-  /*
-   * ==========================================================
-   * COLUMN CHANGE
-   * ==========================================================
-   */
 
   const handleColumnChange =
     (field) =>
@@ -874,12 +558,6 @@ export default function Report({
           })
         );
       };
-
-  /*
-   * ==========================================================
-   * SELECT ALL
-   * ==========================================================
-   */
 
   const allColumnsSelected = reportColumns.length > 0 && reportColumns.every((column) => visibleColumns[column.field]);
   const someColumnsSelected = reportColumns.some((column) => visibleColumns[column.field]);
@@ -896,19 +574,7 @@ export default function Report({
       setVisibleColumns(nextState);
     };
 
-  /*
-   * ==========================================================
-   * SELECTED COLUMN COUNT
-   * ==========================================================
-   */
-
   const selectedColumnCount = reportColumns.filter((column) => visibleColumns[column.field]).length;
-
-  /*
-   * ==========================================================
-   * RENDER
-   * ==========================================================
-   */
 
   return (
     <Box
@@ -922,14 +588,10 @@ export default function Report({
         overflow: 'hidden',
       }}
     >
-      {/* ====================================================
-          HEADER
-      ==================================================== */}
-
+      {/* Title and Run button */}
       <Stack
         direction="row"
         spacing={1}
-        // alignItems="center"
         sx={{
           flexShrink: 0,
           p: 1,
@@ -963,9 +625,18 @@ export default function Report({
         </Button>
       </Stack>
 
-      {/* ====================================================
-          TABS
-      ==================================================== */}
+      {loadError && (
+        <Alert
+          severity="error"
+          sx={{
+            mx: 1,
+            mb: 1,
+            flexShrink: 0,
+          }}
+        >
+          {loadError}
+        </Alert>
+      )}
 
       <Tabs
         value={tabValue}
@@ -979,20 +650,17 @@ export default function Report({
           borderColor: 'divider',
         }}
       >
-        <Tab label="استعلام 1" {...a11yProps(0)} />
-        <Tab label="استعلام 2" {...a11yProps(1)} />
-        <Tab label={`الأعمدة (${selectedColumnCount})`} {...a11yProps(2)} />
-        <Tab label="ترتيب حسب" {...a11yProps(3)} />
-        <Tab label="النتيجة" {...a11yProps(4)} />
+        <Tab label="استعلام 1" {...a11yProps(TABS.QUERY_1)} />
+        <Tab label="استعلام 2" {...a11yProps(TABS.QUERY_2)} />
+        <Tab label={`الأعمدة (${selectedColumnCount})`} {...a11yProps(TABS.COLUMNS)} />
+        <Tab label="ترتيب حسب" {...a11yProps(TABS.SORT)} />
+        <Tab label="النتيجة" {...a11yProps(TABS.RESULT)} />
       </Tabs>
 
-      {/* ====================================================
-          QUERY 1
-      ==================================================== */}
-
+      {/* Query 1: not implemented yet */}
       <CustomTabPanel
         value={tabValue}
-        index={0}
+        index={TABS.QUERY_1}
       >
         <Box
           sx={{
@@ -1015,13 +683,10 @@ export default function Report({
         </Box>
       </CustomTabPanel>
 
-      {/* ====================================================
-          QUERY 2
-      ==================================================== */}
-
+      {/* Query 2: the query builder; edits apply to the report on the next Run */}
       <CustomTabPanel
         value={tabValue}
-        index={1}
+        index={TABS.QUERY_2}
       >
         <Box
           sx={{
@@ -1032,7 +697,7 @@ export default function Report({
             overflow: 'auto',
           }}
         >
-          {fieldsLoading ? (
+          {columnsLoading ? (
             <Box
               sx={{
                 p: 2,
@@ -1055,13 +720,10 @@ export default function Report({
         </Box>
       </CustomTabPanel>
 
-      {/* ====================================================
-          COLUMNS
-      ==================================================== */}
-
+      {/* Columns: choose which columns the result grid shows (applies immediately, no re-run) */}
       <CustomTabPanel
         value={tabValue}
-        index={2}
+        index={TABS.COLUMNS}
       >
         <Box
           sx={{
@@ -1108,8 +770,6 @@ export default function Report({
 
           <Divider sx={{ mb: 1 }} />
 
-          {/* SELECT ALL */}
-
           <FormControlLabel
             label="تحديد الكل"
             control={
@@ -1122,8 +782,6 @@ export default function Report({
           />
 
           <Divider sx={{ mb: 1 }} />
-
-          {/* COLUMNS */}
 
           <FormGroup>
             {reportColumns.map(
@@ -1144,13 +802,10 @@ export default function Report({
         </Box>
       </CustomTabPanel>
 
-      {/* ====================================================
-          SORT
-      ==================================================== */}
-
+      {/* Sort: not implemented yet (see the sort state) */}
       <CustomTabPanel
         value={tabValue}
-        index={3}
+        index={TABS.SORT}
       >
         <Box
           sx={{
@@ -1173,30 +828,13 @@ export default function Report({
           >
             أضف إعدادات الترتيب هنا.
           </Typography>
-
-          {/*
-           * Example future state:
-           *
-           * setSort([
-           *   {
-           *     field: 'price',
-           *     direction: 'desc'
-           *   }
-           * ])
-           *
-           * This value is already passed
-           * to executeReportApi().
-           */}
         </Box>
       </CustomTabPanel>
 
-      {/* ====================================================
-          RESULT
-      ==================================================== */}
-
+      {/* Result: run errors, progress and the result grid */}
       <CustomTabPanel
         value={tabValue}
-        index={4}
+        index={TABS.RESULT}
       >
         <Box
           sx={{
@@ -1210,8 +848,6 @@ export default function Report({
             overflow: 'hidden',
           }}
         >
-          {/* API ERROR */}
-
           {reportError && (
             <Alert
               severity="error"
@@ -1224,8 +860,6 @@ export default function Report({
               {reportError}
             </Alert>
           )}
-
-          {/* LOADING */}
 
           {reportLoading && (
             <Box
@@ -1248,8 +882,6 @@ export default function Report({
               </Typography>
             </Box>
           )}
-
-          {/* GRID */}
 
           <Box
             sx={{
@@ -1278,4 +910,3 @@ export default function Report({
     </Box>
   );
 }
-
