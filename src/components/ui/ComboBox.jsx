@@ -10,13 +10,13 @@ export default function ComboBox({ choices = [] }) {
 
   const [selected, setSelected] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState(null);
-  const [currentLettersPressed, setCurrentLettersPressed] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
 
   const currentTimeout = useRef(null)
   const listRef = useRef(null);
-  const currentLettersPressedStr = currentLettersPressed.join('');
+  // Letters typed for type-ahead search. Never rendered, so a ref rather than state.
+  const lettersPressed = useRef('');
   const currentChoiceIndex = choices.findIndex((choice) => choice === selectedChoice);
 
   // const style = !selected ?
@@ -24,13 +24,27 @@ export default function ComboBox({ choices = [] }) {
   //   { backgroundColor: "darkblue", color: "white" };
 
   useEffect(() => {
+    // Select the first choice starting with the typed letters and scroll it into view
+    const selectFirstMatch = (prefix) => {
+      const matchIndex = choices.findIndex((choice) => choice.text.startsWith(prefix));
+      if (matchIndex === -1) {
+        return;
+      }
+      const targetScroll = matchIndex * ITEM_HEIGHT;
+      setSelectedChoice(choices[matchIndex]);
+      setScrollTop(targetScroll);
+      if (listRef.current) {
+        listRef.current.scrollTop = targetScroll;
+      }
+    };
+
     const search = (e) => {
       if (!selected) {
         return;
       }
 
       if (e.key === 'Escape') {
-        setCurrentLettersPressed([]);
+        lettersPressed.current = '';
         setIsOpen(false);
         return;
       }
@@ -53,36 +67,16 @@ export default function ComboBox({ choices = [] }) {
       }
 
       clearTimeout(currentTimeout.current);
-      setCurrentLettersPressed((prevState) => [...prevState, e.key]);
+      lettersPressed.current += e.key;
       currentTimeout.current = setTimeout(() => {
-        setCurrentLettersPressed([]);
+        lettersPressed.current = '';
       }, 2000);
+      selectFirstMatch(lettersPressed.current);
     };
 
     window.addEventListener('keydown', search);
     return () => window.removeEventListener('keydown', search);
   }, [selected, currentChoiceIndex, choices]);
-
-  // Match search prefix to choice and compute target scroll index
-  useEffect(() => {
-    if (currentLettersPressedStr === '') return;
-
-    const matchIndex = choices.findIndex((choice) =>
-      choice.text.startsWith(currentLettersPressedStr)
-    );
-
-    if (matchIndex !== -1) {
-      const match = choices[matchIndex];
-      const targetScroll = matchIndex * ITEM_HEIGHT;
-
-      setSelectedChoice(match);
-      setScrollTop(targetScroll);
-
-      if (listRef.current) {
-        listRef.current.scrollTop = targetScroll;
-      }
-    }
-  }, [currentLettersPressedStr]);
 
   // Sync scroll position when opening the dropdown menu
   useEffect(() => {
@@ -113,7 +107,7 @@ export default function ComboBox({ choices = [] }) {
         if (!e.currentTarget.contains(e.relatedTarget)) {
           setSelected(false);
           setIsOpen(false);
-          setCurrentLettersPressed([]);
+          lettersPressed.current = '';
         }
       }}
       style={{

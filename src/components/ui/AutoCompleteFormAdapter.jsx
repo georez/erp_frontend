@@ -3,6 +3,7 @@ import { Autocomplete, TextField } from '@mui/material';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { validateFormField } from '@/utils/formValidation';
+import { fetchJson } from '@/utils/fetchJson';
 
 function getObjectId(option) {
   const idK = Object.keys(option).filter(k => k === 'id')[0];
@@ -12,10 +13,6 @@ function getObjectId(option) {
 function optToStr(option) {
   return Object.values(option).join(' | ');
 }
-
-const fetcher = (url) => fetch(url, {
-  credentials: "include"
-}).then((res) => res.json());
 
 function useIsValueChanged(
   setIsValid, fieldName, disabled,
@@ -29,7 +26,7 @@ function useIsValueChanged(
         [fieldName]: !!disabled || validateFormField(validationType, required, null, value)
       }));
     }
-  }, [isValueChanged, validationType, value]);
+  }, [isValueChanged, setIsValid, fieldName, disabled, validationType, required, value]);
   return [isValueChanged, setIsValueChanged];
 }
 
@@ -64,9 +61,11 @@ export default function AutoCompleteFormAdapter({
   const [isValueChanged, setIsValueChanged] = useIsValueChanged(setIsValid, fieldName, disabled, validationType, required, value);
   const [queryParams, autoCompleteInputValue, setAutoCompleteInputValue] = useDebouncedQueryParams();
   const [localSelectedObject, setLocalSelectedObject] = useState(null);
-  const { data: options = [], isValidating } = useSWR(
+  // On a failed search, fetchJson throws and SWR leaves data undefined, so options stays an empty list
+  // (passing the error body to Autocomplete as options would crash it)
+  const { data: options = [], error: searchError, isValidating } = useSWR(
     `/api/schemacrud/search/entity/${linkEntity}?${queryParams}`,
-    fetcher,
+    fetchJson,
   );
 
   useEffect(() => {
@@ -79,12 +78,13 @@ export default function AutoCompleteFormAdapter({
         // here, it is assumed that field data would result in
         // a list of search results that contains only one element -
         // the selected object.
-        const results = await fetch(
-          `/api/schemacrud/search/entity/${linkEntity}?${queryParams}`,
-          { credentials: "include" }
-        );
-        const jsonList = await results.json();
-        const selectedObject = jsonList[0];
+        let jsonList;
+        try {
+          jsonList = await fetchJson(`/api/schemacrud/search/entity/${linkEntity}?${queryParams}`);
+        } catch {
+          jsonList = [];
+        }
+        const selectedObject = jsonList[0] ?? null;
         setLocalSelectedObject(selectedObject);
         setSelectedObj?.(selectedObject);
       }
@@ -95,7 +95,7 @@ export default function AutoCompleteFormAdapter({
 
   useEffect(() => {
     setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
-  }, [value, setFormValues]);
+  }, [value, fieldName, setFormValues]);
 
   return (
     <Autocomplete
@@ -145,7 +145,7 @@ export default function AutoCompleteFormAdapter({
             (isValueChanged && !isValid) ||
               (tryToSubmit && !isValid) ?
               `${displayName} غير صحيح` :
-              null
+              searchError?.message ?? null
           }
           onFocus={(e) => {
             try {

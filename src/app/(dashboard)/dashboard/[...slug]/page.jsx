@@ -1,4 +1,4 @@
-import getComponentForUrl from "@/utils/urlToComponentMap";
+import renderComponentForUrl, { hasComponentForUrl } from "@/utils/urlToComponentMap";
 import { notFound } from "next/navigation";
 // import { v4 as uuidv4 } from "uuid";
 
@@ -7,15 +7,15 @@ export default async function Page({ params, searchParams }) {
   const resolvedSearchParams = await searchParams;
   const urlToResolve = `/dashboard/${slug.join('/')}`;
 
-  const Component = getComponentForUrl(urlToResolve);
-  if (!Component) {
+  if (!hasComponentForUrl(urlToResolve)) {
     notFound();
   }
 
-  return <Component
-    url={urlToResolve}
-    formTitle={resolvedSearchParams.formTitle}
-    {...resolvedSearchParams} />;
+  return renderComponentForUrl(urlToResolve, {
+    url: urlToResolve,
+    formTitle: resolvedSearchParams.formTitle,
+    ...resolvedSearchParams,
+  });
 }
 
 export async function generateMetadata({ searchParams }) {

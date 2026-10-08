@@ -12,6 +12,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { CSRF_HEADER_NAME } from '@/constants';
 import { getNewCsrfToken } from '@/utils/csrfClientUtils';
+import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
 
 const allActions = [
   { icon: <AddIcon />, name: 'جديد' },
@@ -38,26 +39,28 @@ const isAddNewActions = [
 // return formFields;
 // }
 
-const fetcher = (url) => fetch(url, {
-  credentials: 'include',
-}).then((res) => res.json());
-
 export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) {
   const updateOpenFormUrl = useUpdateOpenForms(formId);
 
   const isAddNew = !entityId;
-  const { data: formFieldsAndValues, isValidating } = useSWR(
+  const { data: formFieldsAndValues, error: loadError, isValidating } = useSWR(
     `/api/schemacrud/${schemaName}${entityId ? `/${entityId}` : ''}`,
-    fetcher,
+    fetchJson,
   );
-  const [formValues, setFormValues] = useState({});
+  const loadedValues = formFieldsAndValues?.values;
+  const [formValues, setFormValues] = useState(loadedValues);
   const [isValid, setIsValid] = useState({});
   const [tryToSubmit, setTryToSubmit] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  useEffect(() => {
-    setFormValues(formFieldsAndValues?.values)
-  }, [formFieldsAndValues?.values])
+  // Reset the form whenever newly loaded values arrive (another entity, or a reload that changed them).
+  // Done during render rather than in an effect, so React doesn't render once with the stale values first:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [valuesLoadedFrom, setValuesLoadedFrom] = useState(loadedValues);
+  if (loadedValues !== valuesLoadedFrom) {
+    setValuesLoadedFrom(loadedValues);
+    setFormValues(loadedValues);
+  }
 
   const [csrfToken, setCsrfToken] = useState(null);
   useEffect(() => {
@@ -91,8 +94,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         body: JSON.stringify(formValues)
       });
       if (!res.ok) {
-        const { errorMessage } = await res.json();
-        setErrorMessage(errorMessage || res.statusText);
+        setErrorMessage(await readErrorMessage(res));
         return;
       }
       const { id: objectNewId } = await res.json();
@@ -124,8 +126,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         body: JSON.stringify(formValues)
       });
       if (!res.ok) {
-        const { errorMessage } = await res.json();
-        setErrorMessage(errorMessage || res.statusText);
+        setErrorMessage(await readErrorMessage(res));
         return;
       }
       const { id: objectNewId } = await res.json();
@@ -139,6 +140,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
 
   const debouncedDeleteExisting = useDebouncedCallback(async () => {
     setTryToSubmit(true);
+    setErrorMessage(null);
     if (validateFields()) {
       const res = await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
         method: "DELETE",
@@ -147,8 +149,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
         }
       });
       if (!res.ok) {
-        const { errorMessage } = await res.json();
-        setErrorMessage(errorMessage || res.statusText);
+        setErrorMessage(await readErrorMessage(res));
         return;
       }
       updateOpenFormUrl(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
@@ -157,6 +158,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   }, 300);
 
   return <Container maxWidth="sm">
+    {loadError && <Alert severity="error">{loadError.message}</Alert>}
     {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
     <Stack spacing={2} sx={{ p: 1 }}>
       <Typography variant="h7" component="div">{formTitle}</Typography>

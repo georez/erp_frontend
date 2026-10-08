@@ -29,11 +29,11 @@ function TextFieldAdapter({
         [fieldName]: !!disabled || validateFormField(validationType, required, validation, value)
       }));
     }
-  }, [isValueChanged, validationType, value])
+  }, [isValueChanged, setIsValid, fieldName, disabled, validationType, required, validation, value]);
 
   useEffect(() => {
     setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
-  }, [value, setFormValues]);
+  }, [value, fieldName, setFormValues]);
   
   return <TextField
     error={
@@ -82,11 +82,11 @@ function SelectFieldAdapter({
         [fieldName]: !!disabled || validateFormField(validationType, required, validation, value)
       }));
     }
-  }, [isValueChanged, validationType, value])
+  }, [isValueChanged, setIsValid, fieldName, disabled, validationType, required, validation, value]);
 
   useEffect(() => {
     setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
-  }, [value, setFormValues]);
+  }, [value, fieldName, setFormValues]);
 
   return <FormControl
     variant="outlined"
@@ -127,7 +127,7 @@ function CheckBoxAdapter({
 
   useEffect(() => {
     setFormValues((prev) => ({ ...prev, [fieldName]: value || false }));
-  }, [value]);
+  }, [value, fieldName, setFormValues]);
 
   return <FormControlLabel
     disabled={disabled}
@@ -140,14 +140,16 @@ function CheckBoxAdapter({
   />
 }
 
-function getDateTimeFieldComponent(fieldType) {
+// Renders the MUI picker for the field type. A component (rather than a function returning one) so
+// React sees a fixed component per type instead of one chosen anew on every render.
+function DateTimeFieldPicker({ fieldType, ...pickerProps }) {
   switch (fieldType) {
     case "date":
-      return DatePicker;
+      return <DatePicker {...pickerProps} />;
     case "time":
-      return TimePicker;
+      return <TimePicker {...pickerProps} />;
     case "datetime":
-      return DateTimePicker;
+      return <DateTimePicker {...pickerProps} />;
     default:
       return null;
   }
@@ -168,7 +170,6 @@ function DateTimePickerAdapter({
   tryToSubmit
 }) {
   const [isValueChanged, setIsValueChanged] = useState(false);
-  const DateTimeComponent = getDateTimeFieldComponent(fieldType);
 
   useEffect(() => {
     if (isValueChanged) {
@@ -177,15 +178,16 @@ function DateTimePickerAdapter({
         [fieldName]: !!disabled || validateFormField(validationType, required, validation, value)
       }));
     }
-  }, [isValueChanged, validationType, value])
+  }, [isValueChanged, setIsValid, fieldName, disabled, validationType, required, validation, value]);
 
   useEffect(() => {
     setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
-  }, [value, setFormValues]);
+  }, [value, fieldName, setFormValues]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <DateTimeComponent
+      <DateTimeFieldPicker
+        fieldType={fieldType}
         name={fieldName}
         value={value ? createDateTime(fieldType, value) : null}
         disabled={disabled}

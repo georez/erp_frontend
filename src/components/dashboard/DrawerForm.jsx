@@ -74,8 +74,8 @@ export default function DrawerForm({ children, backgroundColor }) {
           color="inherit"
           aria-label="open drawer"
           edge="start"
-          onClick={() => {
-            deleteJwtCookiesAction();
+          onClick={async() => {
+            await deleteJwtCookiesAction();
             router.push('/login')
           }}
           sx={{ mr: 2 }}

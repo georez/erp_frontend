@@ -2,7 +2,7 @@
 
 import DraggableForm from "@/components/dashboard/DraggableForm";
 import DrawerForm from "@/components/dashboard/DrawerForm";
-import getComponentForUrl from "@/utils/urlToComponentMap";
+import renderComponentForUrl from "@/utils/urlToComponentMap";
 import { useSearchParams } from "next/navigation";
 import LZString from 'lz-string';
 
@@ -13,8 +13,8 @@ export default function DashboardClient() {
     '[]');
   const draggableForms = openForms.map(({ formId, url, formTitle }, index) => {
 
-    const Component = getComponentForUrl(url);
     const resolvedSearchParams = Object.fromEntries(new URLSearchParams(url.split('?')[1]));
+    const content = renderComponentForUrl(url, { formId, url, formTitle, ...resolvedSearchParams });
 
     return <DraggableForm
       key={formId}
@@ -26,7 +26,7 @@ export default function DashboardClient() {
       url={url}
       formTitle={formTitle}
     >
-      {Component ? <Component formId={formId} url={url} formTitle={formTitle} {...resolvedSearchParams} /> : <div>Not found 404</div>}
+      {content ?? <div>Not found 404</div>}
     </DraggableForm>
   });
   return (

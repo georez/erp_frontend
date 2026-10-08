@@ -401,6 +401,23 @@ function CustomTabPanel({
   );
 }
 
+/*
+ * Visibility for a freshly loaded column list: keeps the user's
+ * current choice for columns that still exist, and uses each new
+ * column's default otherwise.
+ */
+function mergeColumnVisibility(previous, columns) {
+  const next = {};
+  columns.forEach((column) => {
+    if (Object.prototype.hasOwnProperty.call(previous, column.field)) {
+      next[column.field] = previous[column.field];
+    } else {
+      next[column.field] = column.visibleByDefault !== false;
+    }
+  });
+  return next;
+}
+
 function a11yProps(index) {
   return {
     id: `report-tab-${index}`,
@@ -601,6 +618,7 @@ export default function Report({
         );
 
         setReportColumns(normalized);
+        setVisibleColumns((previous) => mergeColumnVisibility(previous, normalized));
       } catch (error) {
         /*
          * Keep the fallback columns.
@@ -612,6 +630,7 @@ export default function Report({
         console.warn('Columns API unavailable. Using fallback columns.', error);
         if (!cancelled) {
           setReportColumns(fallbackColumns);
+          setVisibleColumns((previous) => mergeColumnVisibility(previous, fallbackColumns));
         }
       } finally {
         if (!cancelled) {
@@ -628,36 +647,6 @@ export default function Report({
       cancelled = true;
     };
   }, [reportName]);
-
-  /*
-   * ==========================================================
-   * INITIALIZE COLUMN VISIBILITY
-   * ==========================================================
-   */
-
-  useEffect(() => {
-    setVisibleColumns(
-      (previous) => {
-        const next = {};
-
-        reportColumns.forEach(
-          (column) => {
-            /*
-             * Preserve user's current
-             * selection if it already exists.
-             */
-            if (Object.prototype.hasOwnProperty.call(previous, column.field)) {
-              next[column.field] = previous[column.field];
-            } else {
-              next[column.field] = column.visibleByDefault !== false;
-            }
-          }
-        );
-
-        return next;
-      }
-    );
-  }, [reportColumns]);
 
   /*
    * ==========================================================
@@ -696,7 +685,8 @@ export default function Report({
 
       try {
         /*
-         * Query can come from the URL.
+         * The query comes from the URL (the Run button writes it there),
+         * so the report always matches the link that was opened.
          */
 
         let parsedQuery = initialQuery;
@@ -705,7 +695,7 @@ export default function Report({
             parsedQuery = JSON.parse(query);
           }
         } catch {
-          parsedQuery = queryLocal;
+          parsedQuery = initialQuery;
         }
 
         /*
@@ -746,13 +736,14 @@ export default function Report({
     }
 
     /*
-     * Only execute once the column
-     * definitions are available.
+     * Only execute once the column definitions and the CSRF token
+     * are available (without the token the request is rejected).
      */
 
     if (
       execute &&
-      reportColumns.length > 0
+      reportColumns.length > 0 &&
+      csrfToken
     ) {
       executeReport();
     }
@@ -768,6 +759,7 @@ export default function Report({
     reportColumns,
     visibleColumns,
     sort,
+    csrfToken,
   ]);
 
   /*
