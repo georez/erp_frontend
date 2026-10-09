@@ -3,10 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-import {
-  defaultValidator,
-} from 'react-querybuilder';
-
 import 'react-querybuilder/dist/query-builder.css';
 import './styles.css';
 
@@ -39,6 +35,7 @@ import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import {
   transformFields,
   arabicOperators,
+  validateReportQuery,
 } from '@/utils/reportutils';
 import { CSRF_HEADER_NAME } from '@/constants';
 import { getNewCsrfToken } from '@/utils/csrfClientUtils';
@@ -521,6 +518,19 @@ export default function Report({
     setTabValue(newValue);
   };
 
+  /*
+   * The edited query is checked with the same validateReportQuery the report route runs, so Run is only
+   * enabled for queries the route would accept. The invalid rules themselves are highlighted by the query
+   * builder, so no message is shown. Until the fields have loaded the query can't be checked (every field
+   * would count as unknown), so Run stays disabled then too.
+   */
+  const fieldsLoaded = fields.length > 0;
+  const queryProblems = useMemo(
+    () => (fieldsLoaded ? validateReportQuery(queryLocal, fields) : []),
+    [fieldsLoaded, queryLocal, fields]
+  );
+  const runDisabled = reportLoading || !fieldsLoaded || queryProblems.length > 0;
+
   /**
    * Run: writes the edited query into this form's URL with execute=true and a new requestTime.
    * The execute effect reacts to the new URL values and runs the report.
@@ -612,7 +622,7 @@ export default function Report({
           variant="contained"
           size="small"
           onClick={handleExecute}
-          disabled={reportLoading}
+          disabled={runDisabled}
         >
           {reportLoading ? (
             <CircularProgress
@@ -683,7 +693,12 @@ export default function Report({
         </Box>
       </CustomTabPanel>
 
-      {/* Query 2: the query builder; edits apply to the report on the next Run */}
+      {/*
+        Query 2: the query builder; edits apply to the report on the next Run.
+        Each field's validator (from transformFields) marks rules with a missing or malformed value as
+        .queryBuilder-invalid, which styles.css highlights. No query-level validator is passed, so an
+        empty query (all rows) is not marked invalid.
+      */}
       <CustomTabPanel
         value={tabValue}
         index={TABS.QUERY_2}
@@ -712,7 +727,6 @@ export default function Report({
               fields={fields}
               query={queryLocal}
               onQueryChange={setQueryLocal}
-              validator={defaultValidator}
               operators={arabicOperators}
               showNotToggle
             />

@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { transformFields } from "@/utils/reportutils";
+import { formatQueryProblems, transformFields, validateReportQuery } from "@/utils/reportutils";
 import { cookies } from "next/headers";
 import { formatQuery } from "react-querybuilder";
 
@@ -30,13 +30,16 @@ export async function POST(request, { params }) {
 
   const fields = await searchParams.json();
   const transformedFields = transformFields(fields);
-  const diagnostics = formatQuery(query, { format: 'diagnostics', fields: transformedFields });
-  
-  if (!diagnostics?.query?.valid) {
+
+  // Strict allow-list check of the whole query before any SQL is generated: formatQuery copies field
+  // names, operators and combinators into the SQL as they are, and this route's signature makes the
+  // backend trust the result (see validateReportQuery)
+  const problems = validateReportQuery(query, transformedFields);
+  if (problems.length > 0) {
     return Response.json({
       success: false,
-      message: 'Invalid report query',
-      diagnostics: diagnostics?.diagnostics ?? [],
+      message: formatQueryProblems(problems),
+      problems,
     }, { status: 400 });
   }
 
