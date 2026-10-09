@@ -916,6 +916,10 @@ export default function Report({
                 defaultColDef={defaultColDef}
                 animateRows={true}
                 enableRtl={true}
+                // Let users select and copy cell text (the grid blocks selection by default).
+                // ensureDomOrder keeps cells in DOM order so a selection across cells copies in order.
+                enableCellTextSelection={true}
+                ensureDomOrder={true}
               />
             </AgGridProvider>
           </Box>
