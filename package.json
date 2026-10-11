@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/utils/reportutils.test.mjs"
+    "test": "node --test src/utils/reportutils.test.mjs src/utils/backend.test.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",

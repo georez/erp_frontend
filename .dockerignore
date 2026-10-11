@@ -1,0 +1,16 @@
+# Kept out of the Docker build context (see Dockerfile)
+
+# Installed and built inside the image
+node_modules
+.next
+out
+
+# Local secrets must never end up in an image; the container gets them from deploy/secrets/frontend.env
+.env*
+
+.git
+.vscode
+.idea
+npm-debug.log*
+Dockerfile
+.dockerignore

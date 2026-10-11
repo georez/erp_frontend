@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { formatQueryProblems, transformFields, validateReportQuery } from "@/utils/reportutils";
 import { cookies } from "next/headers";
+import { BACKEND_URL, forwardedForHeader } from "@/utils/backend";
 import { formatQuery } from "react-querybuilder";
 
 export async function POST(request, { params }) {
@@ -20,10 +21,11 @@ export async function POST(request, { params }) {
     .join('; ');
 
   const metadataResponse = await fetch(
-    `http://127.0.0.1:4000/api/report/${encodeURIComponent(reportName)}/metadata`,
+    `${BACKEND_URL}/api/report/${encodeURIComponent(reportName)}/metadata`,
     {
       headers: {
         Cookie: cookieHeader,
+        ...forwardedForHeader(request.headers),
       },
       cache: 'no-store'
     }
@@ -62,13 +64,14 @@ export async function POST(request, { params }) {
     .digest('hex');
 
   const response = await fetch(
-    `http://127.0.0.1:4000/internal/report/${encodeURIComponent(reportName)}/execute`,
+    `${BACKEND_URL}/internal/report/${encodeURIComponent(reportName)}/execute`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Report-Signature': signature,
         Cookie: cookieHeader,
+        ...forwardedForHeader(request.headers),
       },
       cache: 'no-store',
       body

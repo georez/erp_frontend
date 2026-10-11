@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Environment variables
 
-The frontend reads three environment variables. Locally, put them in `frontend/.env.local`; it is gitignored
+The frontend reads four environment variables. Locally, put them in `frontend/.env.local`; it is gitignored
 (`.env*` in `.gitignore`), so secrets never reach git. Next.js reads the file when the dev server or
 `next start` starts, so **restart after changing it**. None of these variables start with `NEXT_PUBLIC_`, so
 they stay on the server and are never sent to the browser.
@@ -12,6 +12,7 @@ they stay on the server and are never sent to the browser.
 CSRF_SECRET=<random secret>
 REPORT_SIGNING_SECRET=<same value as report.signing.secret in backend/secrets.properties>
 # COOKIE_SECURE=true   # only when the app is served over HTTPS
+# BACKEND_URL=http://backend:4000   # only when the backend isn't at http://127.0.0.1:4000 (e.g. in Docker)
 ```
 
 | Variable | Required | Used by | What it is |
@@ -19,6 +20,7 @@ REPORT_SIGNING_SECRET=<same value as report.signing.secret in backend/secrets.pr
 | `CSRF_SECRET` | yes | `src/utils/csrfTokens.js`, `src/proxy.js`, `/csrf` route | Secret for creating and checking CSRF tokens. Every POST/PUT/DELETE/PATCH must carry a token made with it. |
 | `REPORT_SIGNING_SECRET` | yes | `src/app/custom/api/report/[reportName]/execute/route.js` | Shared with the backend: the report route signs each report request with it (HMAC-SHA256), and the backend rejects unsigned or wrongly signed requests. |
 | `COOKIE_SECURE` | no (default off) | `src/proxy.js` | `true` marks the auth cookies the proxy sets as Secure (sent over HTTPS only). |
+| `BACKEND_URL` | no (default `http://127.0.0.1:4000`) | `src/utils/backend.js` | Where the Next.js server reaches the backend. Also needed by `next build`. |
 
 ### `CSRF_SECRET`
 
@@ -58,10 +60,23 @@ would stop working. Set `COOKIE_SECURE=true` wherever the app is served over HTT
 `app.cookies.secure=true` in the backend. The backend sets the same cookies on login and refresh, and the two
 must agree.
 
-### Not configurable
+### `BACKEND_URL`
 
-The backend address is fixed to `http://127.0.0.1:4000` (in `next.config.mjs`, `src/proxy.js` and the report
-route), matching the backend's `server.address` and `server.port`. It isn't read from an environment variable.
+Where the Next.js server reaches the backend. Defaults to `http://127.0.0.1:4000`, matching the backend's
+`server.address` and `server.port`; in Docker it's the backend's service name, e.g. `http://backend:4000`. Used by
+the `/api` rewrite (`next.config.mjs`), `src/proxy.js` and the report route, all through `src/utils/backend.js`.
+
+- **Set it for `next build` as well as at runtime:** Next.js fixes rewrites when the app is built, so the `/api`
+  rewrite keeps the address `next build` saw. The proxy and the report route read it when the server runs.
+
+### Client IP (behind Apache)
+
+Apache adds the client's IP in `X-Forwarded-For`. Requests through the `/api` rewrite pass it on unchanged, and
+the requests the Next.js server makes itself (`src/proxy.js`, the report route) copy it with
+`forwardedForHeader`, so the backend sees the client's IP on every request. The backend only believes the
+header from the Next.js server's address (`server.tomcat.remoteip.internal-proxies`, see `backend/README.md`), so
+the Next.js server must only be reachable through Apache: anyone who can reach it directly can send their own
+`X-Forwarded-For`.
 
 ## Getting Started
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { CSRF_TOKEN_JSON_NAME, CSRF_HEADER_NAME } from "@/constants";
 import { secret, tokens } from "./utils/csrfTokens";
+import { BACKEND_URL, forwardedForHeader } from "./utils/backend";
 
 // Secure cookies are only sent over HTTPS. Set COOKIE_SECURE=true wherever the app is served over HTTPS
 // (together with app.cookies.secure=true in the backend); leave unset for local development over HTTP.
@@ -23,11 +24,12 @@ function csrfProtection(request) {
   }
 }
 
-async function verifyAccessTokenWithAuthServer(accessToken) {
-  const response = await fetch('http://127.0.0.1:4000/api/login/verify', {
+async function verifyAccessTokenWithAuthServer(request, accessToken) {
+  const response = await fetch(`${BACKEND_URL}/api/login/verify`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...forwardedForHeader(request.headers),
     },
     body: JSON.stringify({ accessToken })
   });
@@ -37,10 +39,11 @@ async function verifyAccessTokenWithAuthServer(accessToken) {
 
 async function refreshAccessTokenWithAuthServer(request) {
   const refreshToken = request.cookies.get('refresh_token')?.value;
-  const response = await fetch('http://127.0.0.1:4000/api/login/refresh', {
+  const response = await fetch(`${BACKEND_URL}/api/login/refresh`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...forwardedForHeader(request.headers),
     },
     body: JSON.stringify({ refreshToken })
   });
@@ -57,7 +60,7 @@ async function verifyAccessToken(request) {
   // Check if the current route is /dashboard or a sub-route (/dashboard/*)
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const accessToken = request.cookies.get('access_token')?.value;
-    const isAccessTokenValid = await verifyAccessTokenWithAuthServer(accessToken);
+    const isAccessTokenValid = await verifyAccessTokenWithAuthServer(request, accessToken);
 
     if (!accessToken || !isAccessTokenValid) {
       const refreshedTokens = await refreshAccessTokenWithAuthServer(request);
