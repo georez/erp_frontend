@@ -4,8 +4,6 @@ import {
   AppBar, Box, Divider, Drawer, IconButton,
   List, ListItem, ListItemButton, ListItemIcon,
   ListItemText, Toolbar, Typography,
-  useMediaQuery,
-  useTheme
 } from "@mui/material";
 import { useContext, useState } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
@@ -14,29 +12,10 @@ import { jwtDecode } from "jwt-decode";
 import { AuthContext } from "../AuthProvider";
 import { deleteJwtCookiesAction } from "@/actions/deleteJwtCookieAction";
 import { CSRF_HEADER_NAME } from "@/constants";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { v4 as uuidv4 } from 'uuid';
-import { useUpdateMultipleSearchParams } from "@/utils/useUpdateSearchParams";
-import LZString from 'lz-string';
+import { useRouter } from "next/navigation";
+import { openLinkOnPlainClick, useOpenLink } from "@/utils/useOpenLink";
 
 const drawerWidth = 240;
-
-function useIsTabletOrSmaller() {
-  const theme = useTheme();
-  const isTabletOrSmaller = useMediaQuery(theme.breakpoints.down('md'));
-  return isTabletOrSmaller;
-}
-
-function useOpenForm() {
-  const searchParams = useSearchParams();
-  const openForms = JSON.parse(searchParams.get('openForms') ? LZString.decompressFromEncodedURIComponent(searchParams.get('openForms')) : '[]');
-  const handleFilterChange = useUpdateMultipleSearchParams();
-  return (formId, url, formTitle) => {
-    const updatedOpenForms = [...openForms, { formId, url, formTitle }];
-    handleFilterChange({ 'openForms': LZString.compressToEncodedURIComponent(JSON.stringify(updatedOpenForms)), 'focusedForm': formId });
-  };
-}
 
 function useLogout() {
   const { csrfToken } = useContext(AuthContext);
@@ -71,8 +50,7 @@ function useUsername() {
 export default function DrawerForm({ children, backgroundColor }) {
   const username = useUsername();
   const logout = useLogout();
-  const isTabletOrSmaller = useIsTabletOrSmaller();
-  const openFormFn = useOpenForm();
+  const openLink = useOpenLink();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -115,18 +93,20 @@ export default function DrawerForm({ children, backgroundColor }) {
           { linkText: 'ادخال العملاء', linkAddr: `/dashboard/form?schemaName=customers&formTitle=${encodeURIComponent('ادخال العملاء')}` },
           { linkText: 'ادخال تصنيف العملاء', linkAddr: `/dashboard/form?schemaName=customer_categories&formTitle=${encodeURIComponent('ادخال تصنيف العملاء')}` },
           { linkText: 'تقرير تصنيف العملاء', linkAddr: `/dashboard/report?reportName=customerCategoriesReport&formTitle=${encodeURIComponent('تقرير تصنيف العملاء')}` },
+          { linkText: 'تقرير العملاء', linkAddr: `/dashboard/report?reportName=customersReport&formTitle=${encodeURIComponent('تقرير العملاء')}` },
         ].map(({ linkText, linkAddr }, index) => (
-          isTabletOrSmaller ?
-            <ListItem key={index} disablePadding>
-              <ListItemButton component={Link} href={linkAddr}>
-                <ListItemText primary={linkText} />
-              </ListItemButton>
-            </ListItem> :
-            <ListItem key={index} disablePadding onClick={() => openFormFn(uuidv4(), linkAddr, linkText)}>
-              <ListItemButton>
-                <ListItemText primary={linkText} />
-              </ListItemButton>
-            </ListItem>
+          // Opens like the report grid's links: a dashboard window or a new tab (see useOpenLink)
+          <ListItem key={index} disablePadding>
+            <ListItemButton
+              component="a"
+              href={linkAddr}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => openLinkOnPlainClick(event, openLink, linkAddr, linkText)}
+            >
+              <ListItemText primary={linkText} />
+            </ListItemButton>
+          </ListItem>
         ))}
       </List>
     </div>

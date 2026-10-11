@@ -1,4 +1,5 @@
 import { defaultOperators, toFullOption } from "react-querybuilder";
+import { validateFormField } from "./formValidation.js";
 
 const operatorTranslations = {
   '=': 'يساوي',
@@ -215,4 +216,72 @@ export function validateReportQuery(query, fields) {
  */
 export function formatQueryProblems(problems) {
   return `استعلام التقرير غير صحيح: ${problems.map(problem => problem.message).join('، ')}`;
+}
+
+/**
+ * Parses a JSON object kept in the URL (the report's query or its params). Anything else, including
+ * unreadable JSON, gives the fallback.
+ *
+ * @param {string|undefined} text
+ * @param {object} fallback
+ * @returns {object}
+ */
+export function parseJsonObject(text, fallback) {
+  if (!text) {
+    return fallback;
+  }
+  try {
+    const value = JSON.parse(text);
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * The report's params 1 values to send: one entry per declared param (null when empty), so values left
+ * over from an older version of the report are never sent.
+ *
+ * @param {Array<{fieldName: string}>} paramFields  the report's params (from its metadata)
+ * @param {object} values  the values entered in the form, by field name
+ * @returns {object}
+ */
+export function selectReportParams(paramFields, values) {
+  return Object.fromEntries(paramFields.map(({ fieldName }) => {
+    const value = values?.[fieldName];
+    return [fieldName, value === undefined || value === '' ? null : value];
+  }));
+}
+
+/**
+ * Checks the params 1 values with the same rules as the CRUD forms (FormFields shows the result).
+ *
+ * @param {Array<{fieldName: string, validationType: string, validation?: string, required?: boolean}>} paramFields
+ * @param {object} values
+ * @returns {Object<string, boolean>} validity by field name
+ */
+export function validateReportParams(paramFields, values) {
+  const selected = selectReportParams(paramFields, values);
+  return Object.fromEntries(paramFields.map(({ fieldName, validationType, validation, required }) => [
+    fieldName,
+    validateFormField(validationType, !!required, validation, selected[fieldName]),
+  ]));
+}
+
+/**
+ * The dashboard URL of the CRUD form that a linked report cell opens (the same URL the form itself uses),
+ * or null when the row has no id to open.
+ *
+ * @param {{schemaName: string, idColumn: string, formTitle: string}} link  a column's link, from the report metadata
+ * @param {object} row  the result row
+ * @returns {string|null}
+ */
+export function buildLinkUrl(link, row) {
+  const id = row?.[link.idColumn];
+  if (id === null || id === undefined || id === '') {
+    return null;
+  }
+  return `/dashboard/form?schemaName=${encodeURIComponent(link.schemaName)
+    }&formTitle=${encodeURIComponent(link.formTitle)
+    }&entityId=${encodeURIComponent(String(id))}`;
 }

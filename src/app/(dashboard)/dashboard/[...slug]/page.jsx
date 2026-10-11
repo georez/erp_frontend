@@ -11,11 +11,17 @@ export default async function Page({ params, searchParams }) {
     notFound();
   }
 
-  return renderComponentForUrl(urlToResolve, {
-    url: urlToResolve,
-    formTitle: resolvedSearchParams.formTitle,
-    ...resolvedSearchParams,
-  });
+  // The form fills the screen, the way a dashboard window gives it a fixed size: components that size
+  // themselves to their container (the report's grid has height: 100%) would otherwise collapse to nothing
+  return (
+    <div style={{ height: '100dvh', overflow: 'auto' }}>
+      {renderComponentForUrl(urlToResolve, {
+        url: urlToResolve,
+        formTitle: resolvedSearchParams.formTitle,
+        ...resolvedSearchParams,
+      })}
+    </div>
+  );
 }
 
 export async function generateMetadata({ searchParams }) {

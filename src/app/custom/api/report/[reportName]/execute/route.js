@@ -6,7 +6,12 @@ import { formatQuery } from "react-querybuilder";
 export async function POST(request, { params }) {
 
   const { reportName } = await params;
-  const { query, sort } = await request.json();
+  // query: the query builder's filters (search params 2); reportParams: the report's own params (search
+  // params 1). reportParams are only ever bound as values, so the backend checks them, not this route.
+  const { query, reportParams = {} } = await request.json();
+  if (reportParams === null || typeof reportParams !== 'object' || Array.isArray(reportParams)) {
+    return Response.json({ success: false, message: 'معايير التقرير غير صحيحة' }, { status: 400 });
+  }
   const cookieStore = await cookies();
 
   const cookieHeader = cookieStore
@@ -14,8 +19,8 @@ export async function POST(request, { params }) {
     .map(({ name, value }) => `${name}=${value}`)
     .join('; ');
 
-  const searchParams = await fetch(
-    `http://127.0.0.1:4000/api/report/${encodeURIComponent(reportName)}/searchparams2`,
+  const metadataResponse = await fetch(
+    `http://127.0.0.1:4000/api/report/${encodeURIComponent(reportName)}/metadata`,
     {
       headers: {
         Cookie: cookieHeader,
@@ -24,12 +29,13 @@ export async function POST(request, { params }) {
     }
   );
 
-  if (!searchParams.ok) {
-    return backendError(searchParams);
+  if (!metadataResponse.ok) {
+    return backendError(metadataResponse);
   }
 
-  const fields = await searchParams.json();
-  const transformedFields = transformFields(fields);
+  // Only filterable columns can be filtered on; any other field is rejected by validateReportQuery
+  const { columns } = await metadataResponse.json();
+  const transformedFields = transformFields(columns.filter((column) => column.filterable));
 
   // Strict allow-list check of the whole query before any SQL is generated: formatQuery copies field
   // names, operators and combinators into the SQL as they are, and this route's signature makes the
@@ -50,7 +56,7 @@ export async function POST(request, { params }) {
   if (!signingSecret) {
     return Response.json({ success: false, message: 'Report signing is not configured' }, { status: 500 });
   }
-  const body = JSON.stringify({sql, params: sqlParams});
+  const body = JSON.stringify({ sql, params: sqlParams, reportParams });
   const signature = createHmac('sha256', signingSecret)
     .update(`${reportName}\n${body}`)
     .digest('hex');

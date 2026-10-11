@@ -79,3 +79,17 @@ export function useUpdateOpenForms(formId) {
     };
   }
 }
+
+/**
+ * Returns a function that opens a dashboard URL as a new window (a draggable form) in the dashboard and
+ * focuses it. Only for components rendered on the /dashboard page.
+ */
+export function useOpenForm() {
+  const searchParams = useSearchParams();
+  const openForms = JSON.parse(searchParams.get('openForms') ? LZString.decompressFromEncodedURIComponent(searchParams.get('openForms')) : '[]');
+  const handleFilterChange = useUpdateMultipleSearchParams();
+  return (formId, url, formTitle) => {
+    const updatedOpenForms = [...openForms, { formId, url, formTitle }];
+    handleFilterChange({ 'openForms': LZString.compressToEncodedURIComponent(JSON.stringify(updatedOpenForms)), 'focusedForm': formId });
+  };
+}

@@ -6,12 +6,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { Alert, Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography } from '@mui/material';
 import FormFields from './FormFields';
 import useSWR from 'swr';
-import { useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { validateFormField } from '@/utils/formValidation';
 import { useDebouncedCallback } from 'use-debounce';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { CSRF_HEADER_NAME } from '@/constants';
-import { getNewCsrfToken } from '@/utils/csrfClientUtils';
+import { AuthContext } from '@/components/AuthProvider';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
 
 const allActions = [
@@ -62,10 +62,8 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     setFormValues(loadedValues);
   }
 
-  const [csrfToken, setCsrfToken] = useState(null);
-  useEffect(() => {
-    getNewCsrfToken(setCsrfToken);
-  }, []);
+  // Needed for every save and delete; shared by the dashboard (AuthProvider)
+  const { csrfToken } = useContext(AuthContext);
 
   const validateFields = () => {
     const newIsValid = formFieldsAndValues.fields.reduce((acc, {

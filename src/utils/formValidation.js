@@ -1,4 +1,9 @@
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat.js";
+
+// Without this plugin dayjs ignores the format and strict flag, so "2026-02-30" parses as 2 March. The date
+// pickers' adapter also loads it, but only once a picker has rendered, so validation can't rely on that.
+dayjs.extend(customParseFormat);
 
 function getDateTimeFormat(fieldType) {
   let format;
