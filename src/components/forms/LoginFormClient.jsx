@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import { CSRF_HEADER_NAME } from "@/constants";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getNewCsrfToken } from "@/utils/csrfClientUtils";
+import { createCsrfFetch } from "@/utils/csrfClientUtils";
+import { sendOrShowError } from "@/utils/sendOrShowError";
 import { Box, Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
 
 export default function LoginClient() {
@@ -14,12 +14,9 @@ export default function LoginClient() {
     ? rawCallbackUrl
     : '/dashboard';
 
-  const [csrfToken, setCsrfToken] = useState(null);
+  // The login page is outside AuthProvider, so it has its own (see createCsrfFetch)
+  const [csrfFetch] = useState(() => createCsrfFetch());
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    getNewCsrfToken(setCsrfToken);
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,15 +24,17 @@ export default function LoginClient() {
     const formData = new FormData(e.target);
     const username = formData.get("username");
     const password = formData.get("password");
-    const response = await fetch("/api/login/signIn", {
+    const response = await sendOrShowError(() => csrfFetch("/api/login/signIn", {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
-        [CSRF_HEADER_NAME]: csrfToken
       },
       body: JSON.stringify({ username, password })
-    });
+    }), setError);
 
+    if (!response) {
+      return;
+    }
     if (response.ok) {
       // Refresh Server Component cache so RootLayout sees the new cookie
       router.refresh();

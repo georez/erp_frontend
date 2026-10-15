@@ -10,9 +10,9 @@ import { useContext, useState } from 'react';
 import { validateFormField } from '@/utils/formValidation';
 import { useDebouncedCallback } from 'use-debounce';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
-import { CSRF_HEADER_NAME } from '@/constants';
 import { AuthContext } from '@/components/AuthProvider';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
+import { sendOrShowError } from '@/utils/sendOrShowError';
 
 const allActions = [
   { icon: <AddIcon />, name: 'جديد' },
@@ -63,7 +63,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   }
 
   // Needed for every save and delete; shared by the dashboard (AuthProvider)
-  const { csrfToken } = useContext(AuthContext);
+  const { csrfFetch } = useContext(AuthContext);
 
   const validateFields = () => {
     const newIsValid = formFieldsAndValues.fields.reduce((acc, {
@@ -83,14 +83,16 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     setTryToSubmit(true);
     setErrorMessage(null);
     if (validateFields()) {
-      const res = await fetch(`/api/schemacrud/${schemaName}`, {
+      const res = await sendOrShowError(() => csrfFetch(`/api/schemacrud/${schemaName}`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
-          [CSRF_HEADER_NAME]: csrfToken
         },
         body: JSON.stringify(formValues)
-      });
+      }), setErrorMessage);
+      if (!res) {
+        return;
+      }
       if (!res.ok) {
         setErrorMessage(await readErrorMessage(res));
         return;
@@ -115,14 +117,16 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     setTryToSubmit(true);
     setErrorMessage(null);
     if (validateFields()) {
-      const res = await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
+      const res = await sendOrShowError(() => csrfFetch(`/api/schemacrud/${schemaName}/${entityId}`, {
         method: "PUT",
         headers: {
           'Content-Type': 'application/json',
-          [CSRF_HEADER_NAME]: csrfToken
         },
         body: JSON.stringify(formValues)
-      });
+      }), setErrorMessage);
+      if (!res) {
+        return;
+      }
       if (!res.ok) {
         setErrorMessage(await readErrorMessage(res));
         return;
@@ -140,12 +144,12 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     setTryToSubmit(true);
     setErrorMessage(null);
     if (validateFields()) {
-      const res = await fetch(`/api/schemacrud/${schemaName}/${entityId}`, {
+      const res = await sendOrShowError(() => csrfFetch(`/api/schemacrud/${schemaName}/${entityId}`, {
         method: "DELETE",
-        headers: {
-          [CSRF_HEADER_NAME]: csrfToken
-        }
-      });
+      }), setErrorMessage);
+      if (!res) {
+        return;
+      }
       if (!res.ok) {
         setErrorMessage(await readErrorMessage(res));
         return;

@@ -2,7 +2,7 @@
 #   docker build --build-arg BACKEND_URL=http://backend:4000 -t erp-frontend .
 #
 # Runtime environment (secrets come from deploy/secrets/frontend.env):
-#   CSRF_SECRET, REPORT_SIGNING_SECRET, COOKIE_SECURE, BACKEND_URL
+#   REPORT_SIGNING_SECRET, COOKIE_SECURE, BACKEND_URL
 
 # --- dependencies: installed exactly as locked ---
 FROM node:22-alpine AS deps

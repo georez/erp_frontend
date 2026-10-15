@@ -1,7 +1,6 @@
 'use client';
 
-import { CSRF_HEADER_NAME } from '@/constants';
-import { getNewCsrfToken } from '@/utils/csrfClientUtils';
+import { createCsrfFetch } from '@/utils/csrfClientUtils';
 import { useRouter } from 'next/navigation';
 import { createContext, useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
@@ -21,13 +20,10 @@ function expireWithinOneMinute(token) {
   }
 }
 
-async function refreshTokenIfNeeded(csrfToken, router, setAccessToken) {
-  const verifyResponse = await fetch('/api/login/verify', {
+async function refreshTokenIfNeeded(csrfFetch, router, setAccessToken) {
+  const verifyResponse = await csrfFetch('/api/login/verify', {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      [CSRF_HEADER_NAME]: csrfToken
-    }
   });
 
   if (verifyResponse.ok) {
@@ -40,12 +36,9 @@ async function refreshTokenIfNeeded(csrfToken, router, setAccessToken) {
   }
 
   // Token is invalid or expired or will expire soon, refresh it
-  const refreshResponse = await fetch('/api/login/refresh', {
+  const refreshResponse = await csrfFetch('/api/login/refresh', {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      [CSRF_HEADER_NAME]: csrfToken
-    }
   });
 
   if (refreshResponse.ok) {
@@ -61,13 +54,10 @@ async function refreshTokenIfNeeded(csrfToken, router, setAccessToken) {
   router.push('/login');
 }
 
-async function loadMe(csrfToken, setAccessToken) {
-  const response = await fetch('/api/login/verify', {
+async function loadMe(csrfFetch, setAccessToken) {
+  const response = await csrfFetch('/api/login/verify', {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      [CSRF_HEADER_NAME]: csrfToken
-    }
   });
 
   if (!response.ok) {
@@ -82,33 +72,38 @@ async function loadMe(csrfToken, setAccessToken) {
   }
 }
 
+/**
+ * accessToken: the logged-in user's token (for the username), null until loaded.
+ * csrfFetch: fetch for requests that change something; adds the CSRF token (see createCsrfFetch).
+ */
 export const AuthContext = createContext({
   accessToken: null,
-  csrfToken: null
+  csrfFetch: createCsrfFetch(),
 });
 
 export default function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null);
-  const [csrfToken, setCsrfToken] = useState(null);
+  // One for the whole page, so every component shares one token
+  const [csrfFetch] = useState(() => createCsrfFetch());
   const router = useRouter();
 
+  // Background checks: if the server can't be reached (network failure, no CSRF token), log it and keep the user
+  // where they are. The check runs again a minute later; sending them to the login page would lose their work.
   useEffect(() => {
-    getNewCsrfToken(setCsrfToken);
-  }, []);
-
-  useEffect(() => {
-    if (!csrfToken) return;
-    const interval = setInterval(() => refreshTokenIfNeeded(csrfToken, router, setAccessToken), 60 * 1000);
+    const interval = setInterval(() => {
+      refreshTokenIfNeeded(csrfFetch, router, setAccessToken)
+        .catch((error) => console.warn('Session check failed; trying again in a minute', error));
+    }, 60 * 1000);
     return () => clearInterval(interval);
-  }, [csrfToken, router]);
+  }, [csrfFetch, router]);
 
   useEffect(() => {
-    if (!csrfToken) return;
-    loadMe(csrfToken, setAccessToken);
-  }, [csrfToken, setAccessToken]);
+    loadMe(csrfFetch, setAccessToken)
+      .catch((error) => console.warn('Loading the logged-in user failed', error));
+  }, [csrfFetch]);
 
   return (
-    <AuthContext value={{ accessToken, csrfToken }}>
+    <AuthContext value={{ accessToken, csrfFetch }}>
       {children}
     </AuthContext>
   );

@@ -1,27 +1,34 @@
 import { NextResponse } from "next/server";
-import { CSRF_TOKEN_JSON_NAME, CSRF_HEADER_NAME } from "@/constants";
-import { secret, tokens } from "./utils/csrfTokens";
+import { CSRF_HEADER_NAME, CSRF_REJECTED_HEADER, CSRF_SECRET_COOKIE_NAME } from "@/constants";
+import { createCsrfSecret, csrfSecretCookieOptions, isValidCsrfToken, needsCsrfToken } from "./utils/csrfTokens";
 import { BACKEND_URL, forwardedForHeader } from "./utils/backend";
 
 // Secure cookies are only sent over HTTPS. Set COOKIE_SECURE=true wherever the app is served over HTTPS
 // (together with app.cookies.secure=true in the backend); leave unset for local development over HTTP.
 const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
 
+/** Rejects a changing request whose token wasn't made from this browser's secret (see utils/csrfTokens.js). */
 function csrfProtection(request) {
-  // Check if this request is calling a Server Action
-  const isServerAction = request.headers.has('next-action')
-  const csrfTokenInCookie = request.cookies.get(CSRF_TOKEN_JSON_NAME)?.value;
-  if (
-    (request.method === "POST" && !isServerAction) ||
-    request.method === "PUT" ||
-    request.method === "DELETE" ||
-    request.method === "PATCH"
-  ) {
-    const csrfToken = request.headers.get(CSRF_HEADER_NAME);
-    if (!csrfToken || !tokens.verify(secret, csrfToken)) {
-      return new NextResponse("Invalid CSRF token", { status: 403 });
-    }
+  if (!needsCsrfToken(request.method, request.headers.has('next-action'))) {
+    return;
   }
+  const secret = request.cookies.get(CSRF_SECRET_COOKIE_NAME)?.value;
+  if (!isValidCsrfToken(secret, request.headers.get(CSRF_HEADER_NAME))) {
+    // The header tells the browser's csrfFetch to get a new token and try once more (utils/csrfClientUtils.js)
+    return new NextResponse("Invalid CSRF token", { status: 403, headers: { [CSRF_REJECTED_HEADER]: 'true' } });
+  }
+}
+
+/**
+ * Gives a browser without a CSRF secret one with this response: in practice its first page load, so the secret is
+ * there before the page's JavaScript asks /csrf for a token. Not on /csrf, which creates the secret itself when it's
+ * missing: both doing it would send two different secrets.
+ */
+function giveCsrfSecretIfMissing(request, response) {
+  if (request.cookies.has(CSRF_SECRET_COOKIE_NAME) || request.nextUrl.pathname === '/csrf') {
+    return;
+  }
+  response.cookies.set(CSRF_SECRET_COOKIE_NAME, createCsrfSecret(), csrfSecretCookieOptions());
 }
 
 async function verifyAccessTokenWithAuthServer(request, accessToken) {
@@ -89,13 +96,9 @@ export async function proxy(request) {
     return csrfInvalidResponse;
   }
 
-  const jwtResponse = await verifyAccessToken(request);
-  if (jwtResponse) {
-    return jwtResponse;
-  }
-
-  const responseNext = NextResponse.next();
-  return responseNext;
+  const response = (await verifyAccessToken(request)) ?? NextResponse.next();
+  giveCsrfSecretIfMissing(request, response);
+  return response;
 }
 
 export const config = {

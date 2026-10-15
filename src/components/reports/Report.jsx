@@ -33,6 +33,7 @@ import {
 import FormFields from '@/components/forms/FormFields';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { openLinkOnPlainClick, useOpenLink } from '@/utils/useOpenLink';
+import { CONNECTION_ERROR_MESSAGE } from '@/utils/sendOrShowError';
 
 import {
   transformFields,
@@ -43,7 +44,6 @@ import {
   validateReportParams,
   buildLinkUrl,
 } from '@/utils/reportutils';
-import { CSRF_HEADER_NAME } from '@/constants';
 import { AuthContext } from '@/components/AuthProvider';
 
 const modules = [AllCommunityModule];
@@ -134,41 +134,48 @@ function toGridColumns(backendColumns) {
  * column, unsorted.
  *
  * @param {object} args
- * @param {string} args.csrfToken  required for the POST (checked by the proxy)
+ * @param {Function} args.csrfFetch  sends the CSRF token the proxy requires for the POST (from AuthContext)
  * @param {string} args.reportName
  * @param {object} args.query  react-querybuilder query (search params 2)
  * @param {object} args.reportParams  the report's param values by name (search params 1)
  * @param {string[]} args.columns  fields of the currently visible columns
  * @param {Array<{field: string, direction: 'asc'|'desc'}>} args.sort
  * @returns {Promise<Array<object>>} every result row, one object per row keyed by column field
- * @throws {Error} with the route's error message when the request fails
+ * @throws {Error} with the route's error message when the request fails, or CONNECTION_ERROR_MESSAGE when the
+ *   server can't be reached (network failure, or no CSRF token could be obtained)
  */
 async function executeReportApi({
-  csrfToken,
+  csrfFetch,
   reportName,
   query,
   reportParams,
   columns,
   sort,
 }) {
-  const response = await fetch(
-    `/custom/api/report/${encodeURIComponent(reportName)}/execute`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        [CSRF_HEADER_NAME]: csrfToken
-      },
-      body: JSON.stringify({
-        query,
-        reportParams,
-        columns,
-        sort,
-      }),
-    }
-  );
+  let response;
+  try {
+    response = await csrfFetch(
+      `/custom/api/report/${encodeURIComponent(reportName)}/execute`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          reportParams,
+          columns,
+          sort,
+        }),
+      }
+    );
+  } catch (error) {
+    // The same message the forms show (sendOrShowError), instead of the technical one
+    console.error('Report request failed:', error);
+    throw new Error(CONNECTION_ERROR_MESSAGE);
+  }
 
   if (!response.ok) {
     let errorMessage = `Report execution failed (${response.status})`;
@@ -333,7 +340,7 @@ export default function Report({
   const shouldExecute = execute === 'true';
 
   // Needed for every POST; shared by the dashboard (AuthProvider). The report only runs once it has arrived.
-  const { csrfToken } = useContext(AuthContext);
+  const { csrfFetch } = useContext(AuthContext);
 
   /** The report's metadata (fetchReportMetadataApi); null until loaded. */
   const [metadata, setMetadata] = useState(null);
@@ -458,7 +465,7 @@ export default function Report({
         // The params and query come from the URL (Run writes them there), so the report always matches
         // the open link
         const result = await executeReportApi({
-          csrfToken,
+          csrfFetch,
           reportName,
           query: parseJsonObject(query, initialQuery),
           reportParams: parseJsonObject(params, {}),
@@ -488,8 +495,7 @@ export default function Report({
 
     if (
       shouldExecute &&
-      metadata &&
-      csrfToken
+      metadata
     ) {
       executeReport();
     }
@@ -508,7 +514,7 @@ export default function Report({
     metadata,
     reportColumns,
     sort,
-    csrfToken,
+    csrfFetch,
   ]);
 
   /** Opens linked cells as a new dashboard window, or null when they open in a new tab. */

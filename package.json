@@ -2,12 +2,14 @@
   "name": "example-frontend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/utils/reportutils.test.mjs src/utils/backend.test.mjs"
+    "test": "node --test src/utils/reportutils.test.mjs src/utils/backend.test.mjs src/utils/csrfTokens.test.mjs src/utils/csrfClientUtils.test.mjs src/utils/sendOrShowError.test.mjs",
+    "check:csrf": "node --test scripts/check-csrf.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",

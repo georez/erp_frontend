@@ -11,23 +11,21 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { jwtDecode } from "jwt-decode";
 import { AuthContext } from "../AuthProvider";
 import { deleteJwtCookiesAction } from "@/actions/deleteJwtCookieAction";
-import { CSRF_HEADER_NAME } from "@/constants";
 import { useRouter } from "next/navigation";
 import { openLinkOnPlainClick, useOpenLink } from "@/utils/useOpenLink";
 
 const drawerWidth = 240;
 
 function useLogout() {
-  const { csrfToken } = useContext(AuthContext);
+  const { csrfFetch } = useContext(AuthContext);
   const router = useRouter();
   return async () => {
     // Ends the session on the server (its refresh tokens stop working) and clears the auth cookies
     let loggedOut = false;
     try {
-      const res = await fetch('/api/login/logout', {
+      const res = await csrfFetch('/api/login/logout', {
         method: 'POST',
         credentials: 'include',
-        headers: { [CSRF_HEADER_NAME]: csrfToken },
       });
       loggedOut = res.ok;
     } catch {
@@ -42,7 +40,7 @@ function useLogout() {
 }
 
 function useUsername() {
-  const { accessToken, csrfToken } = useContext(AuthContext);
+  const { accessToken } = useContext(AuthContext);
   const { sub: username } = accessToken ? jwtDecode(accessToken) : {};
   return username;
 }

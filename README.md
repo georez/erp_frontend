@@ -2,14 +2,13 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Environment variables
 
-The frontend reads four environment variables. Locally, put them in `frontend/.env.local`; it is gitignored
+The frontend reads three environment variables. Locally, put them in `frontend/.env.local`; it is gitignored
 (`.env*` in `.gitignore`), so secrets never reach git. Next.js reads the file when the dev server or
 `next start` starts, so **restart after changing it**. None of these variables start with `NEXT_PUBLIC_`, so
 they stay on the server and are never sent to the browser.
 
 ```properties
 # frontend/.env.local
-CSRF_SECRET=<random secret>
 REPORT_SIGNING_SECRET=<same value as report.signing.secret in backend/secrets.properties>
 # COOKIE_SECURE=true   # only when the app is served over HTTPS
 # BACKEND_URL=http://backend:4000   # only when the backend isn't at http://127.0.0.1:4000 (e.g. in Docker)
@@ -17,25 +16,9 @@ REPORT_SIGNING_SECRET=<same value as report.signing.secret in backend/secrets.pr
 
 | Variable | Required | Used by | What it is |
 |---|---|---|---|
-| `CSRF_SECRET` | yes | `src/utils/csrfTokens.js`, `src/proxy.js`, `/csrf` route | Secret for creating and checking CSRF tokens. Every POST/PUT/DELETE/PATCH must carry a token made with it. |
 | `REPORT_SIGNING_SECRET` | yes | `src/app/custom/api/report/[reportName]/execute/route.js` | Shared with the backend: the report route signs each report request with it (HMAC-SHA256), and the backend rejects unsigned or wrongly signed requests. |
-| `COOKIE_SECURE` | no (default off) | `src/proxy.js` | `true` marks the auth cookies the proxy sets as Secure (sent over HTTPS only). |
+| `COOKIE_SECURE` | no (default off) | `src/proxy.js`, `src/utils/csrfTokens.js` | `true` marks the auth cookies and the CSRF secret cookie as Secure (sent over HTTPS only). |
 | `BACKEND_URL` | no (default `http://127.0.0.1:4000`) | `src/utils/backend.js` | Where the Next.js server reaches the backend. Also needed by `next build`. |
-
-### `CSRF_SECRET`
-
-Any random string. Generate one with OpenSSL in Git Bash:
-
-```bash
-openssl rand -base64 32 | tr -d '\r\n'
-```
-
-(`tr -d '\r\n'` removes the Windows line ending OpenSSL adds to its output.)
-
-- **If it's missing:** the `/csrf` route fails with a 500, and every POST/PUT/DELETE/PATCH, including login,
-  is rejected with `403 Invalid CSRF token`.
-- **If you change it:** tokens already handed out stop working. Pages that are already open fail to save until
-  they're reloaded and fetch a new token.
 
 ### `REPORT_SIGNING_SECRET`
 
@@ -77,6 +60,51 @@ the requests the Next.js server makes itself (`src/proxy.js`, the report route) 
 header from the Next.js server's address (`server.tomcat.remoteip.internal-proxies`, see `backend/README.md`), so
 the Next.js server must only be reachable through Apache: anyone who can reach it directly can send their own
 `X-Forwarded-For`.
+
+## CSRF protection
+
+Every POST/PUT/DELETE/PATCH must carry a CSRF token in the `x-csrf-token` header, or `src/proxy.js` rejects it with
+`403 Invalid CSRF token` (marked with an `x-csrf-rejected: true` header). Server Actions are left to Next.js, which
+checks their `Origin`.
+
+- **Each browser has its own secret**, in the httpOnly cookie `csrf_secret`: the proxy sets it on the first page load
+  (or the `/csrf` route, if that comes first). Tokens from `/csrf` are made from that secret and only valid with it,
+  so a token obtained in one browser is useless in another. One secret has any number of valid tokens, so tabs of
+  the same browser don't interfere. No server-side secret or configuration is needed (`src/utils/csrfTokens.js`).
+- **In the browser, use `csrfFetch`** for every changing request: `useContext(AuthContext).csrfFetch` in the
+  dashboard, `createCsrfFetch()` outside it (the login page). It fetches a token on first use, and if the proxy
+  rejects it (an expired or cleared secret cookie, a token from before a deployment), it gets a new token and sends
+  the request once more (`src/utils/csrfClientUtils.js`).
+- **Tests:** `npm test` covers the token rules and `csrfFetch`. Two scripts check the proxy and the `/csrf` route in a
+  real server, see below.
+
+### Checking CSRF against a running server
+
+The unit tests can't reach `src/proxy.js` or the `/csrf` route, so two scripts check them in a real server. Both do
+the same: after a build, they start `next start` on port 3100, play two browsers against it (each with its own
+cookies) and stop the server again, however the run ends. No backend is needed.
+
+```bash
+npm run build                # once, and after code changes
+
+npm run check:csrf           # Node version (scripts/check-csrf.mjs), uses the Node test runner
+bash scripts/check-csrf.sh   # bash version, for a shell without npm (a server, CI); needs bash and curl
+```
+
+Set `CHECK_CSRF_PORT` to use another port, e.g. `CHECK_CSRF_PORT=3200 bash scripts/check-csrf.sh`. Both refuse to
+start without a build, or if the port is already in use. They check that:
+
+- the first page load gives the browser one `csrf_secret` cookie, httpOnly and `SameSite=Lax`;
+- `/csrf` reuses that secret (no new cookie), and each tab gets a different token that passes;
+- `/csrf` creates the secret itself when it's the browser's first request, once;
+- a token from another browser is rejected, with `x-csrf-rejected: true` so `csrfFetch` retries;
+- a token without the cookie, the cookie without a token, and a made-up token are rejected;
+- `GET` requests need no token.
+
+A request that passes the CSRF check is sent as `POST /csrf`, which the route answers with 405 (it only has `GET`),
+so a 405 means "passed" and the proxy's 403 means "rejected".
+
+`.gitattributes` keeps `*.sh` files at LF line endings, so the bash script still runs after a checkout on Windows.
 
 ## Getting Started
 
