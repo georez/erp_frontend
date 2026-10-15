@@ -66,9 +66,17 @@ test('empty or malformed values are rejected', () => {
 
 test('between needs two well-formed values', () => {
   // Used to pass as valid and generate "(1 = 1)", returning every row
-  assert.ok(!isValid(query({ field: 'created_at', operator: 'between', value: '2026-01-01T00:00,' })));
+  assert.ok(!isValid(query({ field: 'opens_at', operator: 'between', value: '08:00,' })));
   assert.ok(!isValid(query({ field: 'birth_date', operator: 'between', value: '2026-01-01' })));
   assert.ok(!isValid(query({ field: 'birth_date', operator: 'between', value: '2026-01-01,2026-02-01,2026-03-01' })));
+});
+
+test('between is offered for dates and times but not date-times', () => {
+  assert.ok(isValid(query({ field: 'opens_at', operator: 'between', value: '08:00,17:00' })));
+  assert.ok(isValid(query({ field: 'birth_date', operator: 'notBetween', value: '2026-01-01,2026-12-31' })));
+  // Even well-formed values: the operator itself is rejected
+  assert.ok(!isValid(query({ field: 'created_at', operator: 'between', value: '2026-09-01T00:00,2026-09-30T00:00' })));
+  assert.ok(!isValid(query({ field: 'created_at', operator: 'notBetween', value: '2026-09-01T00:00,2026-09-30T00:00' })));
 });
 
 test('crafted queries that would inject SQL are rejected', () => {

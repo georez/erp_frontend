@@ -115,8 +115,13 @@ function operatorsFor(field) {
   if (field.inputType === 'number') {
     return arabicOperators.filter(op => ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull'].includes(op.name));
   }
-  if (field.inputType === 'date' || field.inputType === 'time' || field.inputType === 'datetime-local') {
+  if (field.inputType === 'date' || field.inputType === 'time') {
     return arabicOperators.filter(op => ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull', 'between', 'notBetween'].includes(op.name));
+  }
+  // No between for date-times: "between 2026-09-01T00:00 and 2026-09-30T00:00" looks like all of September but
+  // drops everything after midnight on the 30th. Users combine >= and < instead.
+  if (field.inputType === 'datetime-local') {
+    return arabicOperators.filter(op => ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull'].includes(op.name));
   }
   if (field.valueEditorType === 'checkbox') {
     return arabicOperators.filter(op => ['='].includes(op.name));
