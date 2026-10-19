@@ -194,6 +194,8 @@ test("a document's link opens its page with the id in the page's parameter", () 
   assert.equal(buildLinkUrl({ ...link, document: 'no-such-page' }, { id: 3 }), null);
   assert.equal(buildLinkUrl({ document: 'purchase-invoice', idColumn: 'id', formTitle: 'F' }, { id: 4 }),
     '/dashboard/purchase-invoice?formTitle=F&invoiceId=4');
+  assert.equal(buildLinkUrl({ document: 'purchase-return', idColumn: 'id', formTitle: 'R' }, { id: 5 }),
+    '/dashboard/purchase-return?formTitle=R&returnId=5');
   assert.equal(buildLinkUrl({ ...link, document: 'constructor' }, { id: 3 }), null);
 });
 

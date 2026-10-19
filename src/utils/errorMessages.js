@@ -122,6 +122,17 @@ export const ERROR_MESSAGES = Object.freeze({
   QUANTITY_INVALID: 'الكمية غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
   BONUS_QUANTITY_INVALID: 'كمية البونص غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
   NOTHING_RECEIVED: 'السطر لا يُدخل أي وحدات: أدخل الكمية أو البونص',
+
+  // --- purchase returns ---
+  PURCHASE_RETURN_NOT_FOUND: 'مرتجع المشتريات رقم {returnId} غير موجود',
+  PURCHASE_RETURN_POSTED: 'مرتجع المشتريات رقم {returnId} مُرحَّل ولا يمكن تعديله',
+  PURCHASE_RETURN_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في المرتجع',
+  PURCHASE_RETURN_INVOICE_INVALID: 'فاتورة المشتريات رقم {invoiceId} ليست فاتورة مُرحَّلة لهذا المورد',
+  PRODUCT_NOT_ON_INVOICE: 'الصنف "{productName}" ليس في فاتورة المشتريات',
+  PURCHASE_RETURN_EXCEEDS_INVOICE:
+    'لا يمكن إرجاع أكثر من {available} من "{productName}" (التشغيلة "{batchNumber}") من هذه الفاتورة',
+  RETURN_QUANTITY_INVALID: 'الكمية المرتجعة غير صحيحة (عدد صحيح أكبر من صفر)',
+  BATCH_NOT_FOUND: 'التشغيلة "{batchNumber}" غير موجودة',
 });
 
 const PLACEHOLDER = /\{(\w+)\}/g;

@@ -109,6 +109,14 @@ const BACKEND_CODES = {
   QUANTITY_INVALID: [],
   BONUS_QUANTITY_INVALID: [],
   NOTHING_RECEIVED: [],
+  PURCHASE_RETURN_NOT_FOUND: ['returnId'],
+  PURCHASE_RETURN_POSTED: ['returnId'],
+  PURCHASE_RETURN_LINE_NOT_FOUND: ['lineId'],
+  PURCHASE_RETURN_INVOICE_INVALID: ['invoiceId'],
+  PRODUCT_NOT_ON_INVOICE: ['productName'],
+  PURCHASE_RETURN_EXCEEDS_INVOICE: ['productName', 'batchNumber', 'available'],
+  RETURN_QUANTITY_INVALID: [],
+  BATCH_NOT_FOUND: ['batchNumber'],
 };
 
 test('every backend code has a message, and no other code does', () => {
