@@ -99,6 +99,8 @@ export default function DrawerForm({ children, backgroundColor }) {
           { linkText: 'ادخال الأصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الأصناف')}` },
           { linkText: 'ادخال تصنيف الأصناف', linkAddr: `/dashboard/form?schemaName=product_categories&formTitle=${encodeURIComponent('ادخال تصنيف الأصناف')}` },
           { linkText: 'ادخال المخازن', linkAddr: `/dashboard/form?schemaName=warehouses&formTitle=${encodeURIComponent('ادخال المخازن')}` },
+          { linkText: 'فاتورة مشتريات', linkAddr: `/dashboard/purchase-invoice?formTitle=${encodeURIComponent('فاتورة مشتريات')}` },
+          { linkText: 'تقرير فواتير المشتريات', linkAddr: `/dashboard/report?reportName=purchaseInvoicesReport&formTitle=${encodeURIComponent('تقرير فواتير المشتريات')}` },
           { linkText: 'تسوية مخزون', linkAddr: `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}` },
           { linkText: 'تقرير أرصدة المخزون', linkAddr: `/dashboard/report?reportName=stockBalancesReport&formTitle=${encodeURIComponent('تقرير أرصدة المخزون')}` },
           { linkText: 'تقرير تسويات المخزون', linkAddr: `/dashboard/report?reportName=stockAdjustmentsReport&formTitle=${encodeURIComponent('تقرير تسويات المخزون')}` },

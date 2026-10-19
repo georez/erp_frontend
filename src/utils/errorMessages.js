@@ -110,6 +110,18 @@ export const ERROR_MESSAGES = Object.freeze({
   BATCH_NUMBER_TOO_LONG: 'رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   BATCH_EXPIRY_REQUIRED: 'التشغيلة "{batchNumber}" جديدة، فأدخل تاريخ صلاحيتها',
   BATCH_EXPIRY_MISMATCH: 'صلاحية التشغيلة "{batchNumber}" هي {expiryDate}، وليست التاريخ المُدخَل',
+
+  // --- purchase invoices ---
+  SUPPLIER_REQUIRED: 'حدّد المورد',
+  SUPPLIER_NOT_FOUND: 'المورد رقم {supplierId} غير موجود',
+  SUPPLIER_INVOICE_NUMBER_TOO_LONG: 'رقم فاتورة المورد أطول من المسموح (الحد الأقصى {maxLength} حرف)',
+  SUPPLIER_INVOICE_DUPLICATE: 'فاتورة المورد رقم "{supplierInvoiceNumber}" مُسجَّلة من قبل في فاتورة المشتريات رقم {invoiceId}',
+  PURCHASE_INVOICE_NOT_FOUND: 'فاتورة المشتريات رقم {invoiceId} غير موجودة',
+  PURCHASE_INVOICE_POSTED: 'فاتورة المشتريات رقم {invoiceId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بمرتجع مشتريات',
+  PURCHASE_INVOICE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الفاتورة',
+  QUANTITY_INVALID: 'الكمية غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
+  BONUS_QUANTITY_INVALID: 'كمية البونص غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
+  NOTHING_RECEIVED: 'السطر لا يُدخل أي وحدات: أدخل الكمية أو البونص',
 });
 
 const PLACEHOLDER = /\{(\w+)\}/g;

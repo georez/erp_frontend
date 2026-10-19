@@ -14,57 +14,28 @@ import { useContext, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Combobox } from '@/components/ui/ComboBox2';
 import { AuthContext } from '@/components/AuthProvider';
-import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
-import { sendOrShowError } from '@/utils/sendOrShowError';
+import { fetchJson } from '@/utils/fetchJson';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { formatDecimal, normalizeDecimalText, parsePercent, parseWholeUnits } from '@/utils/decimals';
+import {
+  COMBOBOX_MESSAGES, formatAmount, Labelled, MAX_BATCH_NUMBER_LENGTH, MAX_DESCRIPTION_LENGTH, moveOnEnter,
+  NO_BATCH_LABEL, NUMBER_CELL, useDocumentRequests, useOptions,
+} from './documentForm';
 
 const modules = [AllCommunityModule];
 const API = '/api/stock-adjustments';
-const MAX_DESCRIPTION_LENGTH = 500;
 const EMPTY_ENTRY = { productId: null, batchNumber: '', expiryDate: '', countedQuantity: '', discountPercent: '' };
-// batches.batch_number is varchar(50)
-const MAX_BATCH_NUMBER_LENGTH = 50;
-// The stock a product had before batches: its batch has no number (and no expiry date)
-const NO_BATCH_LABEL = 'بدون تشغيلة';
-
-const COMBOBOX_MESSAGES = {
-  clear: 'مسح الاختيار',
-  typeToJump: (count) => `${count.toLocaleString('ar-EG')} عنصر · اكتب للانتقال`,
-  jumpedBy: (text) => <>انتقال إلى «<bdi>{text}</bdi>»</>,
-};
-
-/** All of a link entity's records as ComboBox2 options ({ value, label }). */
-function useOptions(linkEntity) {
-  const { data = [], error } = useSWR(`/api/schemacrud/options/entity/${linkEntity}`, fetchJson);
-  return { options: data, error };
-}
 
 /** A line whose cost is the average cost: no discount entered, or a loss (which always goes at the average). */
 const isAverageDiscount = (line) => line.discountPercent == null || Big(line.difference).signum() < 0;
-
-/** Decimal text from the backend ("12.5"), formatted for the grid; empty for none. */
-const formatAmount = (value) => (value == null ? '' : formatDecimal(Big(value)));
-
-// Numbers left to right inside the right-to-left grid, so a sign stays in front ("-3", not "3-"); still aligned
-// with the other cells, at the column's start
-const NUMBER_CELL = { direction: 'ltr', textAlign: 'right' };
-
-/** A label and its field side by side, so the header stays one line high; basis: its share of the line. */
-function Labelled({ id, label, basis, children }) {
-  return <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flex: `1 1 ${basis}px`, minWidth: 0 }}>
-    <Typography component="label" id={id} variant="body2" sx={{ whiteSpace: 'nowrap' }}>{label}</Typography>
-    <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
-  </Stack>;
-}
 
 /**
  * The stock adjustment document: the stock counted in one warehouse. A draft is filled one batch at a time: the
  * entry row sends a product's batch (its number, and the expiry date of a new batch) and its counted quantity (whole
  * units: the products are pharmaceuticals) to the backend (OK), and the grid shows the lines as the backend has them,
  * with what posting would do with the batch's stock now: counted above the balance is received at the product's
- * public price less the discount entered (else the average cost), below it is issued at the average cost. Posting does it and posts the journal entry; a posted adjustment can't
- * change.
+ * public price less the discount entered (else the average cost), below it is issued at the average cost. Posting
+ * does it and posts the journal entry; a posted adjustment can't change.
  *
  * The draft is created with its first line; its id then goes into the window's URL, so the window opens it again.
  */
@@ -94,8 +65,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
 
   const [entry, setEntry] = useState(EMPTY_ENTRY);
   const [entryErrors, setEntryErrors] = useState({});
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const { send, busy, errorMessage, setErrorMessage } = useDocumentRequests(csrfFetch);
   const productRef = useRef(null);
   const batchRef = useRef(null);
   const expiryRef = useRef(null);
@@ -106,32 +76,6 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
   const posted = adjustment?.status === 'POSTED';
   const lines = useMemo(() => adjustment?.lines ?? [], [adjustment]);
   const optionsError = warehouses.error ?? products.error ?? accounts.error;
-
-  /**
-   * Sends a request; returns the adjustment the backend answers with ({} for an empty answer), or null after showing
-   * why it failed. One request at a time: the buttons are disabled meanwhile.
-   */
-  const send = async (url, method, body) => {
-    setErrorMessage(null);
-    setBusy(true);
-    try {
-      const res = await sendOrShowError(() => csrfFetch(url, {
-        method,
-        headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      }), setErrorMessage);
-      if (!res) {
-        return null;
-      }
-      if (!res.ok) {
-        setErrorMessage(await readErrorMessage(res));
-        return null;
-      }
-      return res.status === 204 ? {} : await res.json();
-    } finally {
-      setBusy(false);
-    }
-  };
 
   /** Shows the adjustment a request answered with, or loads it again if the request failed. */
   const show = (saved) => mutate(saved ?? undefined, { revalidate: !saved });
@@ -215,7 +159,8 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     updateOpenFormUrl(`/dashboard/stock-adjustment?formTitle=${encodeURIComponent(formTitle)}`);
     // Same warehouse and account: the next adjustment is usually another part of the same count
     setHeader((previous) => ({ ...previous, description: '' }));
-    setHeaderLoadedFrom(null);
+    // headerLoadedFrom stays the document just left: until the URL has changed, it's still the one loaded, and
+    // forgetting it would load its header back over the cleared one
     setEntry(EMPTY_ENTRY);
     setEntryErrors({});
     setErrorMessage(null);
@@ -230,27 +175,9 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     }
   };
 
-  /**
-   * Enter in the entry row moves to the next field: product → batch → expiry → counted quantity → discount → OK,
-   * and Enter on OK
-   * (a button) sends the line. Not when ComboBox2 used it to pick from its open list (it prevents the default then).
-   */
-  const onEntryKeyDown = (event) => {
-    if (event.key !== 'Enter' || event.defaultPrevented) {
-      return;
-    }
-    const order = [productRef, batchRef, expiryRef, countedRef, discountRef, okRef];
-    const index = order.findIndex((ref) => ref.current === event.target);
-    // OK is last: Enter on it is a click, which sends the line
-    const next = index >= 0 ? order[index + 1] : undefined;
-    if (next?.current) {
-      event.preventDefault();
-      next.current.focus();
-      if (next.current.type !== 'date') {
-        next.current.select?.();
-      }
-    }
-  };
+  // Enter moves product → batch → expiry → counted quantity → discount → OK, and Enter on OK sends the line
+  const onEntryKeyDown = (event) => moveOnEnter(event,
+    [productRef, batchRef, expiryRef, countedRef, discountRef, okRef]);
 
   /** A grid row into the entry row, to change its count or discount; OK then replaces the line. */
   const editLine = (line) => {

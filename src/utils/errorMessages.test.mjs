@@ -99,6 +99,16 @@ const BACKEND_CODES = {
   BATCH_NUMBER_TOO_LONG: ['maxLength'],
   BATCH_EXPIRY_REQUIRED: ['batchNumber'],
   BATCH_EXPIRY_MISMATCH: ['batchNumber', 'expiryDate'],
+  SUPPLIER_REQUIRED: [],
+  SUPPLIER_NOT_FOUND: ['supplierId'],
+  SUPPLIER_INVOICE_NUMBER_TOO_LONG: ['maxLength'],
+  SUPPLIER_INVOICE_DUPLICATE: ['supplierInvoiceNumber', 'invoiceId'],
+  PURCHASE_INVOICE_NOT_FOUND: ['invoiceId'],
+  PURCHASE_INVOICE_POSTED: ['invoiceId'],
+  PURCHASE_INVOICE_LINE_NOT_FOUND: ['lineId'],
+  QUANTITY_INVALID: [],
+  BONUS_QUANTITY_INVALID: [],
+  NOTHING_RECEIVED: [],
 };
 
 test('every backend code has a message, and no other code does', () => {
