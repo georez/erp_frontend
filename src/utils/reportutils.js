@@ -1,4 +1,5 @@
 import { defaultOperators, toFullOption } from "react-querybuilder";
+import { Big } from "bigdecimal.js";
 import { validateFormField } from "./formValidation.js";
 
 const operatorTranslations = {
@@ -304,4 +305,30 @@ export function buildLinkUrl(link, row) {
   return `/dashboard/form?schemaName=${encodeURIComponent(link.schemaName)
     }&formTitle=${encodeURIComponent(link.formTitle)
     }&entityId=${encodeURIComponent(String(id))}`;
+}
+
+/**
+ * Orders two report cells of a number column by value, exactly: the backend sends numeric and bigint values as
+ * decimal text (a JavaScript number would lose digits) and the other numbers as JSON numbers, so the text must not
+ * be compared as text ("10" before "9"). Empty cells come first, as the grid puts them.
+ *
+ * @param {string|number|null|undefined} a
+ * @param {string|number|null|undefined} b
+ * @returns {number} negative, zero or positive
+ */
+export function compareDecimalCells(a, b) {
+  const aEmpty = a === null || a === undefined || a === '';
+  const bEmpty = b === null || b === undefined || b === '';
+  if (aEmpty || bEmpty) {
+    return aEmpty === bEmpty ? 0 : aEmpty ? -1 : 1;
+  }
+  return Big(a).compareTo(Big(b));
+}
+
+/**
+ * A number cell as a JavaScript number, for the grid's own column filter, which only compares numbers: exact up to
+ * about 15 significant digits. The query builder's filters run in the database and are exact. Null for an empty cell.
+ */
+export function cellFilterNumber(value) {
+  return value === null || value === undefined || value === '' ? null : Number(value);
 }

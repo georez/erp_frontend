@@ -43,6 +43,8 @@ import {
   selectReportParams,
   validateReportParams,
   buildLinkUrl,
+  compareDecimalCells,
+  cellFilterNumber,
 } from '@/utils/reportutils';
 import { AuthContext } from '@/components/AuthProvider';
 
@@ -529,9 +531,17 @@ export default function Report({
           field: column.field,
           headerName: column.headerName,
           type: column.type,
-          // Numbers left to right inside the right-to-left grid, so a sign stays in front ("-7.5", not "7.5-");
-          // still aligned as before (the grid aligns numeric cells with an absolute text-align)
-          ...(column.type === 'numericColumn' && { cellStyle: NUMBER_CELL }),
+          ...(column.type === 'numericColumn' && {
+            // Numbers left to right inside the right-to-left grid, so a sign stays in front ("-7.5", not "7.5-");
+            // still aligned as before (the grid aligns numeric cells with an absolute text-align)
+            cellStyle: NUMBER_CELL,
+            // Exact values: numeric and bigint come as decimal text (shown as sent), sorted by value, not as text.
+            // The grid mustn't guess the column's type from the text either.
+            cellDataType: false,
+            comparator: compareDecimalCells,
+            filter: 'agNumberColumnFilter',
+            filterValueGetter: ({ data, colDef }) => cellFilterNumber(data[colDef.field]),
+          }),
           hide: visibleColumns[column.field] === false,
           ...(column.link && {
             cellRenderer: LinkCell,

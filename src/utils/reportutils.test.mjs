@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { formatQuery } from 'react-querybuilder/formatQuery';
 import {
   buildLinkUrl,
+  cellFilterNumber,
+  compareDecimalCells,
   formatQueryProblems,
   parseJsonObject,
   selectReportParams,
@@ -234,4 +236,19 @@ test('dates, times and date-times are checked strictly against their format', as
   assert.ok(!valid('datetime', '2026-10-10T08:30'), 'the backend now always sends seconds');
   assert.ok(!valid('datetime', '2026-02-30T08:30:00'));
   assert.ok(!valid('datetime', '2026-10-10 08:30:00'));
+});
+
+test('number cells sort by value, exactly, empty ones first', () => {
+  const cells = ['10', '9', '-2.5', null, '0.0000001', '', '12345678901234567890.1234567', '12345678901234567890.1234566', 3];
+  assert.deepEqual([...cells].sort(compareDecimalCells), [
+    null, '', '-2.5', '0.0000001', 3, '9', '10', '12345678901234567890.1234566', '12345678901234567890.1234567',
+  ]);
+  assert.equal(compareDecimalCells('2.50', '2.5'), 0, 'the same value');
+});
+
+test("the grid's column filter compares numbers", () => {
+  assert.equal(cellFilterNumber('12.5'), 12.5);
+  assert.equal(cellFilterNumber(7), 7);
+  assert.equal(cellFilterNumber(null), null);
+  assert.equal(cellFilterNumber(''), null);
 });
