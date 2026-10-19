@@ -1,16 +1,17 @@
+import { errorMessageFromBody } from './errorMessages.js';
+
 /**
- * Reads the error message from a failed backend response.
- * The backend returns { errorMessage } for handled errors; anything else falls back to the status.
+ * Reads the message to show from a failed backend response: the Arabic message for its errorCode (errorMessages.js),
+ * else the backend's errorMessage, else the status.
  */
 export async function readErrorMessage(res) {
   const body = await res.json().catch(() => null);
-  return body?.errorMessage || res.statusText || `Request failed (${res.status})`;
+  return errorMessageFromBody(body, res.statusText || `Request failed (${res.status})`);
 }
 
 /**
- * GET a JSON resource with the session cookies. Throws an Error carrying the backend's
- * errorMessage on a non-2xx response, so SWR reports it as `error` instead of returning
- * the error body as data.
+ * GET a JSON resource with the session cookies. Throws an Error carrying the message to show (readErrorMessage) on a
+ * non-2xx response, so SWR reports it as `error` instead of returning the error body as data.
  */
 export async function fetchJson(url) {
   const res = await fetch(url, { credentials: 'include' });

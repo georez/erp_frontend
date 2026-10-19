@@ -106,6 +106,20 @@ so a 405 means "passed" and the proxy's 403 means "rejected".
 
 `.gitattributes` keeps `*.sh` files at LF line endings, so the bash script still runs after a checkout on Windows.
 
+## Error messages
+
+The backend reports an error a user can cause with a code and its details
+(`{ errorCode: "LINE_NEEDS_CUSTOMER", errorParams: { line: 2, … }, errorMessage: "<English>" }`, see "Error messages"
+in `backend/README.md`). `src/utils/errorMessages.js` holds the Arabic message for every code, with its params as
+`{placeholders}` (`'السطر {line}: …'`), and `errorMessageFromBody` picks the one to show: the code's message with its
+params filled in, else the backend's English `errorMessage` (no code, a code this file doesn't know, or a param the
+message needs is missing), else a fallback. Read errors through it (`readErrorMessage` in `src/utils/fetchJson.js`
+does), never `errorMessage` directly.
+
+`errorMessages.test.mjs` holds a copy of the backend's codes and the params each comes with (its `ErrorCode` enum) and
+checks that every code has a message and that each message's placeholders are exactly its code's params. When a code
+is added or its params change in the backend, update the copy and the message together.
+
 ## Getting Started
 
 First, run the development server:

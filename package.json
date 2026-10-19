@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/utils/reportutils.test.mjs src/utils/backend.test.mjs src/utils/csrfTokens.test.mjs src/utils/csrfClientUtils.test.mjs src/utils/sendOrShowError.test.mjs",
+    "test": "node --test src/utils/reportutils.test.mjs src/utils/backend.test.mjs src/utils/csrfTokens.test.mjs src/utils/csrfClientUtils.test.mjs src/utils/sendOrShowError.test.mjs src/utils/errorMessages.test.mjs",
     "check:csrf": "node --test scripts/check-csrf.mjs"
   },
   "dependencies": {

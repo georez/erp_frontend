@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { formatQueryProblems, transformFields, validateReportQuery } from "@/utils/reportutils";
 import { cookies } from "next/headers";
 import { BACKEND_URL, forwardedForHeader } from "@/utils/backend";
+import { errorMessageFromBody } from "@/utils/errorMessages";
 import { formatQuery } from "react-querybuilder";
 
 export async function POST(request, { params }) {
@@ -87,11 +88,12 @@ export async function POST(request, { params }) {
   return Response.json(reportBody);
 }
 
-// Passes the backend's status through, with its errorMessage as `message` (what Report.jsx displays)
+// Passes the backend's status through, with the message to show as `message` (what Report.jsx displays): the Arabic
+// message for its errorCode, else its errorMessage (errorMessages.js)
 async function backendError(response) {
   const errorBody = await response.json().catch(() => null);
   return Response.json({
     success: false,
-    message: errorBody?.errorMessage ?? `Report request failed (${response.status})`,
+    message: errorMessageFromBody(errorBody, `Report request failed (${response.status})`),
   }, { status: response.status });
 }
