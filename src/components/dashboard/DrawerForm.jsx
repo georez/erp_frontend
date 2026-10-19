@@ -102,6 +102,7 @@ export default function DrawerForm({ children, backgroundColor }) {
           { linkText: 'تسوية مخزون', linkAddr: `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}` },
           { linkText: 'تقرير أرصدة المخزون', linkAddr: `/dashboard/report?reportName=stockBalancesReport&formTitle=${encodeURIComponent('تقرير أرصدة المخزون')}` },
           { linkText: 'تقرير تسويات المخزون', linkAddr: `/dashboard/report?reportName=stockAdjustmentsReport&formTitle=${encodeURIComponent('تقرير تسويات المخزون')}` },
+          { linkText: 'تقرير التشغيلات والصلاحية', linkAddr: `/dashboard/report?reportName=stockBatchesReport&formTitle=${encodeURIComponent('تقرير التشغيلات والصلاحية')}` },
           { linkText: 'تقرير حركات المخزون', linkAddr: `/dashboard/report?reportName=stockMovementsReport&formTitle=${encodeURIComponent('تقرير حركات المخزون')}` },
         ].map(({ linkText, linkAddr }, index) => (
           // Opens like the report grid's links: a dashboard window or a new tab (see useOpenLink)

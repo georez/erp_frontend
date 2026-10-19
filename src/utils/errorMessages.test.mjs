@@ -76,6 +76,12 @@ const BACKEND_CODES = {
   STOCK_QUANTITY_INVALID: ['line'],
   STOCK_INSUFFICIENT: ['line', 'productName', 'warehouseName', 'available'],
   STOCK_DOCUMENT_EMPTY: [],
+  STOCK_BATCH_REQUIRED: ['line'],
+  STOCK_BATCH_NUMBER_TOO_LONG: ['line', 'maxLength'],
+  STOCK_BATCH_EXPIRY_REQUIRED: ['line', 'batchNumber'],
+  STOCK_BATCH_EXPIRY_MISMATCH: ['line', 'batchNumber', 'expiryDate'],
+  STOCK_BATCH_NOT_FOUND: ['line', 'productName', 'batchNumber'],
+  STOCK_BATCH_INSUFFICIENT: ['line', 'productName', 'batchNumber', 'available'],
   WAREHOUSE_REQUIRED: [],
   STOCK_DESCRIPTION_TOO_LONG: ['maxLength'],
   STOCK_OFFSET_ACCOUNT_INVALID: ['accountId'],
@@ -89,6 +95,10 @@ const BACKEND_CODES = {
   STOCK_DISCOUNT_REQUIRED: ['productName'],
   STOCK_LINE_VALUE_TOO_LARGE: ['productName'],
   STOCK_ADJUSTMENT_NO_DIFFERENCE: [],
+  BATCH_NUMBER_REQUIRED: [],
+  BATCH_NUMBER_TOO_LONG: ['maxLength'],
+  BATCH_EXPIRY_REQUIRED: ['batchNumber'],
+  BATCH_EXPIRY_MISMATCH: ['batchNumber', 'expiryDate'],
 };
 
 test('every backend code has a message, and no other code does', () => {

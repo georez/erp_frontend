@@ -22,7 +22,11 @@ import { formatDecimal, normalizeDecimalText, parsePercent, parseWholeUnits } fr
 const modules = [AllCommunityModule];
 const API = '/api/stock-adjustments';
 const MAX_DESCRIPTION_LENGTH = 500;
-const EMPTY_ENTRY = { productId: null, countedQuantity: '', discountPercent: '' };
+const EMPTY_ENTRY = { productId: null, batchNumber: '', expiryDate: '', countedQuantity: '', discountPercent: '' };
+// batches.batch_number is varchar(50)
+const MAX_BATCH_NUMBER_LENGTH = 50;
+// The stock a product had before batches: its batch has no number (and no expiry date)
+const NO_BATCH_LABEL = 'بدون تشغيلة';
 
 const COMBOBOX_MESSAGES = {
   clear: 'مسح الاختيار',
@@ -55,11 +59,11 @@ function Labelled({ id, label, basis, children }) {
 }
 
 /**
- * The stock adjustment document: the stock counted in one warehouse. A draft is filled one product at a time: the
- * entry row sends each product's counted quantity (whole units: the products are pharmaceuticals) to the backend
- * (OK), and the grid shows the lines as the backend has them, with what posting would do with the stock now: counted
- * above the balance is received at the product's public price less the discount entered (else the average cost),
- * below it is issued at the average cost. Posting does it and posts the journal entry; a posted adjustment can't
+ * The stock adjustment document: the stock counted in one warehouse. A draft is filled one batch at a time: the
+ * entry row sends a product's batch (its number, and the expiry date of a new batch) and its counted quantity (whole
+ * units: the products are pharmaceuticals) to the backend (OK), and the grid shows the lines as the backend has them,
+ * with what posting would do with the batch's stock now: counted above the balance is received at the product's
+ * public price less the discount entered (else the average cost), below it is issued at the average cost. Posting does it and posts the journal entry; a posted adjustment can't
  * change.
  *
  * The draft is created with its first line; its id then goes into the window's URL, so the window opens it again.
@@ -93,6 +97,8 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
   const [errorMessage, setErrorMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const productRef = useRef(null);
+  const batchRef = useRef(null);
+  const expiryRef = useRef(null);
   const countedRef = useRef(null);
   const discountRef = useRef(null);
   const okRef = useRef(null);
@@ -154,6 +160,8 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     const errors = {
       warehouseId: header.warehouseId == null ? 'حدّد المخزن أولاً' : null,
       productId: entry.productId == null ? 'حدّد الصنف' : null,
+      batchNumber: entry.batchNumber.trim().length > MAX_BATCH_NUMBER_LENGTH
+        ? `الحد الأقصى ${MAX_BATCH_NUMBER_LENGTH} حرف` : null,
       countedQuantity: counted != null ? null : 'عدد صحيح من الوحدات',
       discountPercent: discountEntered && !discount ? 'من 0 إلى 100، حتى 3 أرقام عشرية' : null,
     };
@@ -173,6 +181,9 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     // As text, so no number passes through a JavaScript number
     const saved = await send(`${API}/${id}/lines`, 'PUT', {
       productId: entry.productId,
+      // Empty: the stock from before batches; a new batch's expiry date is required by the backend
+      batchNumber: entry.batchNumber.trim(),
+      expiryDate: entry.expiryDate || null,
       countedQuantity: counted,
       discountPercent: discountEntered ? normalizeDecimalText(entry.discountPercent) : null,
     });
@@ -184,7 +195,9 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
         }&adjustmentId=${encodeURIComponent(id)}`);
     }
     if (saved) {
-      setEntry(EMPTY_ENTRY);
+      // The product stays selected (its next batch is often counted next); the cursor goes back to it, where Enter
+      // moves on to the batch, and typing picks another product
+      setEntry((previous) => ({ ...EMPTY_ENTRY, productId: previous.productId }));
       setEntryErrors({});
       productRef.current?.focus();
     }
@@ -218,21 +231,24 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
   };
 
   /**
-   * Enter in the entry row moves to the next field: product → counted quantity → discount → OK, and Enter on OK
+   * Enter in the entry row moves to the next field: product → batch → expiry → counted quantity → discount → OK,
+   * and Enter on OK
    * (a button) sends the line. Not when ComboBox2 used it to pick from its open list (it prevents the default then).
    */
   const onEntryKeyDown = (event) => {
     if (event.key !== 'Enter' || event.defaultPrevented) {
       return;
     }
-    const order = [productRef, countedRef, discountRef, okRef];
+    const order = [productRef, batchRef, expiryRef, countedRef, discountRef, okRef];
     const index = order.findIndex((ref) => ref.current === event.target);
     // OK is last: Enter on it is a click, which sends the line
     const next = index >= 0 ? order[index + 1] : undefined;
     if (next?.current) {
       event.preventDefault();
       next.current.focus();
-      next.current.select?.();
+      if (next.current.type !== 'date') {
+        next.current.select?.();
+      }
     }
   };
 
@@ -242,19 +258,29 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     // in its field before it's selected, and typing replaces it instead of adding to it
     flushSync(() => {
       setEntry({
-        productId: line.productId, countedQuantity: line.countedQuantity, discountPercent: line.discountPercent ?? '',
+        productId: line.productId, batchNumber: line.batchNumber, expiryDate: line.expiryDate ?? '',
+        countedQuantity: line.countedQuantity, discountPercent: line.discountPercent ?? '',
       });
       setEntryErrors({});
     });
     countedRef.current?.focus();
     countedRef.current?.select();
   };
-  const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId);
+  const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId
+    && line.batchNumber === entry.batchNumber.trim());
 
   // Rebuilt every render: the delete buttons need the current adjustment and busy state, and the grid only
   // redraws the cells whose values changed
   const columnDefs = [
     { field: 'productName', headerName: 'الصنف', flex: 2, minWidth: 140 },
+    {
+      field: 'batchNumber', headerName: 'التشغيلة', flex: 1, minWidth: 110,
+      valueFormatter: ({ value, node }) => (node.rowPinned ? '' : value || NO_BATCH_LABEL),
+    },
+    {
+      field: 'expiryDate', headerName: 'الصلاحية', flex: 1, minWidth: 110,
+      cellStyle: NUMBER_CELL,
+    },
     {
       field: 'publicPrice', headerName: 'سعر الجمهور', flex: 1, minWidth: 90,
       valueFormatter: ({ value }) => formatAmount(value), cellStyle: NUMBER_CELL,
@@ -362,6 +388,17 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
           onChange={(productId) => setEntry((previous) => ({ ...previous, productId }))} />
         {entryErrors.productId && <Typography variant="caption" color="error">{entryErrors.productId}</Typography>}
       </Box>
+      <TextField size="small" label="التشغيلة" placeholder={NO_BATCH_LABEL} value={entry.batchNumber}
+        sx={{ flex: 1, minWidth: 100 }}
+        onChange={(event) => setEntry((previous) => ({ ...previous, batchNumber: event.target.value }))}
+        inputRef={batchRef}
+        error={!!entryErrors.batchNumber} helperText={entryErrors.batchNumber}
+        slotProps={{ htmlInput: { dir: 'ltr' } }} />
+      <TextField size="small" label="الصلاحية" type="date" value={entry.expiryDate} sx={{ flex: 1, minWidth: 140 }}
+        onChange={(event) => setEntry((previous) => ({ ...previous, expiryDate: event.target.value }))}
+        inputRef={expiryRef}
+        helperText="للتشغيلة الجديدة"
+        slotProps={{ inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } }} />
       <TextField size="small" label="الكمية الفعلية" value={entry.countedQuantity} sx={{ flex: 1, minWidth: 110 }}
         onChange={(event) => setEntry((previous) => ({ ...previous, countedQuantity: event.target.value }))}
         inputRef={countedRef}
@@ -395,7 +432,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
           enableRtl
           enableCellTextSelection
           ensureDomOrder
-          overlayNoRowsTemplate="<span>أدخل الأصناف واحداً واحداً: الصنف والكمية الفعلية والخصم ثم OK</span>"
+          overlayNoRowsTemplate="<span>أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والكمية الفعلية ثم OK</span>"
         />
       </AgGridProvider>
     </Box>
