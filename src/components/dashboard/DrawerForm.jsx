@@ -92,6 +92,17 @@ export default function DrawerForm({ children, backgroundColor }) {
           { linkText: 'ادخال تصنيف العملاء', linkAddr: `/dashboard/form?schemaName=customer_categories&formTitle=${encodeURIComponent('ادخال تصنيف العملاء')}` },
           { linkText: 'تقرير تصنيف العملاء', linkAddr: `/dashboard/report?reportName=customerCategoriesReport&formTitle=${encodeURIComponent('تقرير تصنيف العملاء')}` },
           { linkText: 'تقرير العملاء', linkAddr: `/dashboard/report?reportName=customersReport&formTitle=${encodeURIComponent('تقرير العملاء')}` },
+          { linkText: 'ادخال الموردين', linkAddr: `/dashboard/form?schemaName=suppliers&formTitle=${encodeURIComponent('ادخال الموردين')}` },
+          { linkText: 'ادخال تصنيف الموردين', linkAddr: `/dashboard/form?schemaName=supplier_categories&formTitle=${encodeURIComponent('ادخال تصنيف الموردين')}` },
+          { linkText: 'تقرير تصنيف الموردين', linkAddr: `/dashboard/report?reportName=supplierCategoriesReport&formTitle=${encodeURIComponent('تقرير تصنيف الموردين')}` },
+          { linkText: 'تقرير الموردين', linkAddr: `/dashboard/report?reportName=suppliersReport&formTitle=${encodeURIComponent('تقرير الموردين')}` },
+          { linkText: 'ادخال الأصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الأصناف')}` },
+          { linkText: 'ادخال تصنيف الأصناف', linkAddr: `/dashboard/form?schemaName=product_categories&formTitle=${encodeURIComponent('ادخال تصنيف الأصناف')}` },
+          { linkText: 'ادخال المخازن', linkAddr: `/dashboard/form?schemaName=warehouses&formTitle=${encodeURIComponent('ادخال المخازن')}` },
+          { linkText: 'تسوية مخزون', linkAddr: `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}` },
+          { linkText: 'تقرير أرصدة المخزون', linkAddr: `/dashboard/report?reportName=stockBalancesReport&formTitle=${encodeURIComponent('تقرير أرصدة المخزون')}` },
+          { linkText: 'تقرير تسويات المخزون', linkAddr: `/dashboard/report?reportName=stockAdjustmentsReport&formTitle=${encodeURIComponent('تقرير تسويات المخزون')}` },
+          { linkText: 'تقرير حركات المخزون', linkAddr: `/dashboard/report?reportName=stockMovementsReport&formTitle=${encodeURIComponent('تقرير حركات المخزون')}` },
         ].map(({ linkText, linkAddr }, index) => (
           // Opens like the report grid's links: a dashboard window or a new tab (see useOpenLink)
           <ListItem key={index} disablePadding>

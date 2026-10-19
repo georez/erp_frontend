@@ -47,6 +47,7 @@ import {
 import { AuthContext } from '@/components/AuthProvider';
 
 const modules = [AllCommunityModule];
+const NUMBER_CELL = { direction: 'ltr' };
 
 // react-querybuilder touches the DOM on load, so it is only rendered in the browser
 const QueryBuilder = dynamic(
@@ -528,6 +529,9 @@ export default function Report({
           field: column.field,
           headerName: column.headerName,
           type: column.type,
+          // Numbers left to right inside the right-to-left grid, so a sign stays in front ("-7.5", not "7.5-");
+          // still aligned as before (the grid aligns numeric cells with an absolute text-align)
+          ...(column.type === 'numericColumn' && { cellStyle: NUMBER_CELL }),
           hide: visibleColumns[column.field] === false,
           ...(column.link && {
             cellRenderer: LinkCell,

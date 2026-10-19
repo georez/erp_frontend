@@ -274,10 +274,20 @@ export function validateReportParams(paramFields, values) {
 }
 
 /**
- * The dashboard URL of the CRUD form that a linked report cell opens (the same URL the form itself uses),
- * or null when the row has no id to open.
+ * The pages of documents a report may link to (a link's document), and the URL parameter each takes its id in.
+ * The backend accepts only these names in report.json (SchemaNameValidator.DOCUMENT_PAGES).
+ */
+const DOCUMENT_PAGES = Object.freeze({
+  'stock-adjustment': 'adjustmentId',
+});
+
+/**
+ * The dashboard URL that a linked report cell opens (the same URL the form itself uses): a CRUD form
+ * (link.schemaName) or a document's page (link.document). Null when the row has no id to open, or for a document
+ * this frontend has no page for.
  *
- * @param {{schemaName: string, idColumn: string, formTitle: string}} link  a column's link, from the report metadata
+ * @param {{schemaName?: string, document?: string, idColumn: string, formTitle: string}} link  a column's link,
+ *   from the report metadata
  * @param {object} row  the result row
  * @returns {string|null}
  */
@@ -285,6 +295,11 @@ export function buildLinkUrl(link, row) {
   const id = row?.[link.idColumn];
   if (id === null || id === undefined || id === '') {
     return null;
+  }
+  if (link.document) {
+    const idParam = Object.hasOwn(DOCUMENT_PAGES, link.document) ? DOCUMENT_PAGES[link.document] : null;
+    return idParam && `/dashboard/${link.document}?formTitle=${encodeURIComponent(link.formTitle)
+      }&${idParam}=${encodeURIComponent(String(id))}`;
   }
   return `/dashboard/form?schemaName=${encodeURIComponent(link.schemaName)
     }&formTitle=${encodeURIComponent(link.formTitle)

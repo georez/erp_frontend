@@ -185,6 +185,14 @@ test("a linked cell opens the CRUD form of the row's record", () => {
   });
 });
 
+test("a document's link opens its page with the id in the page's parameter", () => {
+  const link = { document: 'stock-adjustment', idColumn: 'id', formTitle: 'تسوية مخزون' };
+  assert.equal(buildLinkUrl(link, { id: 3 }),
+    `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}&adjustmentId=3`);
+  assert.equal(buildLinkUrl({ ...link, document: 'no-such-page' }, { id: 3 }), null);
+  assert.equal(buildLinkUrl({ ...link, document: 'constructor' }, { id: 3 }), null);
+});
+
 test("the id comes from the link's id column, not the clicked column", () => {
   const link = { schemaName: 'customer_categories', idColumn: 'customer_category_id', formTitle: 'T' };
   const row = { id: 1, customer_category_id: '42', customer_category_name: 'x' };

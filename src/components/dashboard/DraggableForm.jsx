@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import LZString from 'lz-string';
 
 export default function DraggableForm({
-  x = 20, y = 60, width = 320, height = 200,
+  x = 20, y = 60, width = 900, height = 600,
   url, formId, formTitle,
   children
 }) {

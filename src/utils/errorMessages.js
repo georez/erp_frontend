@@ -61,9 +61,13 @@ export const ERROR_MESSAGES = Object.freeze({
   LINE_ACCOUNT_NOT_LEAF:
     'السطر {line}: الحساب "{accountName}" (رقم {accountId}) حساب رئيسي، والترحيل يكون على الحسابات الفرعية فقط',
   LINE_ACCOUNT_TAKES_NO_CUSTOMER: 'السطر {line}: الحساب "{accountName}" (رقم {accountId}) لا يُحدَّد له عميل',
-  LINE_ACCOUNT_NOT_POSTABLE_YET: 'السطر {line}: لا يمكن الترحيل على الحساب "{accountName}" (رقم {accountId}) حالياً',
+  LINE_ACCOUNT_NEEDS_STOCK_DOCUMENT:
+    'السطر {line}: الحساب "{accountName}" (رقم {accountId}) لا يُرحَّل عليه إلا من مستندات المخزون',
   LINE_NEEDS_CUSTOMER: 'السطر {line}: حدّد العميل للحساب "{accountName}" (رقم {accountId})',
   LINE_CUSTOMER_NOT_FOUND: 'السطر {line}: العميل رقم {customerId} غير موجود',
+  LINE_ACCOUNT_TAKES_NO_SUPPLIER: 'السطر {line}: الحساب "{accountName}" (رقم {accountId}) لا يُحدَّد له مورد',
+  LINE_NEEDS_SUPPLIER: 'السطر {line}: حدّد المورد للحساب "{accountName}" (رقم {accountId})',
+  LINE_SUPPLIER_NOT_FOUND: 'السطر {line}: المورد رقم {supplierId} غير موجود',
   ENTRY_NOT_FOUND: 'القيد رقم {entryId} غير موجود',
   ENTRY_NO_AMOUNTS: 'القيد رقم {entryId} ليس به مبالغ',
   ENTRY_NOT_BALANCED: 'القيد رقم {entryId} غير متوازن: المدين {debit} والدائن {credit}',
@@ -72,6 +76,30 @@ export const ERROR_MESSAGES = Object.freeze({
   ENTRY_DRAFT_CANT_BE_REVERSED: 'القيد رقم {entryId} مسودة؛ عدّله أو احذفه بدلاً من عكسه',
   ENTRY_ALREADY_REVERSED: 'القيد رقم {entryId} تم عكسه من قبل',
   REVERSAL_BEFORE_ORIGINAL: 'لا يمكن أن يكون تاريخ القيد العكسي قبل تاريخ القيد رقم {entryId}',
+  ENTRY_INVENTORY_NOT_MATCHING_STOCK: 'مبالغ حساب المخزون في القيد رقم {entryId} لا تساوي قيمة حركات المخزون',
+  ENTRY_MOVES_STOCK: 'القيد رقم {entryId} به حركات مخزون، فلا يُعكَس؛ صحّحه بمستند مخزون آخر',
+
+  // --- stock ---
+  WAREHOUSE_NOT_FOUND: 'المخزن رقم {warehouseId} غير موجود',
+  STOCK_PRODUCT_NOT_FOUND: 'السطر {line}: الصنف رقم {productId} غير موجود',
+  STOCK_QUANTITY_INVALID: 'السطر {line}: الكمية غير صحيحة (عدد صحيح من الوحدات لا يساوي صفراً)',
+  STOCK_INSUFFICIENT: 'السطر {line}: الرصيد غير كافٍ من "{productName}" في "{warehouseName}" (المتاح {available})',
+  STOCK_DOCUMENT_EMPTY: 'المستند ليس به أسطر',
+
+  // --- stock adjustments ---
+  WAREHOUSE_REQUIRED: 'حدّد المخزن',
+  STOCK_DESCRIPTION_TOO_LONG: 'البيان أطول من المسموح (الحد الأقصى {maxLength} حرف)',
+  STOCK_OFFSET_ACCOUNT_INVALID: 'الحساب رقم {accountId} لا يصلح لفروقات المخزون: يجب أن يكون حساباً فرعياً عادياً',
+  STOCK_ADJUSTMENT_NOT_FOUND: 'تسوية المخزون رقم {adjustmentId} غير موجودة',
+  STOCK_ADJUSTMENT_POSTED: 'تسوية المخزون رقم {adjustmentId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بتسوية أخرى',
+  STOCK_ADJUSTMENT_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في التسوية',
+  PRODUCT_REQUIRED: 'حدّد الصنف',
+  PRODUCT_NOT_FOUND: 'الصنف رقم {productId} غير موجود',
+  COUNTED_QUANTITY_INVALID: 'الكمية الفعلية غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
+  DISCOUNT_INVALID: 'نسبة الخصم غير صحيحة (من 0 إلى 100، والحد الأقصى 3 أرقام عشرية)',
+  STOCK_DISCOUNT_REQUIRED: 'لا يوجد رصيد من "{productName}" فلا يوجد متوسط تكلفة: أدخل نسبة الخصم في سطره',
+  STOCK_LINE_VALUE_TOO_LARGE: 'قيمة فرق "{productName}" أكبر من المسموح',
+  STOCK_ADJUSTMENT_NO_DIFFERENCE: 'كل الكميات الفعلية تساوي الرصيد، فلا يوجد ما يُرحَّل',
 });
 
 const PLACEHOLDER = /\{(\w+)\}/g;
