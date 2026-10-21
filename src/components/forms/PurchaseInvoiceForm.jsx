@@ -44,8 +44,8 @@ function Total({ label, value, strong }) {
 
 /**
  * The purchase invoice document: stock bought from a supplier, on credit. A draft is filled one batch at a time: the
- * entry row sends a product's batch (its number, and the expiry date of a new batch), the quantity paid for, a bonus
- * quantity (free units) and a discount off the public price to the backend (OK); the grid shows the lines as the
+ * entry row sends a product's batch (its number and expiry date: the same number with another date is another
+ * batch), the quantity paid for, a bonus quantity (free units) and a discount off the public price to the backend (OK); the grid shows the lines as the
  * backend has them, with the price and VAT rate now and the amounts they give. Posting receives the stock and posts
  * the journal entry; what the supplier is owed is the total rounded to 2 decimals. A posted invoice can't change.
  *
@@ -133,6 +133,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       productId: entry.productId == null ? 'حدّد الصنف' : null,
       batchNumber: entry.batchNumber.trim() === '' ? 'مطلوبة'
         : entry.batchNumber.trim().length > MAX_BATCH_NUMBER_LENGTH ? `الحد الأقصى ${MAX_BATCH_NUMBER_LENGTH} حرف` : null,
+      expiryDate: entry.expiryDate ? null : 'مطلوبة',
       quantity: quantity != null ? null : 'عدد صحيح',
       bonusQuantity: bonus != null ? null : 'عدد صحيح',
       discountPercent: discountEntered && !discount ? 'من 0 إلى 100، حتى 3 أرقام عشرية' : null,
@@ -226,7 +227,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     quantityRef.current?.select();
   };
   const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId
-    && line.batchNumber === entry.batchNumber.trim());
+    && line.batchNumber === entry.batchNumber.trim() && line.expiryDate === entry.expiryDate);
 
   const amountColumn = (field, headerName, minWidth = 90) => ({
     field, headerName, flex: 1, minWidth, valueFormatter: ({ value }) => formatAmount(value), cellStyle: NUMBER_CELL,
@@ -315,7 +316,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       </Box>
       {entryField('batchNumber', batchRef, 'التشغيلة', { slotProps: { htmlInput: { dir: 'ltr' } } })}
       {entryField('expiryDate', expiryRef, 'الصلاحية', {
-        type: 'date', sx: { flex: 1, minWidth: 140 }, helperText: entryErrors.expiryDate ?? 'للتشغيلة الجديدة',
+        type: 'date', sx: { flex: 1, minWidth: 140 }, helperText: entryErrors.expiryDate,
         slotProps: { inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } },
       })}
       {entryField('quantity', quantityRef, 'الكمية', { slotProps: { htmlInput: numberField } })}

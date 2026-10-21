@@ -87,8 +87,7 @@ export const ERROR_MESSAGES = Object.freeze({
   STOCK_DOCUMENT_EMPTY: 'المستند ليس به أسطر',
   STOCK_BATCH_REQUIRED: 'السطر {line}: المخزون الوارد يحتاج إلى رقم تشغيلة',
   STOCK_BATCH_NUMBER_TOO_LONG: 'السطر {line}: رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
-  STOCK_BATCH_EXPIRY_REQUIRED: 'السطر {line}: التشغيلة "{batchNumber}" جديدة، فأدخل تاريخ صلاحيتها',
-  STOCK_BATCH_EXPIRY_MISMATCH: 'السطر {line}: صلاحية التشغيلة "{batchNumber}" هي {expiryDate}',
+  STOCK_BATCH_EXPIRY_REQUIRED: 'السطر {line}: أدخل تاريخ صلاحية التشغيلة "{batchNumber}"',
   STOCK_BATCH_NOT_FOUND: 'السطر {line}: لا توجد تشغيلة "{batchNumber}" للصنف "{productName}"',
   STOCK_BATCH_INSUFFICIENT: 'السطر {line}: رصيد التشغيلة "{batchNumber}" من "{productName}" غير كافٍ (المتاح {available})',
 
@@ -108,8 +107,8 @@ export const ERROR_MESSAGES = Object.freeze({
   STOCK_ADJUSTMENT_NO_DIFFERENCE: 'كل الكميات الفعلية تساوي الرصيد، فلا يوجد ما يُرحَّل',
   BATCH_NUMBER_REQUIRED: 'أدخل رقم التشغيلة (المخزون الجديد يُسجَّل في تشغيلة بتاريخ صلاحيتها)',
   BATCH_NUMBER_TOO_LONG: 'رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
-  BATCH_EXPIRY_REQUIRED: 'التشغيلة "{batchNumber}" جديدة، فأدخل تاريخ صلاحيتها',
-  BATCH_EXPIRY_MISMATCH: 'صلاحية التشغيلة "{batchNumber}" هي {expiryDate}، وليست التاريخ المُدخَل',
+  BATCH_EXPIRY_REQUIRED: 'أدخل تاريخ صلاحية التشغيلة "{batchNumber}"',
+  BATCH_EXPIRY_AMBIGUOUS: 'للتشغيلة "{batchNumber}" أكثر من تاريخ صلاحية، فأدخل تاريخ صلاحيتها',
 
   // --- purchase invoices ---
   SUPPLIER_REQUIRED: 'حدّد المورد',

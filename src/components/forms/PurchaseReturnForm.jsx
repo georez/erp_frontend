@@ -25,7 +25,7 @@ import {
 const modules = [AllCommunityModule];
 const API = '/api/purchase-returns';
 const EMPTY_HEADER = { supplierId: null, warehouseId: null, purchaseInvoiceId: '', description: '' };
-const EMPTY_ENTRY = { productId: null, batchNumber: '', quantity: '', discountPercent: '' };
+const EMPTY_ENTRY = { productId: null, batchNumber: '', expiryDate: '', quantity: '', discountPercent: '' };
 // A line without a batch: the goods come out of the earliest expiring batches first
 const EARLIEST_EXPIRY_LABEL = 'الأقدم صلاحية';
 
@@ -41,7 +41,8 @@ function Total({ label, value, strong }) {
 
 /**
  * The purchase return document: stock sent back to a supplier. A draft is filled one line at a time: a product, its
- * batch (or none: the earliest expiring first), the quantity and a discount. Against a purchase invoice, each unit is
+ * batch (or none: the earliest expiring first) with its expiry date when its number has several, the quantity and a
+ * discount. Against a purchase invoice, each unit is
  * credited at what it cost on the invoice (its bonus spread over all its units), the discount field is off, the batch
  * defaults to the invoice's, and a line that came with a bonus goes back whole. Posting takes
  * the goods out of stock at the average cost, debits the supplier with the total (rounded to 2 decimals), and puts the
@@ -76,6 +77,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
   const [entryErrors, setEntryErrors] = useState({});
   const { send, busy, errorMessage, setErrorMessage } = useDocumentRequests(csrfFetch);
   const productRef = useRef(null);
+  const expiryRef = useRef(null);
   const batchRef = useRef(null);
   const quantityRef = useRef(null);
   const discountRef = useRef(null);
@@ -127,6 +129,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       productId: entry.productId == null ? 'حدّد الصنف' : null,
       batchNumber: entry.batchNumber.trim().length > MAX_BATCH_NUMBER_LENGTH
         ? `الحد الأقصى ${MAX_BATCH_NUMBER_LENGTH} حرف` : null,
+      expiryDate: entry.expiryDate && !entry.batchNumber.trim() ? 'أدخل التشغيلة' : null,
       quantity: quantity != null && Big(quantity).signum() > 0 ? null : 'عدد صحيح أكبر من صفر',
       discountPercent: discountEntered && !discount ? 'من 0 إلى 100، حتى 3 أرقام عشرية' : null,
     };
@@ -147,6 +150,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     const saved = await send(`${API}/${id}/lines`, 'PUT', {
       productId: entry.productId,
       batchNumber: entry.batchNumber.trim() || null,
+      expiryDate: entry.expiryDate || null,
       quantity,
       discountPercent: discountEntered ? normalizeDecimalText(entry.discountPercent) : null,
     });
@@ -192,8 +196,9 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     }
   };
 
-  // Enter moves product → batch → quantity → discount → OK, and Enter on OK sends the line
-  const onEntryKeyDown = (event) => moveOnEnter(event, [productRef, batchRef, quantityRef, discountRef, okRef]);
+  // Enter moves product → batch → expiry → quantity → discount → OK, and Enter on OK sends the line
+  const onEntryKeyDown = (event) => moveOnEnter(event,
+    [productRef, batchRef, expiryRef, quantityRef, discountRef, okRef]);
 
   /** A grid row into the entry row, to change it; OK then replaces the line. */
   const editLine = (line) => {
@@ -201,7 +206,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     // selected, and typing replaces it
     flushSync(() => {
       setEntry({
-        productId: line.productId, batchNumber: line.batchNumber ?? '', quantity: line.quantity,
+        productId: line.productId, batchNumber: line.batchNumber ?? '', expiryDate: line.expiryDate ?? '',
+        quantity: line.quantity,
         discountPercent: line.discountPercent,
       });
       setEntryErrors({});
@@ -210,7 +216,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     quantityRef.current?.select();
   };
   const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId
-    && (line.batchNumber ?? '') === entry.batchNumber.trim());
+    && (line.batchNumber ?? '') === entry.batchNumber.trim()
+    && (!entry.expiryDate || line.expiryDate === entry.expiryDate));
 
   const amountColumn = (field, headerName, minWidth = 90) => ({
     field, headerName, flex: 1, minWidth, valueFormatter: ({ value }) => formatAmount(value), cellStyle: NUMBER_CELL,
@@ -223,6 +230,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       field: 'batchNumber', headerName: 'التشغيلة', flex: 1, minWidth: 110,
       valueFormatter: ({ value }) => value ?? EARLIEST_EXPIRY_LABEL,
     },
+    { field: 'expiryDate', headerName: 'الصلاحية', flex: 1, minWidth: 110, cellStyle: NUMBER_CELL },
     amountColumn('quantity', 'الكمية', 85),
     amountColumn('publicPrice', 'السعر', 85),
     amountColumn('discountPercent', 'الخصم %', 90),
@@ -299,6 +307,10 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       </Box>
       {entryField('batchNumber', batchRef, 'التشغيلة', {
         placeholder: invoiceIdText ? 'تشغيلة الفاتورة' : EARLIEST_EXPIRY_LABEL,
+        slotProps: { inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } },
+      })}
+      {entryField('expiryDate', expiryRef, 'الصلاحية', {
+        type: 'date', sx: { flex: 1, minWidth: 140 }, helperText: entryErrors.expiryDate ?? 'تُترك إن كان للتشغيلة تاريخ واحد',
         slotProps: { inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } },
       })}
       {entryField('quantity', quantityRef, 'الكمية', { slotProps: { htmlInput: { inputMode: 'numeric', dir: 'ltr' } } })}

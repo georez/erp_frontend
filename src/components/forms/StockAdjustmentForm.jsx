@@ -31,8 +31,9 @@ const isAverageDiscount = (line) => line.discountPercent == null || Big(line.dif
 
 /**
  * The stock adjustment document: the stock counted in one warehouse. A draft is filled one batch at a time: the
- * entry row sends a product's batch (its number, and the expiry date of a new batch) and its counted quantity (whole
- * units: the products are pharmaceuticals) to the backend (OK), and the grid shows the lines as the backend has them,
+ * entry row sends a product's batch (its number and expiry date; the date may be left out when the number has only
+ * one) and its counted quantity (whole units: the products are pharmaceuticals) to the backend (OK), and the grid
+ * shows the lines as the backend has them,
  * with what posting would do with the batch's stock now: counted above the balance is received at the product's
  * public price less the discount entered (else the average cost), below it is issued at the average cost. Posting
  * does it and posts the journal entry; a posted adjustment can't change.
@@ -125,7 +126,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     // As text, so no number passes through a JavaScript number
     const saved = await send(`${API}/${id}/lines`, 'PUT', {
       productId: entry.productId,
-      // Empty: the stock from before batches; a new batch's expiry date is required by the backend
+      // Empty: the stock from before batches. No date: the number's only batch (the backend asks for it otherwise)
       batchNumber: entry.batchNumber.trim(),
       expiryDate: entry.expiryDate || null,
       countedQuantity: counted,
@@ -194,7 +195,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     countedRef.current?.select();
   };
   const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId
-    && line.batchNumber === entry.batchNumber.trim());
+    && line.batchNumber === entry.batchNumber.trim() && (!entry.expiryDate || line.expiryDate === entry.expiryDate));
 
   // Rebuilt every render: the delete buttons need the current adjustment and busy state, and the grid only
   // redraws the cells whose values changed
@@ -324,7 +325,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
       <TextField size="small" label="الصلاحية" type="date" value={entry.expiryDate} sx={{ flex: 1, minWidth: 140 }}
         onChange={(event) => setEntry((previous) => ({ ...previous, expiryDate: event.target.value }))}
         inputRef={expiryRef}
-        helperText="للتشغيلة الجديدة"
+        helperText={'تُترك إن كان للتشغيلة تاريخ واحد'}
         slotProps={{ inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } }} />
       <TextField size="small" label="الكمية الفعلية" value={entry.countedQuantity} sx={{ flex: 1, minWidth: 110 }}
         onChange={(event) => setEntry((previous) => ({ ...previous, countedQuantity: event.target.value }))}
