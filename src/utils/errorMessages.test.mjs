@@ -102,7 +102,6 @@ const BACKEND_CODES = {
   SUPPLIER_REQUIRED: [],
   SUPPLIER_NOT_FOUND: ['supplierId'],
   SUPPLIER_INVOICE_NUMBER_TOO_LONG: ['maxLength'],
-  SUPPLIER_INVOICE_DUPLICATE: ['supplierInvoiceNumber', 'invoiceId'],
   PURCHASE_INVOICE_NOT_FOUND: ['invoiceId'],
   PURCHASE_INVOICE_POSTED: ['invoiceId'],
   PURCHASE_INVOICE_LINE_NOT_FOUND: ['lineId'],
@@ -115,6 +114,7 @@ const BACKEND_CODES = {
   PURCHASE_RETURN_INVOICE_INVALID: ['invoiceId'],
   PRODUCT_NOT_ON_INVOICE: ['productName'],
   PURCHASE_RETURN_EXCEEDS_INVOICE: ['productName', 'batchNumber', 'available'],
+  PURCHASE_RETURN_WHOLE_LINE: ['productName', 'batchNumber', 'quantity'],
   RETURN_QUANTITY_INVALID: [],
   BATCH_NOT_FOUND: ['batchNumber'],
 };

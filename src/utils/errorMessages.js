@@ -115,7 +115,6 @@ export const ERROR_MESSAGES = Object.freeze({
   SUPPLIER_REQUIRED: 'حدّد المورد',
   SUPPLIER_NOT_FOUND: 'المورد رقم {supplierId} غير موجود',
   SUPPLIER_INVOICE_NUMBER_TOO_LONG: 'رقم فاتورة المورد أطول من المسموح (الحد الأقصى {maxLength} حرف)',
-  SUPPLIER_INVOICE_DUPLICATE: 'فاتورة المورد رقم "{supplierInvoiceNumber}" مُسجَّلة من قبل في فاتورة المشتريات رقم {invoiceId}',
   PURCHASE_INVOICE_NOT_FOUND: 'فاتورة المشتريات رقم {invoiceId} غير موجودة',
   PURCHASE_INVOICE_POSTED: 'فاتورة المشتريات رقم {invoiceId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بمرتجع مشتريات',
   PURCHASE_INVOICE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الفاتورة',
@@ -131,6 +130,8 @@ export const ERROR_MESSAGES = Object.freeze({
   PRODUCT_NOT_ON_INVOICE: 'الصنف "{productName}" ليس في فاتورة المشتريات',
   PURCHASE_RETURN_EXCEEDS_INVOICE:
     'لا يمكن إرجاع أكثر من {available} من "{productName}" (التشغيلة "{batchNumber}") من هذه الفاتورة',
+  PURCHASE_RETURN_WHOLE_LINE:
+    'التشغيلة "{batchNumber}" من "{productName}" جاءت ببونص: تُرجَع كلها ({quantity} وحدة) مرة واحدة أو لا تُرجَع',
   RETURN_QUANTITY_INVALID: 'الكمية المرتجعة غير صحيحة (عدد صحيح أكبر من صفر)',
   BATCH_NOT_FOUND: 'التشغيلة "{batchNumber}" غير موجودة',
 });

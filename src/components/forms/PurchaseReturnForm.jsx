@@ -41,8 +41,9 @@ function Total({ label, value, strong }) {
 
 /**
  * The purchase return document: stock sent back to a supplier. A draft is filled one line at a time: a product, its
- * batch (or none: the earliest expiring first), the quantity and a discount; against a purchase invoice, the price,
- * VAT rate and (unless entered) discount are the invoice's, and the batch defaults to the invoice's. Posting takes
+ * batch (or none: the earliest expiring first), the quantity and a discount. Against a purchase invoice, each unit is
+ * credited at what it cost on the invoice (its bonus spread over all its units), the discount field is off, the batch
+ * defaults to the invoice's, and a line that came with a bonus goes back whole. Posting takes
  * the goods out of stock at the average cost, debits the supplier with the total (rounded to 2 decimals), and puts the
  * difference between what the supplier credits and what the goods cost on purchase price differences.
  */
@@ -116,7 +117,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
 
   const saveEntry = async () => {
     const quantity = parseWholeUnits(entry.quantity);
-    const discountEntered = entry.discountPercent.trim() !== '';
+    // Against an invoice the units are credited at what they cost on it: no discount
+    const discountEntered = !invoiceIdText && entry.discountPercent.trim() !== '';
     const discount = discountEntered ? parsePercent(entry.discountPercent) : null;
     const errors = {
       header: header.supplierId == null ? 'حدّد المورد أولاً'
@@ -301,7 +303,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       })}
       {entryField('quantity', quantityRef, 'الكمية', { slotProps: { htmlInput: { inputMode: 'numeric', dir: 'ltr' } } })}
       {entryField('discountPercent', discountRef, 'الخصم %', {
-        placeholder: invoiceIdText ? 'خصم الفاتورة' : '0',
+        placeholder: invoiceIdText ? 'من الفاتورة' : '0', disabled: !!invoiceIdText,
+        value: invoiceIdText ? '' : entry.discountPercent,
         slotProps: { inputLabel: { shrink: true }, htmlInput: { inputMode: 'decimal', dir: 'ltr' } },
       })}
       <Button ref={okRef} variant="contained" startIcon={<CheckIcon />} disabled={busy} onClick={saveEntry}

@@ -82,15 +82,16 @@ export function useDocumentRequests(csrfFetch) {
 
 /**
  * For an entry row's onKeyDown: Enter moves to the next of the fields (refs, in order; the last is the OK button,
- * where Enter is a click, which sends the line). Not when ComboBox2 used it to pick from its open list (it prevents
- * the default then), nor in a field not in the list.
+ * where Enter is a click, which sends the line), skipping disabled ones. Not when ComboBox2 used it to pick from its
+ * open list (it prevents the default then), nor in a field not in the list.
  */
 export function moveOnEnter(event, fieldRefs) {
   if (event.key !== 'Enter' || event.defaultPrevented) {
     return;
   }
   const index = fieldRefs.findIndex((ref) => ref.current === event.target);
-  const next = index >= 0 ? fieldRefs[index + 1] : undefined;
+  // The next field that can take the cursor (a disabled one is skipped)
+  const next = index >= 0 ? fieldRefs.slice(index + 1).find((ref) => ref.current && !ref.current.disabled) : undefined;
   if (next?.current) {
     event.preventDefault();
     next.current.focus();
