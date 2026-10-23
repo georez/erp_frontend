@@ -101,6 +101,7 @@ const BACKEND_CODES = {
   OPENING_BALANCE_NOT_FOUND: ['openingBalanceId'],
   OPENING_BALANCE_POSTED: ['openingBalanceId'],
   OPENING_BALANCE_LINE_NOT_FOUND: ['lineId'],
+  OPENING_BALANCE_PRODUCT_HAS_MOVED: ['productName', 'warehouseName'],
   SUPPLIER_INVOICE_NUMBER_TOO_LONG: ['maxLength'],
   PURCHASE_INVOICE_NOT_FOUND: ['invoiceId'],
   PURCHASE_INVOICE_POSTED: ['invoiceId'],

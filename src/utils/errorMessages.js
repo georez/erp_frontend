@@ -115,6 +115,8 @@ export const ERROR_MESSAGES = Object.freeze({
   // --- opening balances ---
   OPENING_BALANCE_NOT_FOUND: 'الرصيد الافتتاحي رقم {openingBalanceId} غير موجود',
   OPENING_BALANCE_POSTED: 'الرصيد الافتتاحي رقم {openingBalanceId} مُرحَّل ولا يمكن تعديله؛ صحّحه بتسوية مخزون',
+  OPENING_BALANCE_PRODUCT_HAS_MOVED:
+    'للصنف "{productName}" حركات في "{warehouseName}" بالفعل، فلا يُدخَل له رصيد افتتاحي فيه؛ صحّح رصيده بتسوية مخزون',
   OPENING_BALANCE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الرصيد الافتتاحي',
 
   // --- purchase invoices ---
