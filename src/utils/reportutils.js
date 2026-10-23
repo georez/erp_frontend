@@ -280,6 +280,7 @@ export function validateReportParams(paramFields, values) {
  */
 const DOCUMENT_PAGES = Object.freeze({
   'stock-adjustment': 'adjustmentId',
+  'opening-balance': 'openingBalanceId',
   'purchase-invoice': 'invoiceId',
   'purchase-return': 'returnId',
 });

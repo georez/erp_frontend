@@ -15,6 +15,7 @@ export const ERROR_MESSAGES = Object.freeze({
   FIELD_INVALID: 'قيمة غير صحيحة في الحقل "{field}"',
   FIELD_NUMBER_INVALID:
     'رقم غير صحيح في الحقل "{field}" (الحد الأقصى {integerDigits} رقم قبل العلامة العشرية و{decimals} بعدها)',
+  FIELD_VALUE_TAKEN: 'القيمة المدخلة في "{field}" موجودة في سجل آخر',
   FIELD_TOO_LONG: 'النص في الحقل "{field}" أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   FIELD_INVALID_CHOICE: 'اختيار غير صحيح في الحقل "{field}"',
   INVALID_ID: 'رقم سجل غير صحيح: {id}',
@@ -85,41 +86,45 @@ export const ERROR_MESSAGES = Object.freeze({
   STOCK_QUANTITY_INVALID: 'السطر {line}: الكمية غير صحيحة (عدد صحيح من الوحدات لا يساوي صفراً)',
   STOCK_INSUFFICIENT: 'السطر {line}: الرصيد غير كافٍ من "{productName}" في "{warehouseName}" (المتاح {available})',
   STOCK_DOCUMENT_EMPTY: 'المستند ليس به أسطر',
-  STOCK_BATCH_REQUIRED: 'السطر {line}: المخزون الوارد يحتاج إلى رقم تشغيلة',
-  STOCK_BATCH_NUMBER_TOO_LONG: 'السطر {line}: رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
-  STOCK_BATCH_EXPIRY_REQUIRED: 'السطر {line}: أدخل تاريخ صلاحية التشغيلة "{batchNumber}"',
   STOCK_BATCH_NOT_FOUND: 'السطر {line}: لا توجد تشغيلة "{batchNumber}" للصنف "{productName}"',
   STOCK_BATCH_INSUFFICIENT: 'السطر {line}: رصيد التشغيلة "{batchNumber}" من "{productName}" غير كافٍ (المتاح {available})',
 
-  // --- stock adjustments ---
+  // --- stock documents, alike ---
   WAREHOUSE_REQUIRED: 'حدّد المخزن',
+  SUPPLIER_REQUIRED: 'حدّد المورد',
+  SUPPLIER_NOT_FOUND: 'المورد رقم {supplierId} غير موجود',
   STOCK_DESCRIPTION_TOO_LONG: 'البيان أطول من المسموح (الحد الأقصى {maxLength} حرف)',
-  STOCK_OFFSET_ACCOUNT_INVALID: 'الحساب رقم {accountId} لا يصلح لفروقات المخزون: يجب أن يكون حساباً فرعياً عادياً',
+  PRODUCT_REQUIRED: 'حدّد الصنف',
+  PRODUCT_NOT_FOUND: 'الصنف رقم {productId} غير موجود',
+  QUANTITY_INVALID: 'الكمية غير صحيحة (عدد صحيح من الوحدات، واحد أو أكثر)',
+  DISCOUNT_INVALID: 'نسبة الخصم غير صحيحة (من 0 إلى 100، والحد الأقصى 3 أرقام عشرية)',
+  DISCOUNT_REQUIRED: 'أدخل نسبة الخصم',
+  STOCK_LINE_VALUE_TOO_LARGE: 'قيمة سطر "{productName}" أكبر من المسموح',
+  BATCH_NUMBER_REQUIRED: 'أدخل رقم التشغيلة',
+  BATCH_NUMBER_TOO_LONG: 'رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
+  BATCH_EXPIRY_REQUIRED: 'أدخل تاريخ صلاحية التشغيلة',
+
+  // --- stock adjustments ---
   STOCK_ADJUSTMENT_NOT_FOUND: 'تسوية المخزون رقم {adjustmentId} غير موجودة',
   STOCK_ADJUSTMENT_POSTED: 'تسوية المخزون رقم {adjustmentId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بتسوية أخرى',
   STOCK_ADJUSTMENT_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في التسوية',
-  PRODUCT_REQUIRED: 'حدّد الصنف',
-  PRODUCT_NOT_FOUND: 'الصنف رقم {productId} غير موجود',
   COUNTED_QUANTITY_INVALID: 'الكمية الفعلية غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
-  DISCOUNT_INVALID: 'نسبة الخصم غير صحيحة (من 0 إلى 100، والحد الأقصى 3 أرقام عشرية)',
-  STOCK_DISCOUNT_REQUIRED: 'لا يوجد رصيد من "{productName}" فلا يوجد متوسط تكلفة: أدخل نسبة الخصم في سطره',
-  STOCK_LINE_VALUE_TOO_LARGE: 'قيمة فرق "{productName}" أكبر من المسموح',
+  STOCK_DISCOUNT_REQUIRED: 'الكمية الفعلية من "{productName}" صارت أكبر من الرصيد: أدخل نسبة الخصم في سطره',
   STOCK_ADJUSTMENT_NO_DIFFERENCE: 'كل الكميات الفعلية تساوي الرصيد، فلا يوجد ما يُرحَّل',
-  BATCH_NUMBER_REQUIRED: 'أدخل رقم التشغيلة (المخزون الجديد يُسجَّل في تشغيلة بتاريخ صلاحيتها)',
-  BATCH_NUMBER_TOO_LONG: 'رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
-  BATCH_EXPIRY_REQUIRED: 'أدخل تاريخ صلاحية التشغيلة "{batchNumber}"',
-  BATCH_EXPIRY_AMBIGUOUS: 'للتشغيلة "{batchNumber}" أكثر من تاريخ صلاحية، فأدخل تاريخ صلاحيتها',
+
+  // --- opening balances ---
+  OPENING_BALANCE_NOT_FOUND: 'الرصيد الافتتاحي رقم {openingBalanceId} غير موجود',
+  OPENING_BALANCE_POSTED: 'الرصيد الافتتاحي رقم {openingBalanceId} مُرحَّل ولا يمكن تعديله؛ صحّحه بتسوية مخزون',
+  OPENING_BALANCE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الرصيد الافتتاحي',
 
   // --- purchase invoices ---
-  SUPPLIER_REQUIRED: 'حدّد المورد',
-  SUPPLIER_NOT_FOUND: 'المورد رقم {supplierId} غير موجود',
   SUPPLIER_INVOICE_NUMBER_TOO_LONG: 'رقم فاتورة المورد أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   PURCHASE_INVOICE_NOT_FOUND: 'فاتورة المشتريات رقم {invoiceId} غير موجودة',
   PURCHASE_INVOICE_POSTED: 'فاتورة المشتريات رقم {invoiceId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بمرتجع مشتريات',
   PURCHASE_INVOICE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الفاتورة',
-  QUANTITY_INVALID: 'الكمية غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
-  BONUS_QUANTITY_INVALID: 'كمية البونص غير صحيحة (عدد صحيح من الوحدات، صفر أو أكثر)',
-  NOTHING_RECEIVED: 'السطر لا يُدخل أي وحدات: أدخل الكمية أو البونص',
+  PURCHASE_INVOICE_BATCHES_NOT_STARTED: 'أدخل أصناف الفاتورة رقم {invoiceId} أولاً، ثم انتقل إلى إدخال التشغيلات',
+  PURCHASE_INVOICE_BATCH_NOT_FOUND: 'التشغيلة رقم {batchId} غير موجودة في الفاتورة',
+  PURCHASE_INVOICE_BATCHES_INCOMPLETE: 'تشغيلات "{productName}" مجموعها {batched} والكمية {quantity}: يجب أن يتساويا',
 
   // --- purchase returns ---
   PURCHASE_RETURN_NOT_FOUND: 'مرتجع المشتريات رقم {returnId} غير موجود',
@@ -129,9 +134,6 @@ export const ERROR_MESSAGES = Object.freeze({
   PRODUCT_NOT_ON_INVOICE: 'الصنف "{productName}" ليس في فاتورة المشتريات',
   PURCHASE_RETURN_EXCEEDS_INVOICE:
     'لا يمكن إرجاع أكثر من {available} من "{productName}" (التشغيلة "{batchNumber}") من هذه الفاتورة',
-  PURCHASE_RETURN_WHOLE_LINE:
-    'التشغيلة "{batchNumber}" من "{productName}" جاءت ببونص: تُرجَع كلها ({quantity} وحدة) مرة واحدة أو لا تُرجَع',
-  RETURN_QUANTITY_INVALID: 'الكمية المرتجعة غير صحيحة (عدد صحيح أكبر من صفر)',
   BATCH_NOT_FOUND: 'التشغيلة "{batchNumber}" غير موجودة',
 });
 

@@ -1,6 +1,7 @@
 import SchemaCrud from '@/components/forms/SchemaCrud';
 import Report from '@/components/reports/Report';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
+import OpeningBalanceForm from '@/components/forms/OpeningBalanceForm';
 import PurchaseInvoiceForm from '@/components/forms/PurchaseInvoiceForm';
 import PurchaseReturnForm from '@/components/forms/PurchaseReturnForm';
 
@@ -10,6 +11,7 @@ const urlToComponentMap = {
   '/dashboard/form': (props) => <SchemaCrud {...props} />,
   '/dashboard/report': (props) => <Report {...props} />,
   '/dashboard/stock-adjustment': (props) => <StockAdjustmentForm {...props} />,
+  '/dashboard/opening-balance': (props) => <OpeningBalanceForm {...props} />,
   '/dashboard/purchase-invoice': (props) => <PurchaseInvoiceForm {...props} />,
   '/dashboard/purchase-return': (props) => <PurchaseReturnForm {...props} />,
 };

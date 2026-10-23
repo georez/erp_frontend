@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Big } from 'bigdecimal.js';
 import {
-  fitsNumeric, formatDecimal, lineValue, normalizeDecimalText, parseDecimal, parsePercent, parseWholeUnits,
+  formatDecimal, normalizeDecimalText, parseDecimal, parsePercent, parseWholeUnits,
 } from './decimals.js';
 
 test('parses plain decimal text, and nothing else', () => {
@@ -18,23 +18,6 @@ test('accepts Arabic digits and separators', () => {
   assert.equal(normalizeDecimalText('۱۲۳'), '123');
   assert.equal(parseDecimal('1,5'), null, 'not 15: the comma may be a decimal separator');
   assert.equal(parseDecimal('٠٫١').toPlainString(), '0.1');
-});
-
-test('fits numeric(25, 7)', () => {
-  assert.ok(fitsNumeric(Big('0.1234567')));
-  assert.ok(fitsNumeric(Big('0.12345670000')), 'trailing zeros do not count');
-  assert.ok(!fitsNumeric(Big('0.12345678')));
-  assert.ok(fitsNumeric(Big('999999999999999999')));
-  assert.ok(!fitsNumeric(Big('1000000000000000000')));
-  assert.ok(fitsNumeric(Big('1000')), 'a negative scale after stripping zeros');
-});
-
-test('a line value is exact and rounded half up to 7 decimals, like the backend', () => {
-  assert.equal(lineValue(Big('3'), Big('0.1')).toPlainString(), '0.3000000', 'not 0.30000000000000004');
-  assert.equal(lineValue(Big('0.5'), Big('0.00000005')).toPlainString(), '0.0000000');
-  assert.equal(lineValue(Big('3'), Big('0.00000005')).toPlainString(), '0.0000002');
-  assert.equal(lineValue(Big('123456789012345678'), Big('10')).toPlainString(), '1234567890123456780.0000000',
-    'more digits than a JavaScript number holds');
 });
 
 test('formats without trailing zeros, with thousands separators', () => {

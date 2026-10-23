@@ -14,10 +14,12 @@ import { createPortal } from "react-dom";
  * Delphi-style (csDropDownList) combobox: type letters to jump, nothing is written in the box.
  *
  * Props
- *   options        [{ value, label }]  (any order, sorted internally)
+ *   options        [{ value, label, code?, detail? }]  (any order, sorted internally). code: e.g. a barcode,
+ *                  which several options may share; detail: shown beside the label in the list (e.g. a price)
  *   value          controlled value (use null for "nothing selected")
  *   defaultValue   initial value when uncontrolled
  *   onChange       (value) => void      (called with null when cleared)
+ *   onUnknownCode  (code) => void       a code was entered that no option has (see Codes below)
  *   placeholder, itemHeight (32), visibleRows (8), resetMs (800)
  *   fullWidth      fill the container instead of 280px
  *   disabled, clearable (Delete key or × button)
@@ -25,16 +27,27 @@ import { createPortal } from "react-dom";
  *   id, aria-label, aria-labelledby   for <label htmlFor> / screen readers
  *   portalTarget   element the popup is rendered into (default document.body)
  *   dir            "ltr" | "rtl"; default: inherit from the surrounding page
- *   messages       { clear, typeToJump(count), jumpedBy(text) } to translate the UI strings
+ *   messages       { clear, typeToJump(count), jumpedBy(text), sameCode(code, count) } to translate the UI strings
  *   Keys: type to jump, arrows/Home/End/PageUp/PageDown, Enter selects (popup open), Esc closes,
  *         Alt+Down or F4 opens, Delete clears (clearable)
  *   ref            forwarded to the <input>, so ref.current.focus() works
+ *
+ * Codes (barcodes), when options have them: a digit typed (also an Arabic-Indic one) starts a code, shown in the box as it's typed, with no
+ * time limit; Backspace edits it, Esc drops it. Enter or Tab ends it, as does a scanner's burst of keys stopping
+ * (some scanners send neither). The code then selects the option with that code, and Enter or Tab is left alone, so
+ * a form can move on to its next field; when several options share it, the list opens with just those to choose
+ * from; when none has it, onUnknownCode is called (and Enter or Tab is stopped). A code that starts with a letter
+ * works the same when it's followed by Enter, though it isn't shown. Without codes, digits are type-ahead like any
+ * other key.
  *
  * The popup is rendered in a portal with position: fixed, so it is never clipped by
  * overflow: hidden ancestors, and it flips above the field when there's no room below.
  */
 
 const CHROME = 28; // popup height besides the rows: footer (26) + borders (2)
+// A scanner types its keys this close together (ms); then a pause this long ends its code
+const SCANNER_KEY_GAP = 50;
+const SCANNER_END = 120;
 
 // UI strings. Override any of them with the `messages` prop (they may return JSX).
 const DEFAULT_MESSAGES = {
@@ -44,6 +57,11 @@ const DEFAULT_MESSAGES = {
   jumpedBy: (text) => (
     <>
       Jumped by “<bdi>{text}</bdi>”
+    </>
+  ),
+  sameCode: (code, count) => (
+    <>
+      {count} items with code <bdi>{code}</bdi>
     </>
   ),
 };
@@ -60,12 +78,18 @@ function lowerBound(keys, prefix) {
   return lo;
 }
 
+// Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits as ASCII, as some keyboard layouts make a scanner type them
+const asciiDigits = (text) =>
+  text.replace(/[٠-٩۰-۹]/g, (digit) => String(digit.charCodeAt(0) & 0xf));
+const isDigit = (ch) => /^[0-9٠-٩۰-۹]$/.test(ch);
+
 export const Combobox = forwardRef(function Combobox(
   {
     options,
     value: valueProp,
     defaultValue = null,
     onChange,
+    onUnknownCode,
     placeholder = "Select…",
     itemHeight = 32,
     visibleRows = 8,
@@ -101,6 +125,16 @@ export const Combobox = forwardRef(function Combobox(
     [options]
   );
   const keys = useMemo(() => items.map((i) => i.key), [items]);
+  // Each code's item indexes (several items may share a code)
+  const codes = useMemo(() => {
+    const byCode = new Map();
+    items.forEach((item, i) => {
+      if (item.code == null || item.code === "") return;
+      const code = asciiDigits(String(item.code).trim());
+      byCode.set(code, [...(byCode.get(code) ?? []), i]);
+    });
+    return byCode;
+  }, [items]);
   const n = items.length;
   const selectedIndex = useMemo(
     () => (value == null ? -1 : items.findIndex((i) => i.value === value)),
@@ -114,27 +148,38 @@ export const Combobox = forwardRef(function Combobox(
   const optId = (i) => `${uid}-opt-${i}`;
 
   const [open, setOpen] = useState(false);
+  // The list's items: all of them (null), or the indexes of those sharing a code
+  const [filter, setFilter] = useState(null);
+  const shown = filter ? filter.length : n;
+  const itemAt = (i) => items[filter ? filter[i] : i];
   const [active, setActive] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [hint, setHint] = useState("");
   const [pos, setPos] = useState(null); // { left, top, width, rows, dir }
+  // A code being typed (shown in the box), or null; its keys' times tell a scanner's burst
+  const [code, setCode] = useState(null);
+  const codeRef = useRef(null);
+  const codeKeyTimes = useRef([]);
+  const codeTimer = useRef(null);
   const inputRef = useRef(null);
   const popRef = useRef(null);
   const listRef = useRef(null);
   const typed = useRef("");
+  // Everything typed since the last pause, as typed: a code that starts with a letter (typed keeps only what matched)
+  const scanned = useRef("");
   const timer = useRef(null);
   const beforeInput = useRef(null);
 
   useImperativeHandle(ref, () => inputRef.current, []);
 
-  const rows = pos ? pos.rows : Math.min(visibleRows, n);
+  const rows = pos ? pos.rows : Math.min(visibleRows, shown);
   const viewH = rows * itemHeight;
   const start = Math.max(0, Math.floor(scrollTop / itemHeight) - 3);
-  const end = Math.min(n, start + rows + 7);
+  const end = Math.min(shown, start + rows + 7);
 
   /* ---------- positioning (portal + flip + shrink to fit) ---------- */
 
-  function place() {
+  function place(count = shown) {
     const el = inputRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -142,12 +187,12 @@ export const Combobox = forwardRef(function Combobox(
       margin = 8;
     const below = window.innerHeight - r.bottom - gap - margin;
     const above = r.top - gap - margin;
-    const want = Math.min(visibleRows, n) * itemHeight + CHROME;
+    const want = Math.min(visibleRows, count) * itemHeight + CHROME;
     const up = below < want && above > below;
     const room = up ? above : below;
     const fit = Math.max(
       1,
-      Math.min(visibleRows, n, Math.floor((room - CHROME) / itemHeight))
+      Math.min(visibleRows, count, Math.floor((room - CHROME) / itemHeight))
     );
     const h = fit * itemHeight + CHROME;
     setPos({
@@ -155,8 +200,9 @@ export const Combobox = forwardRef(function Combobox(
       width: r.width,
       top: up ? r.top - gap - h : r.bottom + gap,
       rows: fit,
-      // The popup is portaled to <body>, so copy the field's direction onto it.
-      dir: window.getComputedStyle(el).direction,
+      // The popup is portaled to <body>, so copy the field's direction onto it: the wrapper's, as the field is left
+      // to right while a code is typed in it
+      dir: window.getComputedStyle(el.parentElement).direction,
     });
   }
 
@@ -174,9 +220,15 @@ export const Combobox = forwardRef(function Combobox(
       window.removeEventListener("resize", reposition);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, n, visibleRows, itemHeight]);
+  }, [open, shown, visibleRows, itemHeight]);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      clearTimeout(codeTimer.current);
+    },
+    []
+  );
   useEffect(() => {
     if (disabled) setOpen(false);
   }, [disabled]);
@@ -199,21 +251,29 @@ export const Combobox = forwardRef(function Combobox(
 
   /* ---------- actions ---------- */
 
-  function openList() {
+  /** Opens the list: all the items, or only those at the indexes given (sharing a code). */
+  function openList(only = null) {
     if (disabled || !n) return;
-    setActive(Math.max(selectedIndex, 0));
-    place();
+    setFilter(only);
+    setActive(only ? 0 : Math.max(selectedIndex, 0));
+    setScrollTop(0);
+    place(only ? only.length : n);
     setOpen(true);
   }
 
-  function commit(i) {
-    setValue(items[i].value);
+  function closeList() {
     setOpen(false);
+    setFilter(null);
+  }
+
+  function commit(i) {
+    setValue(itemAt(i).value);
+    closeList();
   }
 
   function clear() {
     setValue(null);
-    setOpen(false);
+    closeList();
     inputRef.current?.focus();
   }
 
@@ -225,6 +285,73 @@ export const Combobox = forwardRef(function Combobox(
     } else {
       setValue(items[i].value);
     }
+  }
+
+  /* ---------- codes ---------- */
+
+  function setCodeText(text) {
+    codeRef.current = text;
+    setCode(text);
+  }
+
+  function dropCode() {
+    clearTimeout(codeTimer.current);
+    codeKeyTimes.current = [];
+    setCodeText(null);
+  }
+
+  /** Adds a key to the code being typed; a scanner's burst ends it by itself once it stops. */
+  function codeKey(ch) {
+    const now = Date.now();
+    const times = [...codeKeyTimes.current, now];
+    codeKeyTimes.current = times;
+    setCodeText((codeRef.current ?? "") + asciiDigits(ch));
+    clearTimeout(codeTimer.current);
+    const burst =
+      times.length >= 4 && times.every((t, i) => i === 0 || t - times[i - 1] < SCANNER_KEY_GAP);
+    if (burst) codeTimer.current = setTimeout(() => endCode(null), SCANNER_END);
+  }
+
+  /**
+   * The code typed, ended by Enter or Tab (event) or a scanner's pause (null): selects its item, or lists the items
+   * sharing it, or reports it unknown. Only selecting leaves the key to the form.
+   */
+  function endCode(e, text = codeRef.current) {
+    dropCode();
+    if (!text) return;
+    const found = codes.get(asciiDigits(text.trim())) ?? [];
+    if (found.length === 1) {
+      setValue(items[found[0]].value);
+      closeList();
+      return;
+    }
+    e?.preventDefault();
+    if (found.length > 1) openList(found);
+    else onUnknownCode?.(text.trim());
+  }
+
+  /** A key while a code is being typed; true if it was the code's. */
+  function codeModeKey(e) {
+    if (codeRef.current === null) return false;
+    if (e.key.length === 1) {
+      e.preventDefault();
+      codeKey(e.key);
+    } else if (e.key === "Backspace") {
+      e.preventDefault();
+      const shorter = codeRef.current.slice(0, -1);
+      if (shorter) setCodeText(shorter);
+      else dropCode();
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      endCode(e);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      dropCode();
+    } else {
+      // Any other key (an arrow...) gives up the code and does what it does
+      dropCode();
+      return false;
+    }
+    return true;
   }
 
   /* ---------- type-ahead ---------- */
@@ -239,21 +366,50 @@ export const Combobox = forwardRef(function Combobox(
     typed.current = next;
     setHint(next);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      typed.current = "";
-      setHint("");
-    }, resetMs);
+    timer.current = setTimeout(resetTyping, resetMs);
     return true;
   }
 
+  function resetTyping() {
+    typed.current = "";
+    scanned.current = "";
+    setHint("");
+  }
+
+  /** A typed character or Backspace: a digit starts a code (when there are codes), anything else is type-ahead. */
   function typeKey(key) {
+    if (codes.size > 0 && key.length === 1 && isDigit(key) && !typed.current) {
+      clearTimeout(timer.current);
+      resetTyping();
+      if (open && filter) closeList();
+      codeKey(key);
+      return true;
+    }
     let next = typed.current;
     if (key === "Backspace") {
-      if (!next) return false;
+      if (!next && !scanned.current) return false;
       next = next.slice(0, -1);
-    } else if (key.length === 1) next += key.toLowerCase(); // includes " "
-    else return false;
+      scanned.current = scanned.current.slice(0, -1);
+    } else if (key.length === 1) {
+      next += key.toLowerCase(); // includes " "
+      scanned.current += key;
+    } else return false;
+    if (filter) closeList();
     return search(next);
+  }
+
+  /**
+   * Enter after type-ahead: what was typed is a code if it isn't the start of a label (a code that starts with a
+   * letter). False when it was plain type-ahead.
+   */
+  function enterAfterTyping(e) {
+    const text = scanned.current.trim();
+    const typedALabel = typed.current === scanned.current.toLowerCase();
+    if (codes.size === 0 || !text || typedALabel) return false;
+    clearTimeout(timer.current);
+    resetTyping();
+    endCode(e, text);
+    return true;
   }
 
   // Touch/virtual keyboards often send key "Unidentified" in keydown but report the
@@ -263,10 +419,22 @@ export const Combobox = forwardRef(function Combobox(
     if (disabled || !n) return;
     if (e.inputType === "insertLineBreak") return; // Enter: leave it alone (form submit)
     e.preventDefault();
-    if (e.inputType === "insertText" && e.data) for (const ch of e.data) typeKey(ch);
+    const typeText = (text) => {
+      for (const ch of text) {
+        if (codeRef.current !== null) codeKey(ch);
+        else typeKey(ch);
+      }
+    };
+    if (e.inputType === "insertText" && e.data) typeText(e.data);
     else if (e.inputType === "insertCompositionText" && e.data)
       search(e.data.toLowerCase());
-    else if (e.inputType === "deleteContentBackward") typeKey("Backspace");
+    else if (e.inputType === "deleteContentBackward") {
+      if (codeRef.current !== null) {
+        const shorter = codeRef.current.slice(0, -1);
+        if (shorter) setCodeText(shorter);
+        else dropCode();
+      } else typeKey("Backspace");
+    }
   };
   useEffect(() => {
     const el = inputRef.current;
@@ -280,13 +448,15 @@ export const Combobox = forwardRef(function Combobox(
     // Open the list from the keyboard: Alt+Down, or F4 (which also closes it)
     if ((e.altKey && e.key === "ArrowDown") || e.key === "F4") {
       e.preventDefault();
+      dropCode();
       if (!open) openList();
-      else if (e.key === "F4") setOpen(false);
+      else if (e.key === "F4") closeList();
       return;
     }
     // AltGr reports ctrl+alt; it types characters, so let it through.
     const altGr = e.getModifierState?.("AltGraph");
     if (e.metaKey || ((e.ctrlKey || e.altKey) && !altGr)) return;
+    if (codeModeKey(e)) return;
     if (typeKey(e.key)) return e.preventDefault();
 
     if (e.key === "Delete" && clearable && selectedIndex >= 0) {
@@ -295,6 +465,7 @@ export const Combobox = forwardRef(function Combobox(
     }
 
     const cur = open ? active : selectedIndex;
+    const last = (open ? shown : n) - 1;
     const page = rows - 1;
     const target = {
       ArrowDown: cur + 1,
@@ -302,12 +473,14 @@ export const Combobox = forwardRef(function Combobox(
       PageDown: cur + page,
       PageUp: cur - page,
       Home: 0,
-      End: n - 1,
+      End: last,
     }[e.key];
 
     if (target !== undefined) {
       e.preventDefault();
-      go(Math.min(n - 1, Math.max(0, target)));
+      go(Math.min(last, Math.max(0, target)));
+    } else if ((e.key === "Enter" || e.key === "Tab") && enterAfterTyping(e)) {
+      // A code that starts with a letter: selected, listed or reported unknown
     } else if (e.key === "Enter" && open) {
       // Closed: Enter does nothing here and is left alone (e.g. it can submit a form).
       e.preventDefault();
@@ -315,15 +488,14 @@ export const Combobox = forwardRef(function Combobox(
     } else if (e.key === "Escape") {
       const hadBuffer = typed.current !== "";
       clearTimeout(timer.current);
-      typed.current = "";
-      setHint("");
+      resetTyping();
       if (open || hadBuffer) e.preventDefault();
-      setOpen(false);
+      closeList();
     }
   }
 
-  const showClear = clearable && selectedIndex >= 0 && !disabled;
-  const rootClass = ["tac", fullWidth && "tac-full", showClear && "tac-has-clear"]
+  const showClear = clearable && selectedIndex >= 0 && !disabled && code === null;
+  const rootClass = ["tac", fullWidth && "tac-full", showClear && "tac-has-clear", code !== null && "tac-coding"]
     .filter(Boolean)
     .join(" ");
 
@@ -344,7 +516,8 @@ export const Combobox = forwardRef(function Combobox(
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         className="tac-input"
-        value={selectedLabel}
+        // A code being typed is shown instead of the selection
+        value={code ?? selectedLabel}
         placeholder={placeholder}
         disabled={disabled}
         autoComplete="off"
@@ -352,8 +525,11 @@ export const Combobox = forwardRef(function Combobox(
         autoCapitalize="off"
         spellCheck={false}
         onChange={() => {}} // display only; typing is handled as type-ahead
-        onClick={() => (open ? setOpen(false) : openList())}
-        onBlur={() => setOpen(false)}
+        onClick={() => (open ? closeList() : openList())}
+        onBlur={() => {
+          dropCode();
+          closeList();
+        }}
         onKeyDown={onKeyDown}
       />
       <span className="tac-caret" aria-hidden="true">
@@ -396,29 +572,31 @@ export const Combobox = forwardRef(function Combobox(
               style={{ height: viewH }}
               onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
             >
-              <div style={{ height: n * itemHeight, position: "relative" }}>
-                {items.slice(start, end).map((item, k) => {
+              <div style={{ height: shown * itemHeight, position: "relative" }}>
+                {Array.from({ length: Math.max(0, end - start) }, (_, k) => {
                   const i = start + k;
+                  const item = itemAt(i);
                   return (
                     <div
                       key={i}
                       id={optId(i)}
                       role="option"
-                      aria-selected={i === selectedIndex}
+                      aria-selected={item.value === value}
                       data-active={i === active}
                       className="tac-opt"
                       style={{ top: i * itemHeight, height: itemHeight }}
                       onMouseMove={() => i !== active && setActive(i)}
                       onClick={() => commit(i)}
                     >
-                      {item.label}
+                      <span className="tac-label">{item.label}</span>
+                      {item.detail != null && <bdi className="tac-detail">{item.detail}</bdi>}
                     </div>
                   );
                 })}
               </div>
             </div>
             <div className="tac-foot">
-              {hint ? msg.jumpedBy(hint) : msg.typeToJump(n)}
+              {filter ? msg.sameCode(itemAt(0).code, shown) : hint ? msg.jumpedBy(hint) : msg.typeToJump(n)}
             </div>
           </div>,
           portalTarget ?? document.body
@@ -434,6 +612,7 @@ const css = `
   border-radius:6px;background:#fff;color:inherit;font:inherit;text-align:start;cursor:pointer;
   caret-color:transparent;text-overflow:ellipsis}
 .tac-has-clear .tac-input{padding-inline-end:54px}
+.tac-coding .tac-input{direction:ltr;text-align:end;letter-spacing:.04em;background:#fffbe6;border-color:#d4a72c}
 .tac-input::placeholder{color:#7a8794;opacity:1}
 .tac-input::selection{background:transparent}
 .tac-input:focus-visible{outline:2px solid #2f6fed;outline-offset:1px}
@@ -446,8 +625,10 @@ const css = `
   font:14px/1.3 system-ui,sans-serif;text-align:start;border:1px solid #b8c1cc;border-radius:6px;
   box-shadow:0 8px 24px rgba(27,39,51,.14);overflow:hidden}
 .tac-list{overflow-y:auto;position:relative}
-.tac-opt{position:absolute;left:0;right:0;padding-block:0;padding-inline:10px;display:flex;align-items:center;
-  cursor:pointer;white-space:pre;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
+.tac-opt{position:absolute;left:0;right:0;padding-block:0;padding-inline:10px;display:flex;align-items:center;gap:8px;
+  cursor:pointer;white-space:pre;overflow:hidden;box-sizing:border-box}
+.tac-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tac-detail{flex-shrink:0;color:#5b6876;font-size:13px;direction:ltr}
 .tac-opt[data-active="true"]{background:#e6eefc}
 .tac-opt[aria-selected="true"]{font-weight:600}
 .tac-foot{box-sizing:border-box;height:26px;line-height:25px;padding-block:0;padding-inline:10px;font-size:12px;color:#5b6876;

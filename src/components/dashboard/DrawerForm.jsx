@@ -103,6 +103,8 @@ export default function DrawerForm({ children, backgroundColor }) {
           { linkText: 'تقرير فواتير المشتريات', linkAddr: `/dashboard/report?reportName=purchaseInvoicesReport&formTitle=${encodeURIComponent('تقرير فواتير المشتريات')}` },
           { linkText: 'مرتجع مشتريات', linkAddr: `/dashboard/purchase-return?formTitle=${encodeURIComponent('مرتجع مشتريات')}` },
           { linkText: 'تقرير مرتجعات المشتريات', linkAddr: `/dashboard/report?reportName=purchaseReturnsReport&formTitle=${encodeURIComponent('تقرير مرتجعات المشتريات')}` },
+          { linkText: 'رصيد افتتاحي للمخزون', linkAddr: `/dashboard/opening-balance?formTitle=${encodeURIComponent('رصيد افتتاحي للمخزون')}` },
+          { linkText: 'تقرير الأرصدة الافتتاحية', linkAddr: `/dashboard/report?reportName=openingBalancesReport&formTitle=${encodeURIComponent('تقرير الأرصدة الافتتاحية')}` },
           { linkText: 'تسوية مخزون', linkAddr: `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}` },
           { linkText: 'تقرير أرصدة المخزون', linkAddr: `/dashboard/report?reportName=stockBalancesReport&formTitle=${encodeURIComponent('تقرير أرصدة المخزون')}` },
           { linkText: 'تقرير تسويات المخزون', linkAddr: `/dashboard/report?reportName=stockAdjustmentsReport&formTitle=${encodeURIComponent('تقرير تسويات المخزون')}` },
