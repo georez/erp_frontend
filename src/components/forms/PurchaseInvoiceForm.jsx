@@ -115,7 +115,8 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       discountPercent: discountEntered ? normalizeDecimalText(line.discountPercent) : null,
     });
     if (saved) {
-      setLine(EMPTY_LINE);
+      // The product stays selected; the cursor goes back to it, where typing picks another
+      setLine((previous) => ({ ...EMPTY_LINE, productId: previous.productId }));
       setLineErrors({});
       productRef.current?.focus();
     }
@@ -179,7 +180,8 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       const left = savedLine ? Big(savedLine.quantity).subtract(Big(savedLine.batchedQuantity)) : Big(0);
       setBatch({ ...EMPTY_BATCH, productId: batch.productId, quantity: left.signum() > 0 ? left.toPlainString() : '' });
       setBatchErrors({});
-      batchNumberRef.current?.focus();
+      // Back to the product, like the other entry rows: Enter moves on to its next batch, typing picks another
+      batchProductRef.current?.focus();
     }
   };
 
