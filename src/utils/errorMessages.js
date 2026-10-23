@@ -15,6 +15,8 @@ export const ERROR_MESSAGES = Object.freeze({
   FIELD_INVALID: 'قيمة غير صحيحة في الحقل "{field}"',
   FIELD_NUMBER_INVALID:
     'رقم غير صحيح في الحقل "{field}" (الحد الأقصى {integerDigits} رقم قبل العلامة العشرية و{decimals} بعدها)',
+  PRODUCT_FIELD_FIXED:
+    'لا يمكن تغيير "{field}" للصنف "{productName}" بعد أن صارت له حركات مخزون؛ أضف صنفاً جديداً بالقيمة الجديدة (ويمكن أن يحمل نفس الباركود)',
   FIELD_VALUE_TAKEN: 'القيمة المدخلة في "{field}" موجودة في سجل آخر',
   FIELD_TOO_LONG: 'النص في الحقل "{field}" أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   FIELD_INVALID_CHOICE: 'اختيار غير صحيح في الحقل "{field}"',

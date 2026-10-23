@@ -16,6 +16,7 @@ const BACKEND_CODES = {
   FIELD_NUMBER_INVALID: ['field', 'integerDigits', 'decimals'],
   FIELD_TOO_LONG: ['field', 'maxLength'],
   FIELD_VALUE_TAKEN: ['field'],
+  PRODUCT_FIELD_FIXED: ['productName', 'field'],
   FIELD_INVALID_CHOICE: ['field'],
   INVALID_ID: ['id'],
   RECORD_NOT_FOUND: ['id'],

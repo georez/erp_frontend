@@ -97,6 +97,7 @@ export default function DrawerForm({ children, backgroundColor }) {
           { linkText: 'تقرير تصنيف الموردين', linkAddr: `/dashboard/report?reportName=supplierCategoriesReport&formTitle=${encodeURIComponent('تقرير تصنيف الموردين')}` },
           { linkText: 'تقرير الموردين', linkAddr: `/dashboard/report?reportName=suppliersReport&formTitle=${encodeURIComponent('تقرير الموردين')}` },
           { linkText: 'ادخال الأصناف', linkAddr: `/dashboard/form?schemaName=products&formTitle=${encodeURIComponent('ادخال الأصناف')}` },
+          { linkText: 'تقرير الأصناف', linkAddr: `/dashboard/report?reportName=productsReport&formTitle=${encodeURIComponent('تقرير الأصناف')}` },
           { linkText: 'ادخال تصنيف الأصناف', linkAddr: `/dashboard/form?schemaName=product_categories&formTitle=${encodeURIComponent('ادخال تصنيف الأصناف')}` },
           { linkText: 'ادخال المخازن', linkAddr: `/dashboard/form?schemaName=warehouses&formTitle=${encodeURIComponent('ادخال المخازن')}` },
           { linkText: 'فاتورة مشتريات', linkAddr: `/dashboard/purchase-invoice?formTitle=${encodeURIComponent('فاتورة مشتريات')}` },
