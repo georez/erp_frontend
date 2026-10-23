@@ -2,23 +2,29 @@
 
 import { Alert, Box, Stack, TextField } from '@mui/material';
 import { Big } from 'bigdecimal.js';
+import useSWR from 'swr';
 import { useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { fetchJson } from '@/utils/fetchJson';
 import { normalizeDecimalText, parsePercent, parseWholeUnits } from '@/utils/decimals';
-import { formatExpiry } from '@/utils/expiryDates';
 import {
-  amountColumn, checkBatchNumber, checkExpiry, deleteColumn, DescriptionField, DISCOUNT_ERROR, DocumentActions,
-  documentStatus, DocumentTitle, EntryField, EntryRow, expiryColumn, ExpiryField, formatAmount, HeaderCombobox,
-  LinesGrid, MAX_DESCRIPTION_LENGTH, NUMBER_CELL, OkButton, ProductField, REQUIRED, Total, useDocument, useOptions,
+  amountColumn, BatchPicker, deleteColumn, DescriptionField, DISCOUNT_ERROR, DocumentActions, documentStatus,
+  DocumentTitle, EntryField, EntryRow, expiryColumn, formatAmount, HeaderCombobox, LinesGrid, MAX_DESCRIPTION_LENGTH,
+  NUMBER_CELL, OkButton, ProductField, REQUIRED, Total, useDocument, useOptions,
 } from './documentForm';
 
 const EMPTY_HEADER = { supplierId: null, warehouseId: null, purchaseInvoiceId: '', description: '' };
-const EMPTY_ENTRY = { productId: null, batchNumber: '', expiryDate: '', quantity: '', discountPercent: '' };
+// batch: { batchNumber, expiryDate, available } from the batches to choose from
+const EMPTY_ENTRY = { productId: null, batch: null, quantity: '', discountPercent: '' };
+const NO_BATCHES = [];
 
 /**
  * The purchase return document: stock sent back to a supplier. A draft is filled one line at a time: a product, its
- * batch (number and expiry date), the quantity and a discount. Against a purchase invoice, the batch is one of the
- * invoice's, each unit is credited at what it cost on the invoice and the discount field is off. Posting takes the
+ * batch (number and expiry date, chosen together by typing part of either), the quantity and a discount. Against a
+ * purchase invoice (a posted one, entered when its field is left), the supplier and warehouse are the invoice's (filled
+ * in, the supplier locked), the products and batches to choose from are the invoice's (with units left to return),
+ * each unit is credited at what it cost on the invoice and the discount field is off; without one, the batches are
+ * those the warehouse has. Posting takes the
  * goods out of their batch at the average cost, debits the supplier with the total (rounded to 2 decimals), and puts
  * the difference between what the supplier credits and what the goods cost on purchase price differences.
  */
@@ -50,7 +56,6 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
   const [entryErrors, setEntryErrors] = useState({});
   const productRef = useRef(null);
   const batchRef = useRef(null);
-  const expiryRef = useRef(null);
   const quantityRef = useRef(null);
   const discountRef = useRef(null);
   const okRef = useRef(null);
@@ -61,10 +66,58 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
   const invoiceIdValid = invoiceIdText === '' || parseWholeUnits(invoiceIdText) != null;
   const setField = (field) => (value) => setEntry((previous) => ({ ...previous, [field]: value }));
 
+  // The invoice the goods came on: the one in its field, once it's left (not each number as it's typed)
+  const [invoiceFieldFocused, setInvoiceFieldFocused] = useState(false);
+  const invoiceId = !invoiceFieldFocused && invoiceIdText && invoiceIdValid ? parseWholeUnits(invoiceIdText) : null;
+  const { data: invoice } = useSWR(invoiceId != null ? `/api/purchase-invoices/${invoiceId}` : null, fetchJson);
+  const postedInvoice = invoice?.status === 'POSTED' && String(invoice.id) === invoiceId ? invoice : null;
+  // Against an invoice, only its products
+  const productOptions = useMemo(() => (invoiceId == null ? products.options : products.options.filter(
+    (option) => postedInvoice?.lines.some((line) => line.productId === option.value))),
+  [invoiceId, postedInvoice, products.options]);
+
+  /** The invoice field left: a posted invoice's supplier and warehouse are the return's (saved on a draft). */
+  const enterInvoice = async () => {
+    setInvoiceFieldFocused(false);
+    if (!invoiceIdValid) {
+      return;
+    }
+    const stored = purchaseReturn?.purchaseInvoiceId == null ? '' : String(purchaseReturn.purchaseInvoiceId);
+    if (invoiceIdText === '') {
+      saveTextOnBlur('purchaseInvoiceId', stored)();
+      return;
+    }
+    let entered;
+    try {
+      entered = await fetchJson(`/api/purchase-invoices/${parseWholeUnits(invoiceIdText)}`);
+    } catch (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    if (entered.status !== 'POSTED') {
+      setErrorMessage(`فاتورة المشتريات رقم ${entered.id} غير مُرحَّلة: المرتجع يكون من فاتورة مُرحَّلة`);
+      return;
+    }
+    setErrorMessage(null);
+    if (entered.supplierId !== header.supplierId || entered.warehouseId !== header.warehouseId
+      || stored !== invoiceIdText) {
+      await changeHeader({ supplierId: entered.supplierId, warehouseId: entered.warehouseId });
+    }
+  };
+
+  // The product's batches to choose from: those the warehouse has, against an invoice only the invoice's (no more than
+  // it brought in less what was returned, nor than the warehouse still has)
+  const batchQuery = entry.productId == null || header.warehouseId == null ? null
+    : `/api/purchase-returns/batch-options?${new URLSearchParams({
+      productId: entry.productId,
+      warehouseId: header.warehouseId,
+      ...(invoiceId != null && { invoiceId }),
+    })}`;
+  const { data: batchOptions = NO_BATCHES, isLoading: batchesLoading, mutate: reloadBatches } = useSWR(
+    batchQuery, fetchJson);
+
   const saveEntry = async () => {
     const quantity = parseWholeUnits(entry.quantity);
-    const batch = checkBatchNumber(entry.batchNumber);
-    const expiry = checkExpiry(entry.expiryDate);
     // Against an invoice the units are credited at what they cost on it: no discount
     const discountEntered = !invoiceIdText && entry.discountPercent.trim() !== '';
     const discount = discountEntered ? parsePercent(entry.discountPercent) : null;
@@ -73,8 +126,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
         : header.warehouseId == null ? 'حدّد المخزن أولاً'
           : !invoiceIdValid ? 'رقم فاتورة المشتريات غير صحيح' : null,
       productId: entry.productId == null ? 'حدّد الصنف' : null,
-      batchNumber: batch.error,
-      expiryDate: expiry.error,
+      batch: entry.batch == null ? 'اختر التشغيلة' : null,
       quantity: entry.quantity.trim() === '' ? REQUIRED
         : quantity != null && Big(quantity).signum() > 0 ? null : 'عدد صحيح أكبر من صفر',
       discountPercent: discountEntered && !discount ? DISCOUNT_ERROR : null,
@@ -86,8 +138,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     // As text, so no number passes through a JavaScript number
     const saved = await saveToDraft('/lines', {
       productId: entry.productId,
-      batchNumber: batch.number,
-      expiryDate: expiry.date,
+      batchNumber: entry.batch.batchNumber,
+      expiryDate: entry.batch.expiryDate,
       quantity,
       discountPercent: discountEntered ? normalizeDecimalText(entry.discountPercent) : null,
     });
@@ -111,7 +163,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     // selected, and typing replaces it
     flushSync(() => {
       setEntry({
-        productId: line.productId, batchNumber: line.batchNumber, expiryDate: formatExpiry(line.expiryDate),
+        productId: line.productId, batch: { batchNumber: line.batchNumber, expiryDate: line.expiryDate },
         quantity: line.quantity, discountPercent: line.discountPercent,
       });
       setEntryErrors({});
@@ -119,8 +171,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     quantityRef.current?.focus();
     quantityRef.current?.select();
   };
-  const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId
-    && line.batchNumber === entry.batchNumber.trim() && formatExpiry(line.expiryDate) === entry.expiryDate);
+  const editingExistingLine = entry.batch != null && lines.some((line) => line.productId === entry.productId
+    && line.batchNumber === entry.batch.batchNumber && line.expiryDate === entry.batch.expiryDate);
 
   // Rebuilt every render: the delete buttons need the current return and busy state
   const columnDefs = [
@@ -148,7 +200,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       <DocumentTitle title={purchaseReturn ? `مرتجع مشتريات رقم ${purchaseReturn.id}` : 'مرتجع مشتريات جديد'}
         status={documentStatus(purchaseReturn, { newLabel: 'جديد', postedLabel: 'مُرحَّل' })} />
       <HeaderCombobox id={`${formId}-supplier`} label="المورد" basis={220} options={suppliers.options}
-        value={header.supplierId} disabled={posted || busy} placeholder="اختر المورد…"
+        value={header.supplierId} disabled={posted || busy || invoiceId != null} placeholder="اختر المورد…"
         onChange={(supplierId) => changeHeader({ supplierId })} />
       <HeaderCombobox id={`${formId}-warehouse`} label="المخزن" basis={170} options={warehouses.options}
         value={header.warehouseId} disabled={posted || busy} onChange={(warehouseId) => changeHeader({ warehouseId })} />
@@ -156,8 +208,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
         disabled={posted} sx={{ flex: '0 1 140px' }} error={!invoiceIdValid}
         slotProps={{ inputLabel: { shrink: true }, htmlInput: { inputMode: 'numeric', dir: 'ltr' } }}
         onChange={(event) => changeHeader({ purchaseInvoiceId: event.target.value }, false)}
-        onBlur={() => invoiceIdValid && saveTextOnBlur('purchaseInvoiceId', purchaseReturn?.purchaseInvoiceId == null
-          ? '' : String(purchaseReturn.purchaseInvoiceId))()} />
+        onFocus={() => setInvoiceFieldFocused(true)} onBlur={enterInvoice} />
       <DescriptionField value={header.description} disabled={posted}
         onChange={(description) => changeHeader({ description }, false)}
         onBlur={saveTextOnBlur('description', purchaseReturn?.description)} />
@@ -169,13 +220,21 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     {entryErrors.header && <Alert severity="warning">{entryErrors.header}</Alert>}
 
     {/* Entry row: one line at a time; Enter moves to the next field */}
-    {!posted && <EntryRow fieldRefs={[productRef, batchRef, expiryRef, quantityRef, discountRef, okRef]}>
-      <ProductField productRef={productRef} options={products.options} value={entry.productId}
-        onChange={setField('productId')} error={entryErrors.productId} />
-      <EntryField label="التشغيلة" kind="batch" value={entry.batchNumber} onChange={setField('batchNumber')} inputRef={batchRef}
-        error={entryErrors.batchNumber} minWidth={100} />
-      <ExpiryField value={entry.expiryDate} onChange={setField('expiryDate')} inputRef={expiryRef}
-        error={entryErrors.expiryDate} />
+    {!posted && <EntryRow fieldRefs={[productRef, batchRef, quantityRef, discountRef, okRef]}>
+      <ProductField productRef={productRef} options={productOptions} value={entry.productId}
+        onChange={(productId) => setEntry((previous) => ({ ...previous, productId, batch: null }))}
+        error={entryErrors.productId} />
+      <BatchPicker options={batchOptions} value={entry.batch} inputRef={batchRef} error={entryErrors.batch}
+        loading={batchesLoading} availableLabel={invoiceId != null ? 'متاح للإرجاع' : 'في المخزن'}
+        noOptionsText={entry.productId == null ? 'اختر الصنف أولاً' : header.warehouseId == null ? 'حدّد المخزن أولاً'
+          : invoiceId != null ? 'لا توجد تشغيلات لهذا الصنف في الفاتورة' : 'لا توجد تشغيلات لهذا الصنف في المخزن'}
+        onChange={(batch) => {
+          setEntry((previous) => ({ ...previous, batch }));
+          // Chosen: on to the quantity
+          if (batch) {
+            quantityRef.current?.focus();
+          }
+        }} />
       <EntryField label="الكمية" kind="numeric" value={entry.quantity} onChange={setField('quantity')}
         inputRef={quantityRef} error={entryErrors.quantity} />
       <EntryField label="الخصم %" kind="decimal" placeholder={invoiceIdText ? 'من الفاتورة' : '0'}
@@ -188,7 +247,14 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       emptyText="أدخل الأصناف المرتجعة: الصنف والتشغيلة والصلاحية والكمية ثم OK" />
 
     <DocumentActions document={purchaseReturn} posted={posted} busy={busy}
-      nextStep={{ onClick: () => request('/post', 'POST'), disabled: lines.length === 0 }}
+      nextStep={{
+        // Posted: what's left of each batch changed
+        onClick: async () => {
+          await request('/post', 'POST');
+          await reloadBatches();
+        },
+        disabled: lines.length === 0,
+      }}
       onDeleteDraft={async () => (await deleteDraft(`حذف مسودة مرتجع المشتريات رقم ${purchaseReturn.id}؟`))
         && newReturn()}
       onNew={newReturn}>

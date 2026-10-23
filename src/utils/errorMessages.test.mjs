@@ -114,6 +114,7 @@ const BACKEND_CODES = {
   PURCHASE_RETURN_INVOICE_INVALID: ['invoiceId'],
   PRODUCT_NOT_ON_INVOICE: ['productName'],
   PURCHASE_RETURN_EXCEEDS_INVOICE: ['productName', 'batchNumber', 'available'],
+  PURCHASE_RETURN_EXCEEDS_STOCK: ['productName', 'batchNumber', 'available'],
   BATCH_NOT_FOUND: ['batchNumber'],
 };
 

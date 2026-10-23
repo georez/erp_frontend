@@ -5,7 +5,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import SendIcon from '@mui/icons-material/Send';
-import { Box, Button, Chip, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { Autocomplete, Box, Button, Chip, IconButton, Stack, TextField, Typography } from '@mui/material';
 import { AgGridProvider, AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule } from 'ag-grid-community';
 import { Big } from 'bigdecimal.js';
@@ -15,7 +15,7 @@ import { Combobox } from '@/components/ui/ComboBox2';
 import { AuthContext } from '@/components/AuthProvider';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
 import { sendOrShowError } from '@/utils/sendOrShowError';
-import { formatDecimal } from '@/utils/decimals';
+import { formatDecimal, normalizeDecimalText } from '@/utils/decimals';
 import { formatExpiry, parseExpiry } from '@/utils/expiryDates';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 
@@ -274,6 +274,54 @@ export function ExpiryField({ value, onChange, inputRef, error }) {
       }
     }}
     slotProps={{ inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } }} />;
+}
+
+const sameBatch = (a, b) => a.batchNumber === b.batchNumber && a.expiryDate === b.expiryDate;
+const batchLabel = (batch) => `${batch.batchNumber} · ${formatExpiry(batch.expiryDate)}`;
+
+/**
+ * A batch chosen from a list ({ batchNumber, expiryDate, available }), its number and expiry date as one, found by
+ * typing part of either ("2410", "05/2027"); the list opens when the field is entered. Esc clears the field (the
+ * batch chosen and the text typed). A batch the list doesn't have (a line's, being edited) is shown too.
+ *
+ * @param availableLabel what each batch's available quantity is called in the list
+ */
+export function BatchPicker({ options, value, onChange, inputRef, error, availableLabel, noOptionsText, loading }) {
+  const [inputValue, setInputValue] = useState('');
+  const allOptions = value && !options.some((option) => sameBatch(option, value)) ? [value, ...options] : options;
+  return <Autocomplete size="small" sx={{ flex: 2, minWidth: 210 }} options={allOptions} value={value}
+    onChange={(event, next) => onChange(next)} getOptionLabel={batchLabel} isOptionEqualToValue={sameBatch}
+    inputValue={inputValue} onInputChange={(event, next) => setInputValue(next)}
+    onKeyDown={(event) => {
+      if (event.key === 'Escape') {
+        // Instead of Autocomplete's own Esc (closing the list first): clear the field at once
+        event.defaultMuiPrevented = true;
+        event.preventDefault();
+        event.stopPropagation();
+        setInputValue('');
+        if (value) {
+          onChange(null);
+        }
+      }
+    }}
+    filterOptions={(candidates, { inputValue }) => {
+      const typed = normalizeDecimalText(inputValue).toLowerCase();
+      return candidates.filter((batch) => !typed || batch.batchNumber.toLowerCase().includes(typed)
+        || formatExpiry(batch.expiryDate).includes(typed) || batch.expiryDate.includes(typed));
+    }}
+    renderOption={({ key, ...props }, batch) => <li key={key} {...props}>
+      <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'baseline' }}>
+        <bdi style={{ direction: 'ltr' }}>{batch.batchNumber}</bdi>
+        <bdi style={{ direction: 'ltr', color: '#5b6876' }}>{formatExpiry(batch.expiryDate)}</bdi>
+        <Box sx={{ flex: 1 }} />
+        {batch.available != null && <Typography variant="caption" color="text.secondary">
+          {availableLabel} {formatAmount(batch.available)}
+        </Typography>}
+      </Stack>
+    </li>}
+    autoHighlight openOnFocus loading={loading} noOptionsText={noOptionsText} loadingText="جارٍ التحميل…"
+    renderInput={(params) => <TextField {...params} label="التشغيلة والصلاحية" placeholder="جزء من التشغيلة أو الصلاحية"
+      inputRef={inputRef} error={!!error} helperText={error} />} />;
 }
 
 /** What an entry row's expiry date is: the ISO date, or the error to show. */

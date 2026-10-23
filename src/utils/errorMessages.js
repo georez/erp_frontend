@@ -132,6 +132,8 @@ export const ERROR_MESSAGES = Object.freeze({
   PURCHASE_RETURN_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في المرتجع',
   PURCHASE_RETURN_INVOICE_INVALID: 'فاتورة المشتريات رقم {invoiceId} ليست فاتورة مُرحَّلة لهذا المورد',
   PRODUCT_NOT_ON_INVOICE: 'الصنف "{productName}" ليس في فاتورة المشتريات',
+  PURCHASE_RETURN_EXCEEDS_STOCK:
+    'لا يوجد في المخزن من "{productName}" (التشغيلة "{batchNumber}") إلا {available}: لا يمكن إرجاع أكثر من ذلك',
   PURCHASE_RETURN_EXCEEDS_INVOICE:
     'لا يمكن إرجاع أكثر من {available} من "{productName}" (التشغيلة "{batchNumber}") من هذه الفاتورة',
   BATCH_NOT_FOUND: 'التشغيلة "{batchNumber}" غير موجودة',
