@@ -135,6 +135,7 @@ export const ERROR_MESSAGES = Object.freeze({
   PURCHASE_RETURN_POSTED: 'مرتجع المشتريات رقم {returnId} مُرحَّل ولا يمكن تعديله',
   PURCHASE_RETURN_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في المرتجع',
   PURCHASE_RETURN_INVOICE_INVALID: 'فاتورة المشتريات رقم {invoiceId} ليست فاتورة مُرحَّلة لهذا المورد',
+  PURCHASE_RETURN_OTHER_WAREHOUSE: 'المرتجع من فاتورة المشتريات رقم {invoiceId} يكون من مخزنها',
   PRODUCT_NOT_ON_INVOICE: 'الصنف "{productName}" ليس في فاتورة المشتريات',
   PURCHASE_RETURN_EXCEEDS_STOCK:
     'لا يوجد في المخزن من "{productName}" (التشغيلة "{batchNumber}") إلا {available}: لا يمكن إرجاع أكثر من ذلك',

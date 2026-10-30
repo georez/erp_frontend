@@ -10,7 +10,7 @@ import { AgGridProvider, AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule } from 'ag-grid-community';
 import { Big } from 'bigdecimal.js';
 import useSWR from 'swr';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { Combobox } from '@/components/ui/ComboBox2';
 import { AuthContext } from '@/components/AuthProvider';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
@@ -52,43 +52,57 @@ export function useOptions(linkEntity) {
 }
 
 /**
- * Sending a document's requests: send(url, method, body) returns what the backend answers with ({} for an empty
- * answer), or null after setting errorMessage to why it failed. One request at a time: busy is true meanwhile, for the
- * buttons to be disabled.
+ * Sending a document's requests, one at a time in the order they're made: a click on a button right after a header
+ * field is left (which saves it) waits for that save, then runs. sendNow(url, method, body) returns what the backend
+ * answers with ({} for an empty answer), or null after setting errorMessage to why it failed; enqueue(task) runs the
+ * task once the requests before it are done. act(task) runs a button's action: busy is true meanwhile, for the buttons
+ * to be off. A header save isn't one: a button turned off between its mousedown (which leaves the field, saving it)
+ * and its mouseup never gets the click.
  */
 function useDocumentRequests(csrfFetch) {
   const [errorMessage, setErrorMessage] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [actions, setActions] = useState(0);
+  const queue = useRef(Promise.resolve());
 
-  const send = async (url, method, body) => {
+  const enqueue = (task) => {
+    const run = queue.current.then(task);
+    queue.current = run.catch(() => {});
+    return run;
+  };
+
+  const sendNow = async (url, method, body) => {
     setErrorMessage(null);
-    setBusy(true);
+    const res = await sendOrShowError(() => csrfFetch(url, {
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }), setErrorMessage);
+    if (!res) {
+      return null;
+    }
+    if (!res.ok) {
+      setErrorMessage(await readErrorMessage(res));
+      return null;
+    }
+    return res.status === 204 ? {} : await res.json();
+  };
+
+  const act = async (task) => {
+    setActions((count) => count + 1);
     try {
-      const res = await sendOrShowError(() => csrfFetch(url, {
-        method,
-        headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      }), setErrorMessage);
-      if (!res) {
-        return null;
-      }
-      if (!res.ok) {
-        setErrorMessage(await readErrorMessage(res));
-        return null;
-      }
-      return res.status === 204 ? {} : await res.json();
+      return await task();
     } finally {
-      setBusy(false);
+      setActions((count) => count - 1);
     }
   };
 
-  return { send, busy, errorMessage, setErrorMessage };
+  return { sendNow, enqueue, act, busy: actions > 0, errorMessage, setErrorMessage };
 }
 
 /**
  * A document in a form window: the document the window shows (documentId: none for a new one), its header as edited,
- * and the requests that change it. The draft is created with its first line; its id then goes into the window's URL
- * (page?formTitle=…&idParam=id), so the window opens it again.
+ * and the requests that change it, sent one at a time (useDocumentRequests). The draft is created with its first
+ * line; its id then goes into the window's URL (page?formTitle=…&idParam=id), so the window opens it again.
  *
  * @param emptyHeader the header of a new document
  * @param headerFrom  the header of a document the backend sent
@@ -100,19 +114,42 @@ export function useDocument({ api, documentId, formId, formTitle, page, idParam,
   const updateOpenFormUrl = useUpdateOpenForms(formId);
   const { data: document, error: loadError, mutate } = useSWR(
     documentId ? `${api}/${documentId}` : null, fetchJson, { revalidateOnFocus: false });
+  const { sendNow, enqueue, act, busy, errorMessage, setErrorMessage } = useDocumentRequests(csrfFetch);
+  const posted = document?.status === 'POSTED';
 
-  // The header: for a new document, what's entered; for a draft, what it has (reset whenever it's loaded again).
+  // The header: for a new document, what's entered; for a draft, what it has, reset whenever it's loaded again but for
+  // the fields edited and not saved yet (unsaved: a text being typed while another field's save is answered).
+  // Mirrored in a ref for the requests, which send the header as it is when they're sent, not as a render saw it.
+  const [edited, setEditedState] = useState({ header: emptyHeader, unsaved: [] });
+  const editedRef = useRef(edited);
+  const setEdited = (next) => {
+    editedRef.current = next;
+    setEditedState(next);
+  };
   // Set during render, not in an effect, so the stale header is never shown:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-  const [header, setHeader] = useState(emptyHeader);
   const [headerLoadedFrom, setHeaderLoadedFrom] = useState(null);
   if (document && document !== headerLoadedFrom) {
     setHeaderLoadedFrom(document);
-    setHeader(headerFrom(document));
+    const loaded = headerFrom(document);
+    edited.unsaved.forEach((field) => {
+      loaded[field] = edited.header[field];
+    });
+    setEditedState({ header: loaded, unsaved: edited.unsaved });
   }
-
-  const { send, busy, errorMessage, setErrorMessage } = useDocumentRequests(csrfFetch);
-  const posted = document?.status === 'POSTED';
+  const header = edited.header;
+  useEffect(() => {
+    editedRef.current = edited;
+  }, [edited]);
+  // For a request that runs after this render: the document shown then, or the draft just created (not loaded yet)
+  const documentRef = useRef(document);
+  const createdId = useRef(null);
+  useEffect(() => {
+    documentRef.current = document;
+    if (document) {
+      createdId.current = null;
+    }
+  }, [document]);
 
   /** Shows the document a request answered with, or loads it again if the request failed. */
   const show = (saved) => mutate(saved ?? undefined, { revalidate: !saved });
@@ -120,63 +157,114 @@ export function useDocument({ api, documentId, formId, formTitle, page, idParam,
   const openInWindow = (id) => updateOpenFormUrl(`${page}?formTitle=${encodeURIComponent(formTitle)}${
     id == null ? '' : `&${idParam}=${encodeURIComponent(id)}`}`);
 
-  /** A header change: kept until the draft exists, saved at once on a draft (pass save = false for a text). */
-  const changeHeader = async (changes, save = true) => {
-    setHeader((previous) => ({ ...previous, ...changes }));
-    if (save && document && !posted) {
-      await show(await send(`${api}/${document.id}`, 'PUT', headerBody({ ...header, ...changes })));
+  const editHeader = (changes) => {
+    const { header: current, unsaved } = editedRef.current;
+    setEdited({
+      header: { ...current, ...changes },
+      unsaved: [...unsaved, ...Object.keys(changes).filter((field) => !unsaved.includes(field))],
+    });
+  };
+
+  /**
+   * Saves the draft's header as it is now (for a task in the queue). The fields sent are saved, unless they changed
+   * again meanwhile; if the backend refuses them, they're the draft's again.
+   */
+  const saveHeader = async (draft) => {
+    const sent = editedRef.current.header;
+    const saved = await sendNow(`${api}/${draft.id}`, 'PUT', headerBody(sent));
+    const reverted = saved ? null : headerFrom(draft);
+    const { header: current, unsaved } = editedRef.current;
+    const done = unsaved.filter((field) => current[field] === sent[field]);
+    setEdited({
+      header: reverted ? { ...current, ...Object.fromEntries(done.map((field) => [field, reverted[field]])) } : current,
+      unsaved: unsaved.filter((field) => !done.includes(field)),
+    });
+    await show(saved);
+  };
+
+  /** A header change: kept until the draft exists, saved on a draft (pass save = false for a text being typed). */
+  const changeHeader = (changes, save = true) => {
+    editHeader(changes);
+    const draft = documentRef.current;
+    if (save && draft && draft.status !== 'POSTED') {
+      enqueue(() => saveHeader(draft));
+    }
+  };
+
+  /** A header change made by a task in the queue (enqueue): saved at once on a draft. */
+  const changeHeaderNow = async (changes) => {
+    editHeader(changes);
+    const draft = documentRef.current;
+    if (draft && draft.status !== 'POSTED') {
+      await saveHeader(draft);
     }
   };
 
   /** Saves a text of the header when it's left, if it isn't what the document has (stored). */
   const saveTextOnBlur = (field, stored) => () => {
-    if (document && !posted && (stored ?? '') !== header[field].trim()) {
-      changeHeader({});
+    const draft = documentRef.current;
+    if (!draft || draft.status === 'POSTED') {
+      return;
+    }
+    const { header: current, unsaved } = editedRef.current;
+    if ((stored ?? '') !== current[field].trim()) {
+      enqueue(() => saveHeader(draft));
+    } else {
+      setEdited({ header: current, unsaved: unsaved.filter((other) => other !== field) });
     }
   };
+
+  /** Resolves once the requests made so far are done: the header is then as they left it (currentHeader). */
+  const settled = () => enqueue(() => {});
+  const currentHeader = () => editedRef.current.header;
 
   /**
    * PUTs the body to the draft's path (e.g. "/lines"), creating the draft first if there's none yet; returns what
    * the backend answered with, or null if it failed.
    */
-  const saveToDraft = async (path, body) => {
-    let id = document?.id;
+  const saveToDraft = (path, body) => act(() => enqueue(async () => {
+    let id = documentRef.current?.id ?? createdId.current;
     if (!id) {
-      const created = await send(api, 'POST', headerBody(header));
+      const created = await sendNow(api, 'POST', headerBody(editedRef.current.header));
       if (!created) {
         return null;
       }
       id = created.id;
+      createdId.current = id;
+      // The header went with it
+      setEdited({ header: editedRef.current.header, unsaved: [] });
     }
-    const saved = await send(`${api}/${id}${path}`, 'PUT', body);
-    if (document) {
+    const saved = await sendNow(`${api}/${id}${path}`, 'PUT', body);
+    if (documentRef.current) {
       await show(saved);
     } else {
       // From now on the window opens this draft (and loads it, with the line if it was saved)
       openInWindow(id);
     }
     return saved;
-  };
+  }));
 
   /** Sends a request to the document's path (e.g. "/post") and shows what it answers with. */
-  const request = async (path, method) => show(await send(`${api}/${document.id}${path}`, method));
+  const request = (path, method) => act(() => enqueue(async () => show(
+    await sendNow(`${api}/${documentRef.current.id}${path}`, method))));
 
-  /** A new document in the window, its header cleared. */
-  const openNew = () => {
+  /** A new document in the window, its header cleared (once the requests before it are done). */
+  const openNew = () => act(() => enqueue(() => {
     openInWindow(null);
+    createdId.current = null;
     // headerLoadedFrom stays the document just left: until the URL has changed, it's still the one loaded, and
     // forgetting it would load its header back over the cleared one
-    setHeader(emptyHeader);
+    setEdited({ header: emptyHeader, unsaved: [] });
     setErrorMessage(null);
-  };
+  }));
 
   /** Deletes the draft once the user confirms the question; true if it was deleted. */
   const deleteDraft = async (question) => window.confirm(question)
-    && (await send(`${api}/${document.id}`, 'DELETE')) != null;
+    && act(() => enqueue(async () => (await sendNow(`${api}/${documentRef.current.id}`, 'DELETE')) != null));
 
   return {
-    document, loadError, header, changeHeader, saveTextOnBlur, busy, errorMessage, setErrorMessage, posted,
-    saveToDraft, request, openNew, deleteDraft,
+    document, loadError, header, changeHeader, changeHeaderNow, saveTextOnBlur, settled, currentHeader, enqueue, act,
+    busy, errorMessage, setErrorMessage, posted, saveToDraft, request, openNew, deleteDraft,
   };
 }
 
@@ -224,14 +312,29 @@ export function DescriptionField({ value, disabled, onChange, onBlur }) {
 
 /**
  * The entry row's product, with its error under it. A product's barcode (its option's code) picks it: scanned into
- * the field, Enter then moves on to the next one; a barcode no product has is shown under it.
+ * the field, Enter then moves on to the next one; a barcode no product has empties the field (the product chosen
+ * before, kept after OK, isn't the one scanned) and is shown under it until a product is chosen.
  */
 export function ProductField({ productRef, options, value, onChange, error, placeholder = 'اختر الصنف…' }) {
   const [unknownCode, setUnknownCode] = useState(null);
+  // A product put in by the form (a line to edit) answers the barcode too
+  const [valueShown, setValueShown] = useState(value);
+  if (value !== valueShown) {
+    setValueShown(value);
+    if (value != null) {
+      setUnknownCode(null);
+    }
+  }
   const shownError = unknownCode != null ? `لا يوجد صنف بالباركود ${unknownCode}` : error;
   return <Box sx={{ flex: 2, minWidth: 170 }}>
     <Combobox {...COMBOBOX_PROPS} ref={productRef} aria-label="الصنف" options={options} value={value}
-      placeholder={placeholder} onUnknownCode={setUnknownCode}
+      placeholder={placeholder}
+      onUnknownCode={(code) => {
+        if (value != null) {
+          onChange(null);
+        }
+        setUnknownCode(code);
+      }}
       onChange={(next) => {
         setUnknownCode(null);
         onChange(next);

@@ -2,7 +2,7 @@
 
 import { Alert, Box, Stack, TextField } from '@mui/material';
 import { Big } from 'bigdecimal.js';
-import useSWR from 'swr';
+import useSWR, { mutate as fillCache } from 'swr';
 import { useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { fetchJson } from '@/utils/fetchJson';
@@ -22,7 +22,7 @@ const NO_BATCHES = [];
  * The purchase return document: stock sent back to a supplier. A draft is filled one line at a time: a product, its
  * batch (number and expiry date, chosen together by typing part of either), the quantity and a discount. Against a
  * purchase invoice (a posted one, entered when its field is left), the supplier and warehouse are the invoice's (filled
- * in, the supplier locked), the products and batches to choose from are the invoice's (with units left to return),
+ * in and locked), the products and batches to choose from are the invoice's (with units left to return),
  * each unit is credited at what it cost on the invoice and the discount field is off; without one, the batches are
  * those the warehouse has. Posting takes the
  * goods out of their batch at the average cost, debits the supplier with the total (rounded to 2 decimals), and puts
@@ -33,8 +33,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
   const {
-    document: purchaseReturn, loadError, header, changeHeader, saveTextOnBlur, busy, errorMessage, setErrorMessage,
-    posted, saveToDraft, request, openNew, deleteDraft,
+    document: purchaseReturn, loadError, header, changeHeader, changeHeaderNow, saveTextOnBlur, settled, currentHeader,
+    enqueue, act, busy, errorMessage, setErrorMessage, posted, saveToDraft, request, openNew, deleteDraft,
   } = useDocument({
     api: '/api/purchase-returns', documentId: returnId, formId, formTitle, page: '/dashboard/purchase-return',
     idParam: 'returnId', emptyHeader: EMPTY_HEADER,
@@ -47,7 +47,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     headerBody: (next) => ({
       supplierId: next.supplierId,
       warehouseId: next.warehouseId,
-      purchaseInvoiceId: next.purchaseInvoiceId.trim() === '' ? null : parseWholeUnits(next.purchaseInvoiceId),
+      // Always a posted invoice's number, or none (enterInvoice)
+      purchaseInvoiceId: next.purchaseInvoiceId === '' ? null : next.purchaseInvoiceId,
       description: next.description.trim() || null,
     }),
   });
@@ -62,47 +63,71 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
 
   const lines = useMemo(() => purchaseReturn?.lines ?? [], [purchaseReturn]);
   const optionsError = suppliers.error ?? warehouses.error ?? products.error;
-  const invoiceIdText = header.purchaseInvoiceId.trim();
-  const invoiceIdValid = invoiceIdText === '' || parseWholeUnits(invoiceIdText) != null;
   const setField = (field) => (value) => setEntry((previous) => ({ ...previous, [field]: value }));
 
-  // The invoice the goods came on: the one in its field, once it's left (not each number as it's typed)
-  const [invoiceFieldFocused, setInvoiceFieldFocused] = useState(false);
-  const invoiceId = !invoiceFieldFocused && invoiceIdText && invoiceIdValid ? parseWholeUnits(invoiceIdText) : null;
-  const { data: invoice } = useSWR(invoiceId != null ? `/api/purchase-invoices/${invoiceId}` : null, fetchJson);
+  // The invoice the goods came on: the header's, set once its field is left with the number of a posted invoice (not
+  // as each number is typed). Until then the field has the text typed.
+  const invoiceId = header.purchaseInvoiceId === '' ? null : header.purchaseInvoiceId;
+  const [invoiceText, setInvoiceText] = useState(header.purchaseInvoiceId);
+  const [invoiceTextOf, setInvoiceTextOf] = useState(header.purchaseInvoiceId);
+  if (header.purchaseInvoiceId !== invoiceTextOf) {
+    setInvoiceTextOf(header.purchaseInvoiceId);
+    setInvoiceText(header.purchaseInvoiceId);
+  }
+  const invoiceUrl = (id) => `/api/purchase-invoices/${id}`;
+  const { data: invoice } = useSWR(invoiceId != null ? invoiceUrl(invoiceId) : null, fetchJson);
   const postedInvoice = invoice?.status === 'POSTED' && String(invoice.id) === invoiceId ? invoice : null;
   // Against an invoice, only its products
   const productOptions = useMemo(() => (invoiceId == null ? products.options : products.options.filter(
     (option) => postedInvoice?.lines.some((line) => line.productId === option.value))),
   [invoiceId, postedInvoice, products.options]);
 
-  /** The invoice field left: a posted invoice's supplier and warehouse are the return's (saved on a draft). */
-  const enterInvoice = async () => {
-    setInvoiceFieldFocused(false);
-    if (!invoiceIdValid) {
+  /**
+   * The invoice field left: a posted invoice's number makes it the return's, with its supplier and warehouse (saved on
+   * a draft); an empty field, none. In the queue (enqueue), so OK or ترحيل clicked right after waits for it. Any other
+   * text is refused, and the field shows the return's invoice again: the draft keeps it.
+   */
+  const enterInvoice = () => {
+    const text = invoiceText.trim();
+    const refuse = (message) => {
+      setErrorMessage(message);
+      setInvoiceText(currentHeader().purchaseInvoiceId);
+    };
+    if (text === currentHeader().purchaseInvoiceId) {
+      setInvoiceText(text);
       return;
     }
-    const stored = purchaseReturn?.purchaseInvoiceId == null ? '' : String(purchaseReturn.purchaseInvoiceId);
-    if (invoiceIdText === '') {
-      saveTextOnBlur('purchaseInvoiceId', stored)();
+    const id = text === '' ? null : parseWholeUnits(text);
+    if (text !== '' && id == null) {
+      refuse(`رقم فاتورة المشتريات غير صحيح: ${text}`);
       return;
     }
-    let entered;
-    try {
-      entered = await fetchJson(`/api/purchase-invoices/${parseWholeUnits(invoiceIdText)}`);
-    } catch (error) {
-      setErrorMessage(error.message);
-      return;
-    }
-    if (entered.status !== 'POSTED') {
-      setErrorMessage(`فاتورة المشتريات رقم ${entered.id} غير مُرحَّلة: المرتجع يكون من فاتورة مُرحَّلة`);
-      return;
-    }
-    setErrorMessage(null);
-    if (entered.supplierId !== header.supplierId || entered.warehouseId !== header.warehouseId
-      || stored !== invoiceIdText) {
-      await changeHeader({ supplierId: entered.supplierId, warehouseId: entered.warehouseId });
-    }
+    enqueue(async () => {
+      let entered = null;
+      if (id != null) {
+        try {
+          entered = await fetchJson(invoiceUrl(id));
+        } catch (error) {
+          refuse(error.message);
+          return;
+        }
+        if (entered.status !== 'POSTED') {
+          refuse(`فاتورة المشتريات رقم ${entered.id} غير مُرحَّلة: المرتجع يكون من فاتورة مُرحَّلة`);
+          return;
+        }
+        fillCache(invoiceUrl(id), entered, { revalidate: false });
+      }
+      setErrorMessage(null);
+      // A product not on the invoice, or a batch of another warehouse, is the entry row's no more
+      setEntry((previous) => ({
+        ...previous, batch: null,
+        productId: entered && !entered.lines.some((line) => line.productId === previous.productId) ? null
+          : previous.productId,
+      }));
+      await changeHeaderNow(entered
+        ? { purchaseInvoiceId: id, supplierId: entered.supplierId, warehouseId: entered.warehouseId }
+        : { purchaseInvoiceId: '' });
+    });
   };
 
   // The product's batches to choose from: those the warehouse has, against an invoice only the invoice's (no more than
@@ -116,15 +141,17 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
   const { data: batchOptions = NO_BATCHES, isLoading: batchesLoading, mutate: reloadBatches } = useSWR(
     batchQuery, fetchJson);
 
-  const saveEntry = async () => {
+  // Once an invoice just entered is (OK right after leaving its field): checked against the header as it then is
+  const saveEntry = () => act(async () => {
+    await settled();
+    const current = currentHeader();
     const quantity = parseWholeUnits(entry.quantity);
     // Against an invoice the units are credited at what they cost on it: no discount
-    const discountEntered = !invoiceIdText && entry.discountPercent.trim() !== '';
+    const discountEntered = current.purchaseInvoiceId === '' && entry.discountPercent.trim() !== '';
     const discount = discountEntered ? parsePercent(entry.discountPercent) : null;
     const errors = {
-      header: header.supplierId == null ? 'حدّد المورد أولاً'
-        : header.warehouseId == null ? 'حدّد المخزن أولاً'
-          : !invoiceIdValid ? 'رقم فاتورة المشتريات غير صحيح' : null,
+      header: current.supplierId == null ? 'حدّد المورد أولاً'
+        : current.warehouseId == null ? 'حدّد المخزن أولاً' : null,
       productId: entry.productId == null ? 'حدّد الصنف' : null,
       batch: entry.batch == null ? 'اختر التشغيلة' : null,
       quantity: entry.quantity.trim() === '' ? REQUIRED
@@ -132,7 +159,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       discountPercent: discountEntered && !discount ? DISCOUNT_ERROR : null,
     };
     setEntryErrors(errors);
-    if (Object.values(errors).some(Boolean) || header.description.length > MAX_DESCRIPTION_LENGTH) {
+    if (Object.values(errors).some(Boolean) || current.description.length > MAX_DESCRIPTION_LENGTH) {
       return;
     }
     // As text, so no number passes through a JavaScript number
@@ -149,7 +176,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       setEntryErrors({});
       productRef.current?.focus();
     }
-  };
+  });
 
   const newReturn = () => {
     openNew();
@@ -203,12 +230,16 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
         value={header.supplierId} disabled={posted || busy || invoiceId != null} placeholder="اختر المورد…"
         onChange={(supplierId) => changeHeader({ supplierId })} />
       <HeaderCombobox id={`${formId}-warehouse`} label="المخزن" basis={170} options={warehouses.options}
-        value={header.warehouseId} disabled={posted || busy} onChange={(warehouseId) => changeHeader({ warehouseId })} />
-      <TextField size="small" label="فاتورة المشتريات" placeholder="بدون" value={header.purchaseInvoiceId}
-        disabled={posted} sx={{ flex: '0 1 140px' }} error={!invoiceIdValid}
+        value={header.warehouseId} disabled={posted || busy || invoiceId != null}
+        onChange={(warehouseId) => {
+          // Its batches are another warehouse's
+          setEntry((previous) => ({ ...previous, batch: null }));
+          changeHeader({ warehouseId });
+        }} />
+      <TextField size="small" label="فاتورة المشتريات" placeholder="بدون" value={invoiceText}
+        disabled={posted} sx={{ flex: '0 1 140px' }}
         slotProps={{ inputLabel: { shrink: true }, htmlInput: { inputMode: 'numeric', dir: 'ltr' } }}
-        onChange={(event) => changeHeader({ purchaseInvoiceId: event.target.value }, false)}
-        onFocus={() => setInvoiceFieldFocused(true)} onBlur={enterInvoice} />
+        onChange={(event) => setInvoiceText(event.target.value)} onBlur={enterInvoice} />
       <DescriptionField value={header.description} disabled={posted}
         onChange={(description) => changeHeader({ description }, false)}
         onBlur={saveTextOnBlur('description', purchaseReturn?.description)} />
@@ -237,8 +268,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
         }} />
       <EntryField label="الكمية" kind="numeric" value={entry.quantity} onChange={setField('quantity')}
         inputRef={quantityRef} error={entryErrors.quantity} />
-      <EntryField label="الخصم %" kind="decimal" placeholder={invoiceIdText ? 'من الفاتورة' : '0'}
-        disabled={!!invoiceIdText} value={invoiceIdText ? '' : entry.discountPercent}
+      <EntryField label="الخصم %" kind="decimal" placeholder={invoiceId != null ? 'من الفاتورة' : '0'}
+        disabled={invoiceId != null} value={invoiceId != null ? '' : entry.discountPercent}
         onChange={setField('discountPercent')} inputRef={discountRef} error={entryErrors.discountPercent} />
       <OkButton okRef={okRef} busy={busy} onClick={saveEntry} updating={editingExistingLine} />
     </EntryRow>}

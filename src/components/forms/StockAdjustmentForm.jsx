@@ -146,9 +146,11 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     amountColumn('unitCost', 'تكلفة الوحدة', 100),
     {
       field: 'value', headerName: 'القيمة', flex: 1, minWidth: 100,
-      // Counted above the balance without a discount (stock taken out since the line was saved): posting needs one
-      valueFormatter: ({ value }) => (value == null ? 'أدخل الخصم' : formatAmount(value)),
-      cellStyle: ({ value }) => ({ ...NUMBER_CELL, color: value == null ? '#c62828' : 'inherit' }),
+      // Counted above the balance without a discount (stock taken out since the line was saved): posting needs one.
+      // The total has none then: it's shown as none, the line asks for the discount.
+      valueFormatter: ({ value, node }) => (value != null ? formatAmount(value) : node.rowPinned ? '—'
+        : 'أدخل الخصم'),
+      cellStyle: ({ value, node }) => ({ ...NUMBER_CELL, color: value == null && !node.rowPinned ? '#c62828' : 'inherit' }),
     },
     ...deleteColumn(posted, busy, (line) => request(`/lines/${line.id}`, 'DELETE')),
   ];

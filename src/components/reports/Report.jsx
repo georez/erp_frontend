@@ -34,6 +34,7 @@ import FormFields from '@/components/forms/FormFields';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { openLinkOnPlainClick, useOpenLink } from '@/utils/useOpenLink';
 import { CONNECTION_ERROR_MESSAGE } from '@/utils/sendOrShowError';
+import { readErrorMessage } from '@/utils/fetchJson';
 
 import {
   transformFields,
@@ -102,9 +103,10 @@ async function fetchReportMetadataApi(
   );
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to load the report (${response.status})`
-    );
+    // The backend's reason, in Arabic (a report that doesn't exist...), for the screen to show
+    const error = new Error(await readErrorMessage(response));
+    error.fromBackend = true;
+    throw error;
   }
 
   return response.json();
@@ -420,7 +422,7 @@ export default function Report({
       } catch (error) {
         console.error('Report metadata API error:', error);
         if (!cancelled) {
-          setLoadError('تعذر تحميل التقرير.');
+          setLoadError(error.fromBackend ? error.message : 'تعذر تحميل التقرير.');
         }
       } finally {
         if (!cancelled) {

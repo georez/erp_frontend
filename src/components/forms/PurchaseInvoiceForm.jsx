@@ -10,7 +10,7 @@ import { formatExpiry } from '@/utils/expiryDates';
 import {
   amountColumn, checkBatchNumber, checkExpiry, deleteColumn, DescriptionField, DISCOUNT_ERROR, DocumentActions,
   documentStatus, DocumentTitle, EntryField, EntryRow, expiryColumn, ExpiryField, HeaderCombobox, LinesGrid,
-  MAX_DESCRIPTION_LENGTH, NUMBER_CELL, OkButton, ProductField, REQUIRED, Total, useDocument, useOptions,
+  formatAmount, MAX_DESCRIPTION_LENGTH, NUMBER_CELL, OkButton, ProductField, REQUIRED, Total, useDocument, useOptions,
 } from './documentForm';
 
 const MAX_SUPPLIER_INVOICE_NUMBER_LENGTH = 50;
@@ -18,7 +18,8 @@ const EMPTY_HEADER = {
   supplierId: null, warehouseId: null, supplierInvoiceNumber: '', supplierInvoiceDate: '', description: '',
 };
 const EMPTY_LINE = { productId: null, quantity: '', discountPercent: '' };
-const EMPTY_BATCH = { productId: null, batchNumber: '', expiryDate: '', quantity: '' };
+// quantityFilled: the quantity is what was left of the product to put in a batch, filled in (not typed)
+const EMPTY_BATCH = { productId: null, batchNumber: '', expiryDate: '', quantity: '', quantityFilled: false };
 
 /** Whole units in a positive whole number's text, or the error to show. */
 const checkQuantity = (text) => {
@@ -88,7 +89,9 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   const batchProductOptions = useMemo(() => products.options.filter((option) => lines.some(
     (invoiceLine) => invoiceLine.productId === option.value)), [products.options, lines]);
   const setLineField = (field) => (value) => setLine((previous) => ({ ...previous, [field]: value }));
-  const setBatchField = (field) => (value) => setBatch((previous) => ({ ...previous, [field]: value }));
+  const setBatchField = (field) => (value) => setBatch((previous) => ({
+    ...previous, [field]: value, ...(field === 'quantity' && { quantityFilled: false }),
+  }));
 
   // --- products ---
 
@@ -142,18 +145,28 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       return;
     }
     await request(`/lines/${invoiceLine.id}`, 'DELETE');
+    // Its batches went with it: the batch row can't be one of them any more
+    setBatch((previous) => (previous.productId === invoiceLine.productId
+      ? { ...previous, productId: null, ...(previous.quantityFilled && { quantity: '', quantityFilled: false }) }
+      : previous));
   };
 
   // --- batches ---
 
-  /** The batch row's product: its line, and its units not in a batch yet as the quantity when none is entered. */
+  /**
+   * The batch row's product: its line, and its units not in a batch yet as the quantity when none is typed (also
+   * replacing what another product left, filled in as type-ahead passed it on the way to this one).
+   */
   const chooseBatchProduct = (productId) => {
     const invoiceLine = lines.find((candidate) => candidate.productId === productId);
     const left = invoiceLine ? Big(invoiceLine.quantity).subtract(Big(invoiceLine.batchedQuantity)) : Big(0);
-    setBatch((previous) => ({
-      ...previous, productId,
-      quantity: previous.quantity === '' && left.signum() > 0 ? left.toPlainString() : previous.quantity,
-    }));
+    setBatch((previous) => {
+      if (previous.quantity !== '' && !previous.quantityFilled) {
+        return { ...previous, productId };
+      }
+      const filled = left.signum() > 0;
+      return { ...previous, productId, quantity: filled ? left.toPlainString() : '', quantityFilled: filled };
+    });
   };
 
   const saveBatch = async () => {
@@ -178,7 +191,10 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       // The product stays chosen, with what's left of it to put in a batch
       const savedLine = saved.lines.find((candidate) => candidate.id === invoiceLine.id);
       const left = savedLine ? Big(savedLine.quantity).subtract(Big(savedLine.batchedQuantity)) : Big(0);
-      setBatch({ ...EMPTY_BATCH, productId: batch.productId, quantity: left.signum() > 0 ? left.toPlainString() : '' });
+      setBatch({
+        ...EMPTY_BATCH, productId: batch.productId, quantity: left.signum() > 0 ? left.toPlainString() : '',
+        quantityFilled: left.signum() > 0,
+      });
       setBatchErrors({});
       // Back to the product, like the other entry rows: Enter moves on to its next batch, typing picks another
       batchProductRef.current?.focus();
@@ -189,7 +205,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     flushSync(() => {
       setBatch({
         productId: row.productId, batchNumber: row.batchNumber, expiryDate: formatExpiry(row.expiryDate),
-        quantity: row.quantity,
+        quantity: row.quantity, quantityFilled: false,
       });
       setBatchErrors({});
     });
@@ -215,7 +231,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     amountColumn('quantity', 'الكمية', 85),
     ...(batchesPhase ? [{
       field: 'batchedQuantity', headerName: 'في التشغيلات', flex: 1, minWidth: 95,
-      valueFormatter: ({ value }) => value,
+      valueFormatter: ({ value }) => formatAmount(value),
       cellStyle: ({ data }) => ({ ...NUMBER_CELL, color: data.batchedQuantity === data.quantity ? '#2e7d32' : '#c62828' }),
     }] : []),
     amountColumn('publicPrice', 'سعر الجمهور', 85),

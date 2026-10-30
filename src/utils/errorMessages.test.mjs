@@ -114,6 +114,7 @@ const BACKEND_CODES = {
   PURCHASE_RETURN_POSTED: ['returnId'],
   PURCHASE_RETURN_LINE_NOT_FOUND: ['lineId'],
   PURCHASE_RETURN_INVOICE_INVALID: ['invoiceId'],
+  PURCHASE_RETURN_OTHER_WAREHOUSE: ['invoiceId'],
   PRODUCT_NOT_ON_INVOICE: ['productName'],
   PURCHASE_RETURN_EXCEEDS_INVOICE: ['productName', 'batchNumber', 'available'],
   PURCHASE_RETURN_EXCEEDS_STOCK: ['productName', 'batchNumber', 'available'],
@@ -175,4 +176,7 @@ test('readErrorMessage reads the message from a failed response', async () => {
 
   const notJson = new Response('<html>Bad gateway</html>', { status: 502, statusText: 'Bad Gateway' });
   assert.equal(await readErrorMessage(notJson), 'Bad Gateway');
+
+  const sessionEnded = new Response(null, { status: 401 });
+  assert.equal(await readErrorMessage(sessionEnded), 'انتهت الجلسة. سجّل الدخول مرة أخرى.');
 });

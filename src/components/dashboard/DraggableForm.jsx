@@ -5,7 +5,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CropSquareIcon from '@mui/icons-material/CropSquare';
 import FilterNoneIcon from '@mui/icons-material/FilterNone';
 import { useSearchParams } from "next/navigation";
-import { useUpdateSearchParam } from "@/utils/useUpdateSearchParams";
+import { readOpenForms, useUpdateSearchParam } from "@/utils/useUpdateSearchParams";
 import { useCallback, useEffect, useState } from "react";
 import LZString from 'lz-string';
 
@@ -16,9 +16,7 @@ export default function DraggableForm({
 }) {
 
   const searchParams = useSearchParams();
-  const openForms = JSON.parse(searchParams.get('openForms') ?
-    LZString.decompressFromEncodedURIComponent(searchParams.get('openForms')) :
-    '[]');
+  const openForms = readOpenForms(searchParams) ?? [];
   const focusedForm = searchParams.get('focusedForm') || null;
   const [positionX, setPositionX] = useState(x);
   const [positionY, setPositionY] = useState(y);

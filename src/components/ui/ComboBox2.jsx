@@ -37,8 +37,8 @@ import { createPortal } from "react-dom";
  * (some scanners send neither). The code then selects the option with that code, and Enter or Tab is left alone, so
  * a form can move on to its next field; when several options share it, the list opens with just those to choose
  * from; when none has it, onUnknownCode is called (and Enter or Tab is stopped). A code that starts with a letter
- * works the same when it's followed by Enter, though it isn't shown. Without codes, digits are type-ahead like any
- * other key.
+ * works the same when it's followed by Enter, though it isn't shown; letters match in either case. A code pasted
+ * (Ctrl+V) ends at once. Without codes, digits are type-ahead like any other key.
  *
  * The popup is rendered in a portal with position: fixed, so it is never clipped by
  * overflow: hidden ancestors, and it flips above the field when there's no room below.
@@ -48,6 +48,8 @@ const CHROME = 28; // popup height besides the rows: footer (26) + borders (2)
 // A scanner types its keys this close together (ms); then a pause this long ends its code
 const SCANNER_KEY_GAP = 50;
 const SCANNER_END = 120;
+// The Enter a scanner sends after its code, when the pause ended the code first: as late as this (ms) after it
+const SCANNER_LATE_ENTER = 400;
 
 // UI strings. Override any of them with the `messages` prop (they may return JSX).
 const DEFAULT_MESSAGES = {
@@ -81,6 +83,8 @@ function lowerBound(keys, prefix) {
 // Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits as ASCII, as some keyboard layouts make a scanner type them
 const asciiDigits = (text) =>
   text.replace(/[٠-٩۰-۹]/g, (digit) => String(digit.charCodeAt(0) & 0xf));
+// A code as it's looked up: its letters in either case (a scanner types them as Caps Lock has them)
+const lookupCode = (text) => asciiDigits(String(text).trim()).toUpperCase();
 const isDigit = (ch) => /^[0-9٠-٩۰-۹]$/.test(ch);
 
 export const Combobox = forwardRef(function Combobox(
@@ -130,7 +134,7 @@ export const Combobox = forwardRef(function Combobox(
     const byCode = new Map();
     items.forEach((item, i) => {
       if (item.code == null || item.code === "") return;
-      const code = asciiDigits(String(item.code).trim());
+      const code = lookupCode(item.code);
       byCode.set(code, [...(byCode.get(code) ?? []), i]);
     });
     return byCode;
@@ -148,11 +152,20 @@ export const Combobox = forwardRef(function Combobox(
   const optId = (i) => `${uid}-opt-${i}`;
 
   const [open, setOpen] = useState(false);
-  // The list's items: all of them (null), or the indexes of those sharing a code
-  const [filter, setFilter] = useState(null);
+  // The list's items: all of them (null), or those sharing a code, by value: the options may change while it's open
+  // (loaded again), and an index would then point at another item, or past the end
+  const [filterValues, setFilterValues] = useState(null);
+  const filter = useMemo(
+    () =>
+      filterValues &&
+      filterValues.map((v) => items.findIndex((item) => item.value === v)).filter((i) => i >= 0),
+    [filterValues, items]
+  );
   const shown = filter ? filter.length : n;
   const itemAt = (i) => items[filter ? filter[i] : i];
-  const [active, setActive] = useState(0);
+  const [activeState, setActive] = useState(0);
+  // Within the list, which may have got shorter
+  const active = Math.max(0, Math.min(activeState, shown - 1));
   const [scrollTop, setScrollTop] = useState(0);
   const [hint, setHint] = useState("");
   const [pos, setPos] = useState(null); // { left, top, width, rows, dir }
@@ -161,6 +174,8 @@ export const Combobox = forwardRef(function Combobox(
   const codeRef = useRef(null);
   const codeKeyTimes = useRef([]);
   const codeTimer = useRef(null);
+  // A code a scanner's pause ended: when, and whether it selected its item (see SCANNER_LATE_ENTER)
+  const pauseEnded = useRef(null);
   const inputRef = useRef(null);
   const popRef = useRef(null);
   const listRef = useRef(null);
@@ -232,6 +247,10 @@ export const Combobox = forwardRef(function Combobox(
   useEffect(() => {
     if (disabled) setOpen(false);
   }, [disabled]);
+  // Nothing left to list (the options changed while it was open)
+  useEffect(() => {
+    if (open && shown === 0) closeList();
+  }, [open, shown]);
 
   function scrollTo(i, center = false) {
     const el = listRef.current;
@@ -254,7 +273,7 @@ export const Combobox = forwardRef(function Combobox(
   /** Opens the list: all the items, or only those at the indexes given (sharing a code). */
   function openList(only = null) {
     if (disabled || !n) return;
-    setFilter(only);
+    setFilterValues(only && only.map((i) => items[i].value));
     setActive(only ? 0 : Math.max(selectedIndex, 0));
     setScrollTop(0);
     place(only ? only.length : n);
@@ -263,11 +282,12 @@ export const Combobox = forwardRef(function Combobox(
 
   function closeList() {
     setOpen(false);
-    setFilter(null);
+    setFilterValues(null);
   }
 
   function commit(i) {
-    setValue(itemAt(i).value);
+    const item = itemAt(i);
+    if (item) setValue(item.value);
     closeList();
   }
 
@@ -309,17 +329,18 @@ export const Combobox = forwardRef(function Combobox(
     clearTimeout(codeTimer.current);
     const burst =
       times.length >= 4 && times.every((t, i) => i === 0 || t - times[i - 1] < SCANNER_KEY_GAP);
-    if (burst) codeTimer.current = setTimeout(() => endCode(null), SCANNER_END);
+    if (burst) codeTimer.current = setTimeout(() => endCode(null, codeRef.current, true), SCANNER_END);
   }
 
   /**
-   * The code typed, ended by Enter or Tab (event) or a scanner's pause (null): selects its item, or lists the items
-   * sharing it, or reports it unknown. Only selecting leaves the key to the form.
+   * The code typed, ended by Enter or Tab (event) or a scanner's pause (null, byPause): selects its item, or lists the
+   * items sharing it, or reports it unknown. Only selecting leaves the key to the form.
    */
-  function endCode(e, text = codeRef.current) {
+  function endCode(e, text = codeRef.current, byPause = false) {
     dropCode();
     if (!text) return;
-    const found = codes.get(asciiDigits(text.trim())) ?? [];
+    const found = codes.get(lookupCode(text)) ?? [];
+    if (byPause) pauseEnded.current = { at: Date.now(), selected: found.length === 1 };
     if (found.length === 1) {
       setValue(items[found[0]].value);
       closeList();
@@ -425,7 +446,16 @@ export const Combobox = forwardRef(function Combobox(
         else typeKey(ch);
       }
     };
-    if (e.inputType === "insertText" && e.data) typeText(e.data);
+    if (e.inputType === "insertFromPaste") {
+      // A pasted code ends at once, as if Enter followed it; other text jumps like typing
+      const text = (e.data ?? e.dataTransfer?.getData("text/plain") ?? "").trim();
+      if (!text) return;
+      clearTimeout(timer.current);
+      resetTyping();
+      dropCode();
+      if (codes.size > 0 && (isDigit(text[0]) || codes.has(lookupCode(text)))) endCode(null, text);
+      else search(text.toLowerCase());
+    } else if (e.inputType === "insertText" && e.data) typeText(e.data);
     else if (e.inputType === "insertCompositionText" && e.data)
       search(e.data.toLowerCase());
     else if (e.inputType === "deleteContentBackward") {
@@ -445,6 +475,15 @@ export const Combobox = forwardRef(function Combobox(
 
   function onKeyDown(e) {
     if (disabled || !n) return;
+    // The scanner's own Enter, late after its pause ended the code: what Enter would do after the code. It moves on
+    // from an item selected (left to the form); it doesn't pick the first of those sharing the code, nor move on from
+    // a code no item has.
+    const ended = pauseEnded.current;
+    pauseEnded.current = null;
+    if (e.key === "Enter" && ended && Date.now() - ended.at < SCANNER_LATE_ENTER) {
+      if (!ended.selected) e.preventDefault();
+      return;
+    }
     // Open the list from the keyboard: Alt+Down, or F4 (which also closes it)
     if ((e.altKey && e.key === "ArrowDown") || e.key === "F4") {
       e.preventDefault();
@@ -596,7 +635,7 @@ export const Combobox = forwardRef(function Combobox(
               </div>
             </div>
             <div className="tac-foot">
-              {filter ? msg.sameCode(itemAt(0).code, shown) : hint ? msg.jumpedBy(hint) : msg.typeToJump(n)}
+              {filter && shown > 0 ? msg.sameCode(itemAt(0).code, shown) : hint ? msg.jumpedBy(hint) : msg.typeToJump(n)}
             </div>
           </div>,
           portalTarget ?? document.body

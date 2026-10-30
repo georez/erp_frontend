@@ -270,7 +270,8 @@ export function validateReportParams(paramFields, values) {
   const selected = selectReportParams(paramFields, values);
   return Object.fromEntries(paramFields.map(({ fieldName, validationType, validation, required }) => [
     fieldName,
-    validateFormField(validationType, !!required, validation, selected[fieldName]),
+    // Signed: a report may filter on a negative number
+    validateFormField(validationType, !!required, validation, selected[fieldName], { signed: true }),
   ]));
 }
 

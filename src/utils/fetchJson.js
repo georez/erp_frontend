@@ -1,12 +1,14 @@
-import { errorMessageFromBody } from './errorMessages.js';
+import { ERROR_MESSAGES, errorMessageFromBody } from './errorMessages.js';
 
 /**
  * Reads the message to show from a failed backend response: the Arabic message for its errorCode (errorMessages.js),
- * else the backend's errorMessage, else the status.
+ * else the backend's errorMessage, else the status. A 401 without a body (the session ended between the checks that
+ * would have signed the user out) says so.
  */
 export async function readErrorMessage(res) {
   const body = await res.json().catch(() => null);
-  return errorMessageFromBody(body, res.statusText || `Request failed (${res.status})`);
+  const fallback = res.status === 401 ? ERROR_MESSAGES.SESSION_ENDED : res.statusText || `Request failed (${res.status})`;
+  return errorMessageFromBody(body, fallback);
 }
 
 /**
