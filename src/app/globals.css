@@ -1,0 +1,6 @@
+/* ComboBox2's popup is portaled to <body> at z-index 1000, which put it behind the dashboard windows (1199/1200,
+   DraggableForm). Above them, below MUI's dialogs (1300). A selector more specific than its own .tac-pop, since its
+   styles are injected after this file (see components/ui/README.md). */
+body .tac-pop {
+  z-index: 1250;
+}

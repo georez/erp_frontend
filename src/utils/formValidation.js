@@ -33,13 +33,17 @@ export function formatDateTime(fieldType, value) {
   return dayjs(value).format(getDateTimeFormat(fieldType));
 }
 
-export function validateFormField(validationType, fieldRequired, validation, value) {
-  if (!fieldRequired && (value === null || value === '')) {
-    return true;
+/**
+ * Whether a form field's value is valid, as the backend checks it (SchemaCrudService, ReportParamConverter): a text is
+ * trimmed first, one of spaces being no value. A number is not negative unless signed (a report's param may be; no
+ * form's number is, a price or a VAT rate).
+ */
+export function validateFormField(validationType, fieldRequired, validation, value, { signed = false } = {}) {
+  if (typeof value === 'string') {
+    value = value.trim();
   }
-
-  if (fieldRequired && (value === null || value === '')) {
-    return false;
+  if (value === null || value === undefined || value === '') {
+    return !fieldRequired;
   }
 
   if (validationType === "id") {
@@ -60,16 +64,17 @@ export function validateFormField(validationType, fieldRequired, validation, val
       throw new Error("Invalid precision or scale bounds.");
     }
     const maxIntegerDigits = precision - scale;
+    const sign = signed ? '-?' : '';
     let pattern;
     if (scale === 0) {
       // Integer only: e.g. NUMERIC(5,0) -> max 5 digits
-      pattern = `^-?\\d{1,${maxIntegerDigits}}$`;
+      pattern = `^${sign}\\d{1,${maxIntegerDigits}}$`;
     } else if (maxIntegerDigits === 0) {
       // Scale equals precision: e.g. NUMERIC(2,2) -> max 0 integer digits (0.12 or .12)
-      pattern = `^-?0\\.\\d{1,${scale}}$`;
+      pattern = `^${sign}0\\.\\d{1,${scale}}$`;
     } else {
       // Standard case: e.g. NUMERIC(5,2) -> max 3 integer digits, max 2 decimal digits
-      pattern = `^-?\\d{1,${maxIntegerDigits}}(\\.\\d{1,${scale}})?$`;
+      pattern = `^${sign}\\d{1,${maxIntegerDigits}}(\\.\\d{1,${scale}})?$`;
     }
 
     return (new RegExp(pattern)).test(value);

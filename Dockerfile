@@ -25,6 +25,8 @@ RUN npm run build
 # --- runtime: only the standalone server and the static files it doesn't include ---
 FROM node:22-alpine AS runtime
 WORKDIR /app
+# The zone data for TZ (deploy/.env): Node has its own, but the container's tools (date, logs) read the system's
+RUN apk add --no-cache tzdata
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 # Listen on every interface inside the container; the port is not published, only Apache reaches it

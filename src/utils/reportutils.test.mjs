@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { formatQuery } from 'react-querybuilder/formatQuery';
 import {
   buildLinkUrl,
+  cellFilterNumber,
+  compareDecimalCells,
   formatQueryProblems,
   parseJsonObject,
   selectReportParams,
@@ -66,9 +68,17 @@ test('empty or malformed values are rejected', () => {
 
 test('between needs two well-formed values', () => {
   // Used to pass as valid and generate "(1 = 1)", returning every row
-  assert.ok(!isValid(query({ field: 'created_at', operator: 'between', value: '2026-01-01T00:00,' })));
+  assert.ok(!isValid(query({ field: 'opens_at', operator: 'between', value: '08:00,' })));
   assert.ok(!isValid(query({ field: 'birth_date', operator: 'between', value: '2026-01-01' })));
   assert.ok(!isValid(query({ field: 'birth_date', operator: 'between', value: '2026-01-01,2026-02-01,2026-03-01' })));
+});
+
+test('between is offered for dates and times but not date-times', () => {
+  assert.ok(isValid(query({ field: 'opens_at', operator: 'between', value: '08:00,17:00' })));
+  assert.ok(isValid(query({ field: 'birth_date', operator: 'notBetween', value: '2026-01-01,2026-12-31' })));
+  // Even well-formed values: the operator itself is rejected
+  assert.ok(!isValid(query({ field: 'created_at', operator: 'between', value: '2026-09-01T00:00,2026-09-30T00:00' })));
+  assert.ok(!isValid(query({ field: 'created_at', operator: 'notBetween', value: '2026-09-01T00:00,2026-09-30T00:00' })));
 });
 
 test('crafted queries that would inject SQL are rejected', () => {
@@ -177,6 +187,18 @@ test("a linked cell opens the CRUD form of the row's record", () => {
   });
 });
 
+test("a document's link opens its page with the id in the page's parameter", () => {
+  const link = { document: 'stock-adjustment', idColumn: 'id', formTitle: 'تسوية مخزون' };
+  assert.equal(buildLinkUrl(link, { id: 3 }),
+    `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}&adjustmentId=3`);
+  assert.equal(buildLinkUrl({ ...link, document: 'no-such-page' }, { id: 3 }), null);
+  assert.equal(buildLinkUrl({ document: 'purchase-invoice', idColumn: 'id', formTitle: 'F' }, { id: 4 }),
+    '/dashboard/purchase-invoice?formTitle=F&invoiceId=4');
+  assert.equal(buildLinkUrl({ document: 'purchase-return', idColumn: 'id', formTitle: 'R' }, { id: 5 }),
+    '/dashboard/purchase-return?formTitle=R&returnId=5');
+  assert.equal(buildLinkUrl({ ...link, document: 'constructor' }, { id: 3 }), null);
+});
+
 test("the id comes from the link's id column, not the clicked column", () => {
   const link = { schemaName: 'customer_categories', idColumn: 'customer_category_id', formTitle: 'T' };
   const row = { id: 1, customer_category_id: '42', customer_category_name: 'x' };
@@ -218,4 +240,19 @@ test('dates, times and date-times are checked strictly against their format', as
   assert.ok(!valid('datetime', '2026-10-10T08:30'), 'the backend now always sends seconds');
   assert.ok(!valid('datetime', '2026-02-30T08:30:00'));
   assert.ok(!valid('datetime', '2026-10-10 08:30:00'));
+});
+
+test('number cells sort by value, exactly, empty ones first', () => {
+  const cells = ['10', '9', '-2.5', null, '0.0000001', '', '12345678901234567890.1234567', '12345678901234567890.1234566', 3];
+  assert.deepEqual([...cells].sort(compareDecimalCells), [
+    null, '', '-2.5', '0.0000001', 3, '9', '10', '12345678901234567890.1234566', '12345678901234567890.1234567',
+  ]);
+  assert.equal(compareDecimalCells('2.50', '2.5'), 0, 'the same value');
+});
+
+test("the grid's column filter compares numbers", () => {
+  assert.equal(cellFilterNumber('12.5'), 12.5);
+  assert.equal(cellFilterNumber(7), 7);
+  assert.equal(cellFilterNumber(null), null);
+  assert.equal(cellFilterNumber(''), null);
 });

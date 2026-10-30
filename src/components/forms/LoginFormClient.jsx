@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createCsrfFetch } from "@/utils/csrfClientUtils";
 import { sendOrShowError } from "@/utils/sendOrShowError";
+import { readErrorMessage } from "@/utils/fetchJson";
 import { Box, Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
 
 export default function LoginClient() {
@@ -40,8 +41,8 @@ export default function LoginClient() {
       router.refresh();
       router.push(callbackUrl);
     } else if (response.status === 429) {
-      // Too many failed attempts for this username; the backend blocks it for a few minutes
-      setError("محاولات دخول فاشلة كثيرة. حاول مرة أخرى بعد عدة دقائق.");
+      // Too many failed attempts for this username; the backend blocks it for a few minutes and says how many
+      setError(await readErrorMessage(response));
     } else {
       setError("بيانات دخول غير صحيحة.");
     }

@@ -2,6 +2,24 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import LZString from 'lz-string';
 
+/**
+ * The dashboard's open windows from the URL's openForms ([{ formId, url, formTitle }], compressed); null without one.
+ * A link edited or cut short reads as no windows rather than breaking the page.
+ */
+export function readOpenForms(searchParams) {
+  const compressed = searchParams.get('openForms');
+  if (!compressed) {
+    return null;
+  }
+  try {
+    const openForms = JSON.parse(LZString.decompressFromEncodedURIComponent(compressed));
+    return Array.isArray(openForms) ? openForms.filter((form) => typeof form?.formId === 'string'
+      && typeof form.url === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 export function useUpdateSearchParam() {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,9 +75,7 @@ export function useUpdateMultipleSearchParams() {
 export function useUpdateOpenForms(formId) {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
-  const openForms = JSON.parse(urlSearchParams.get('openForms') ?
-    LZString.decompressFromEncodedURIComponent(urlSearchParams.get('openForms')) :
-    null);
+  const openForms = readOpenForms(urlSearchParams);
   const handleFilterChange = useUpdateSearchParam();
   if (openForms) {
     return (url) => {
@@ -86,7 +102,7 @@ export function useUpdateOpenForms(formId) {
  */
 export function useOpenForm() {
   const searchParams = useSearchParams();
-  const openForms = JSON.parse(searchParams.get('openForms') ? LZString.decompressFromEncodedURIComponent(searchParams.get('openForms')) : '[]');
+  const openForms = readOpenForms(searchParams) ?? [];
   const handleFilterChange = useUpdateMultipleSearchParams();
   return (formId, url, formTitle) => {
     const updatedOpenForms = [...openForms, { formId, url, formTitle }];
