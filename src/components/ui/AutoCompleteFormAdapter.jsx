@@ -2,104 +2,66 @@ import { useDebounce } from 'use-debounce';
 import { Autocomplete, TextField } from '@mui/material';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { validateFormField } from '@/utils/formValidation';
 import { fetchJson } from '@/utils/fetchJson';
+import {
+  invalidText, showsError, useFieldValidity, useKeepInFormValues,
+} from '@/components/forms/fieldState';
 
-function getObjectId(option) {
-  const idK = Object.keys(option).filter(k => k === 'id')[0];
-  return option[idK];
+/*
+ * A generic form's link to another record (a field whose validationType is "link", e.g. a customer's category): an
+ * autocomplete that searches the linked records by name as the user types, and stores the chosen record's id.
+ */
+
+// The search results: { id, name }
+const optionLabel = (option) => `${option.id} | ${option.name}`;
+const searchUrl = (linkEntity, params) => `/api/schemacrud/search/entity/${linkEntity}?${new URLSearchParams(params)}`;
+
+/** What's typed in the field, and the search for it, sent once typing pauses. */
+function useSearchText() {
+  const [text, setText] = useState('');
+  const [debouncedText] = useDebounce(text, 200);
+  return { text, setText, query: debouncedText.trim() };
 }
 
-function optToStr(option) {
-  return Object.values(option).join(' | ');
-}
-
-function useIsValueChanged(
-  setIsValid, fieldName, disabled,
-  validationType, required, value
-) {
-  const [isValueChanged, setIsValueChanged] = useState(false);
+/** The record the field's value (an id) points to, loaded for its label; null for none. */
+function useLinkedRecord(linkEntity, value) {
+  const [record, setRecord] = useState(null);
   useEffect(() => {
-    if (isValueChanged) {
-      setIsValid((prev) => ({
-        ...prev,
-        [fieldName]: !!disabled || validateFormField(validationType, required, null, value)
-      }));
+    if (!value) {
+      return;
     }
-  }, [isValueChanged, setIsValid, fieldName, disabled, validationType, required, value]);
-  return [isValueChanged, setIsValueChanged];
-}
-
-function useDebouncedQueryParams() {
-  const [autoCompleteInputValue, setAutoCompleteInputValue] = useState('');
-  const [debouncedAutoCompleteInputValue] = useDebounce(autoCompleteInputValue, 200);
-  const queryParams = new URLSearchParams({
-    query: debouncedAutoCompleteInputValue.trim()
-  }).toString();
-  return [queryParams, autoCompleteInputValue, setAutoCompleteInputValue];
+    const loadRecord = async () => {
+      // A search by id finds the one record
+      let found;
+      try {
+        found = await fetchJson(searchUrl(linkEntity, { id: value }));
+      } catch {
+        found = [];
+      }
+      setRecord(found[0] ?? null);
+    };
+    loadRecord();
+  }, [value, linkEntity]);
+  return [record, setRecord];
 }
 
 export default function AutoCompleteFormAdapter({
-  fieldName,
-  displayName,
-  validationType,
-  linkEntity,
-  required,
-  disabled,
-  value,
-  setFormValues,
-  isValid,
-  setIsValid,
-  tryToSubmit,
-
-  setChanged = null,
-  setSelectedObj = null,
-  setHighlightedObject = null,
-  otherAutoCompleteProps = {},
-  otherTextFieldProps = {},
+  field, value, setFormValues, isValid, setIsValid, tryToSubmit,
 }) {
-  const [isValueChanged, setIsValueChanged] = useIsValueChanged(setIsValid, fieldName, disabled, validationType, required, value);
-  const [queryParams, autoCompleteInputValue, setAutoCompleteInputValue] = useDebouncedQueryParams();
-  const [localSelectedObject, setLocalSelectedObject] = useState(null);
+  const { fieldName, displayName, linkEntity, required, disabled } = field;
+  // A link's value is an id: no length or format of its own to check
+  const [changed, setChanged] = useFieldValidity({ ...field, validation: null, value, setIsValid });
+  useKeepInFormValues(fieldName, value, setFormValues);
+  const search = useSearchText();
+  const [selected, setSelected] = useLinkedRecord(linkEntity, value);
   // On a failed search, fetchJson throws and SWR leaves data undefined, so options stays an empty list
   // (passing the error body to Autocomplete as options would crash it)
   const { data: options = [], error: searchError, isValidating } = useSWR(
-    `/api/schemacrud/search/entity/${linkEntity}?${queryParams}`,
-    fetchJson,
-  );
-
-  useEffect(() => {
-    const updateSelectedObject = async () => {
-      if (value) {
-        const queryParams = new URLSearchParams({
-          id: value
-        }).toString();
-
-        // here, it is assumed that field data would result in
-        // a list of search results that contains only one element -
-        // the selected object.
-        let jsonList;
-        try {
-          jsonList = await fetchJson(`/api/schemacrud/search/entity/${linkEntity}?${queryParams}`);
-        } catch {
-          jsonList = [];
-        }
-        const selectedObject = jsonList[0] ?? null;
-        setLocalSelectedObject(selectedObject);
-        setSelectedObj?.(selectedObject);
-      }
-    };
-
-    updateSelectedObject();
-  }, [value, linkEntity, setSelectedObj]);
-
-  useEffect(() => {
-    setFormValues((prev) => ({ ...prev, [fieldName]: value || null }));
-  }, [value, fieldName, setFormValues]);
+    searchUrl(linkEntity, { query: search.query }), fetchJson);
+  const hasError = showsError({ changed, tryToSubmit, isValid });
 
   return (
     <Autocomplete
-      {...otherAutoCompleteProps}
       autoHighlight
       includeInputInList
       selectOnFocus
@@ -107,51 +69,30 @@ export default function AutoCompleteFormAdapter({
       handleHomeEndKeys
       disabled={disabled}
       loading={isValidating}
-      value={localSelectedObject || null}
-      onChange={(_e, newValue) => {
-        setFormValues((prev) => ({ ...prev, [fieldName]: newValue ? getObjectId(newValue) : null }));
-        setLocalSelectedObject(newValue);
-        setIsValueChanged(true);
-        setChanged?.(true);
-        setSelectedObj?.(newValue);
+      value={selected || null}
+      onChange={(event, record) => {
+        setFormValues((previous) => ({ ...previous, [fieldName]: record ? record.id : null }));
+        setSelected(record);
+        setChanged(true);
       }}
-      onHighlightChange={(_e, option) => {
-        setHighlightedObject?.(option);
-      }}
-      inputValue={autoCompleteInputValue || ''}
-      onInputChange={(_e, newInputValue) => {
-        setAutoCompleteInputValue(newInputValue);
-      }}
-      filterOptions={(options) => options}
+      inputValue={search.text}
+      onInputChange={(event, text) => search.setText(text)}
+      // The backend's search has filtered them already
+      filterOptions={(searched) => searched}
       options={options}
-      getOptionLabel={(option) => optToStr(option)}
-      isOptionEqualToValue={(option, value) =>
-        getObjectId(option) === getObjectId(value)
-      }
+      getOptionLabel={optionLabel}
+      isOptionEqualToValue={(option, chosen) => option.id === chosen.id}
       renderInput={(params) => (
         <TextField
           {...params}
-          {...otherTextFieldProps}
           size='small'
           variant="outlined"
           required={required}
           disabled={disabled}
           label={displayName}
-          error={
-            (isValueChanged && !isValid) ||
-            (tryToSubmit && !isValid)
-          }
-          helperText={
-            (isValueChanged && !isValid) ||
-              (tryToSubmit && !isValid) ?
-              `${displayName} غير صحيح` :
-              searchError?.message ?? null
-          }
-          onFocus={(e) => {
-            try {
-              e.target.select();
-            } catch (err) { }
-          }}
+          error={hasError}
+          helperText={hasError ? invalidText(displayName) : (searchError?.message ?? null)}
+          onFocus={(event) => event.target.select?.()}
         />
       )}
     />

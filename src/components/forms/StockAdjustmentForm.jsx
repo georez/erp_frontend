@@ -1,47 +1,165 @@
 'use client';
 
-import { Alert, Box, Stack } from '@mui/material';
 import { Big } from 'bigdecimal.js';
-import { useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { formatDecimal, normalizeDecimalText, parsePercent, parseWholeUnits } from '@/utils/decimals';
+import { useMemo, useRef } from 'react';
 import { formatExpiry } from '@/utils/expiryDates';
+import { formatAmount, formatDifference, GAIN_COLOR, LOSS_COLOR, NUMBER_CELL } from './document/amounts';
+import { useOptions } from './document/comboboxOptions';
+import { DocumentActions } from './document/DocumentActions';
+import { DescriptionField, DocumentTitle, documentStatus, HeaderCombobox, HeaderRow } from './document/DocumentHeader';
+import { DocumentAlerts, DocumentWindow, NEW_DOCUMENT_HINT } from './document/DocumentLayout';
+import { EntryField, EntryRow, ExpiryField, OkButton, ProductField } from './document/EntryFields';
 import {
-  amountColumn, checkBatchNumber, checkExpiry, deleteColumn, DescriptionField, DISCOUNT_ERROR, DocumentActions,
-  documentStatus, DocumentTitle, EntryField, EntryRow, expiryColumn, ExpiryField, formatAmount, HeaderCombobox,
-  LinesGrid, MAX_DESCRIPTION_LENGTH, NUMBER_CELL, OkButton, ProductField, REQUIRED, useDocument, useOptions,
-} from './documentForm';
+  checkBatchNumber, checkCountedQuantity, checkExpiry, checkOptionalDiscount, hasErrors, headerProblem, missingProduct,
+} from './document/entryChecks';
+import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { useDocument } from './document/useDocument';
+import { useEntryRow } from './document/useEntryRow';
+
+/*
+ * The stock adjustment document: the stock counted in one warehouse. Its header (warehouse, description) is typed in
+ * and saved as it's left. The entry row sends one batch at a time: a product's batch (its number and expiry date), its
+ * counted quantity (whole units) and, for a count above the batch's balance, the discount its extra units cost at. The
+ * grid shows the lines as the backend has them, with what posting would do with the batch's stock now: counted above
+ * the balance is received at the product's public price less the discount, below it is issued at the average cost.
+ * Posting does it and posts the journal entry, the difference on Inventory Adjustments; a posted adjustment can't
+ * change. Opening stock is an opening balance (OpeningBalanceForm).
+ */
 
 const EMPTY_HEADER = { warehouseId: null, description: '' };
 const EMPTY_ENTRY = { productId: null, batchNumber: '', expiryDate: '', countedQuantity: '', discountPercent: '' };
 
+const headerFrom = (loaded) => ({ warehouseId: loaded.warehouseId, description: loaded.description ?? '' });
+const headerBody = (header) => ({ warehouseId: header.warehouseId, description: header.description.trim() || null });
+
+/** The entry row's errors by field, and the line to send when it has none. */
+function checkEntry(entry) {
+  const batch = checkBatchNumber(entry.batchNumber);
+  const expiry = checkExpiry(entry.expiryDate);
+  const counted = checkCountedQuantity(entry.countedQuantity);
+  // Needed for a count above the batch's balance, which the backend knows
+  const discount = checkOptionalDiscount(entry.discountPercent);
+  const errors = {
+    productId: missingProduct(entry.productId),
+    batchNumber: batch.error,
+    expiryDate: expiry.error,
+    countedQuantity: counted.error,
+    discountPercent: discount.error,
+  };
+  if (hasErrors(errors)) {
+    return { errors, line: null };
+  }
+  const line = {
+    productId: entry.productId,
+    batchNumber: batch.number,
+    expiryDate: expiry.date,
+    countedQuantity: counted.quantity,
+    discountPercent: discount.discount,
+  };
+  return { errors, line };
+}
+
+/** A line of the adjustment as the entry row shows it, to change its count or discount. */
+const entryFromLine = (line) => ({
+  productId: line.productId,
+  batchNumber: line.batchNumber,
+  expiryDate: formatExpiry(line.expiryDate),
+  countedQuantity: line.countedQuantity,
+  discountPercent: line.discountPercent ?? '',
+});
+
+/** Whether the entry row is one of the lines: OK then replaces it. */
+const isOneOfTheLines = (entry, lines) => entry.productId != null && lines.some((line) =>
+  line.productId === entry.productId
+  && line.batchNumber === entry.batchNumber.trim()
+  && formatExpiry(line.expiryDate) === entry.expiryDate);
+
 /** A line whose cost is the average cost: a loss, which always goes at it. */
-const isAverageCost = (line) => Big(line.difference).signum() < 0;
+const isLoss = (line) => Big(line.difference).signum() < 0;
+
+/** The difference's column: +gain in green, -loss in red. */
+const differenceColumn = {
+  field: 'difference', headerName: 'الفرق', flex: 1, minWidth: 90,
+  valueFormatter: ({ value }) => formatDifference(value),
+  cellStyle: ({ value }) => {
+    const sign = value == null ? 0 : Big(value).signum();
+    const color = sign > 0 ? GAIN_COLOR : sign < 0 ? LOSS_COLOR : 'inherit';
+    return { ...NUMBER_CELL, color };
+  },
+};
 
 /**
- * The stock adjustment document: the stock counted in one warehouse. A draft is filled one batch at a time: the
- * entry row sends a product's batch (its number and expiry date), its counted quantity (whole units: the products are
- * pharmaceuticals) and, for a count above the batch's balance, the discount its extra units cost at, to the backend
- * (OK), and the grid shows the lines as the backend has them, with what posting would do with the batch's stock now:
- * counted above the balance is received at the product's public price less the discount, below it is issued at the
- * average cost. Posting does it and posts the journal entry, the difference on Inventory Adjustments; a posted
- * adjustment can't change. Opening stock is an opening balance (OpeningBalanceForm).
+ * The discount the line's cost is: the one entered for stock counted above the balance, else the average cost's,
+ * greyed (a loss always goes at the average).
  */
+const costDiscountColumn = {
+  field: 'costDiscountPercent', headerName: 'الخصم %', flex: 0.8, minWidth: 80,
+  valueFormatter: ({ value }) => formatAmount(value),
+  cellStyle: ({ data, node }) => {
+    const greyed = !node.rowPinned && isLoss(data);
+    return greyed ? { ...NUMBER_CELL, color: '#757575', fontStyle: 'italic' } : NUMBER_CELL;
+  },
+  tooltipValueGetter: ({ data, node }) => {
+    const isAverage = !node.rowPinned && isLoss(data) && data.costDiscountPercent != null;
+    return isAverage ? 'خصم متوسط التكلفة' : undefined;
+  },
+};
+
+/**
+ * The value of the difference. A line counted above its balance without a discount (stock taken out since it was
+ * saved) has none: posting needs a discount, which the cell asks for. The total has none then either.
+ */
+const valueColumn = {
+  field: 'value', headerName: 'القيمة', flex: 1, minWidth: 100,
+  valueFormatter: ({ value, node }) => {
+    if (value != null) {
+      return formatAmount(value);
+    }
+    return node.rowPinned ? '—' : 'أدخل الخصم';
+  },
+  cellStyle: ({ value, node }) => {
+    const needsDiscount = value == null && !node.rowPinned;
+    return { ...NUMBER_CELL, color: needsDiscount ? LOSS_COLOR : 'inherit' };
+  },
+};
+
+const gridColumns = (isPosted, onDelete) => [
+  textColumn('productName', 'الصنف', { flex: 2, minWidth: 140 }),
+  textColumn('batchNumber', 'التشغيلة'),
+  { ...expiryColumn(), valueFormatter: ({ value, node }) => (node.rowPinned ? '' : formatExpiry(value)) },
+  amountColumn('publicPrice', 'سعر الجمهور'),
+  amountColumn('balanceQuantity', isPosted ? 'الرصيد عند الترحيل' : 'الرصيد الحالي', 100),
+  amountColumn('countedQuantity', 'الكمية الفعلية', 100),
+  differenceColumn,
+  costDiscountColumn,
+  amountColumn('unitCost', 'تكلفة الوحدة', 100),
+  valueColumn,
+  ...deleteColumn(isPosted, onDelete),
+];
+
+/** The grid's total row: the lines' value added up, exactly (bigdecimal.js); none while a line has no value yet. */
+function totalRow(lines) {
+  if (lines.length === 0) {
+    return [];
+  }
+  const everyLineHasAValue = lines.every((line) => line.value != null);
+  const total = everyLineHasAValue
+    ? lines.reduce((sum, line) => sum.add(Big(line.value)), Big(0)).toPlainString()
+    : null;
+  return [{ id: 'total', productName: 'الإجمالي', value: total }];
+}
+
 export default function StockAdjustmentForm({ formId, formTitle, adjustmentId }) {
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
-  const {
-    document: adjustment, loadError, header, changeHeader, saveTextOnBlur, busy, errorMessage, setErrorMessage, posted,
-    saveToDraft, request, openNew, deleteDraft,
-  } = useDocument({
+  const doc = useDocument({
     api: '/api/stock-adjustments', documentId: adjustmentId, formId, formTitle, page: '/dashboard/stock-adjustment',
-    idParam: 'adjustmentId', emptyHeader: EMPTY_HEADER,
-    headerFrom: (loaded) => ({ warehouseId: loaded.warehouseId, description: loaded.description ?? '' }),
-    headerBody: (next) => ({ warehouseId: next.warehouseId, description: next.description.trim() || null }),
+    idParam: 'adjustmentId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
   });
+  const { document: adjustment, header, editable, isDraft, isPosted } = doc;
+  const entryRow = useEntryRow(EMPTY_ENTRY);
+  const { entry, setField } = entryRow;
 
-  const [entry, setEntry] = useState(EMPTY_ENTRY);
-  const [entryErrors, setEntryErrors] = useState({});
   const productRef = useRef(null);
   const batchRef = useRef(null);
   const expiryRef = useRef(null);
@@ -50,161 +168,72 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
   const okRef = useRef(null);
 
   const lines = useMemo(() => adjustment?.lines ?? [], [adjustment]);
-  const optionsError = warehouses.error ?? products.error;
-  const setField = (field) => (value) => setEntry((previous) => ({ ...previous, [field]: value }));
+  const totals = useMemo(() => totalRow(lines), [lines]);
 
-  const saveEntry = async () => {
-    const counted = parseWholeUnits(entry.countedQuantity);
-    const batch = checkBatchNumber(entry.batchNumber);
-    const expiry = checkExpiry(entry.expiryDate);
-    // Needed for a count above the batch's balance, which the backend knows
-    const discountEntered = entry.discountPercent.trim() !== '';
-    const discount = discountEntered ? parsePercent(entry.discountPercent) : null;
-    const errors = {
-      warehouseId: header.warehouseId == null ? 'حدّد المخزن أولاً' : null,
-      productId: entry.productId == null ? 'حدّد الصنف' : null,
-      batchNumber: batch.error,
-      expiryDate: expiry.error,
-      countedQuantity: entry.countedQuantity.trim() === '' ? REQUIRED
-        : counted != null ? null : 'عدد صحيح من الوحدات',
-      discountPercent: discountEntered && !discount ? DISCOUNT_ERROR : null,
-    };
-    setEntryErrors(errors);
-    if (Object.values(errors).some(Boolean) || header.description.length > MAX_DESCRIPTION_LENGTH) {
+  /** Sends the line; the row is cleared at once, so the next batch can be typed while it's sent. */
+  const saveEntry = () => {
+    const headerWarning = doc.isNew ? headerProblem(header) : null;
+    const { errors, line } = checkEntry(entry);
+    entryRow.setErrors({ ...errors, header: headerWarning });
+    if (headerWarning || !line) {
       return;
     }
-    // As text, so no number passes through a JavaScript number
-    const saved = await saveToDraft('/lines', {
-      productId: entry.productId,
-      batchNumber: batch.number,
-      expiryDate: expiry.date,
-      countedQuantity: counted,
-      discountPercent: discountEntered ? normalizeDecimalText(entry.discountPercent) : null,
-    });
-    if (saved) {
-      // The product stays selected (its next batch is often counted next); the cursor goes back to it, where Enter
-      // moves on to the batch, and typing picks another product
-      setEntry((previous) => ({ ...EMPTY_ENTRY, productId: previous.productId }));
-      setEntryErrors({});
-      productRef.current?.focus();
-    }
+    doc.addLine(line);
+    // The cursor goes back to the product: Enter moves on to its next batch, typing picks another product
+    entryRow.clearKeepingProduct();
+    productRef.current?.focus();
   };
 
   const newAdjustment = () => {
-    openNew();
-    setEntry(EMPTY_ENTRY);
-    setEntryErrors({});
+    doc.openNew();
+    entryRow.clear();
   };
 
-  /** A grid row into the entry row, to change its count or discount; OK then replaces the line. */
-  const editLine = (line) => {
-    // Rendered at once (the grid calls this from its own listener, where React would render later), so the count is
-    // in its field before it's selected, and typing replaces it instead of adding to it
-    flushSync(() => {
-      setEntry({
-        productId: line.productId, batchNumber: line.batchNumber, expiryDate: formatExpiry(line.expiryDate),
-        countedQuantity: line.countedQuantity, discountPercent: line.discountPercent ?? '',
-      });
-      setEntryErrors({});
-    });
-    countedRef.current?.focus();
-    countedRef.current?.select();
+  const deleteThisDraft = async () => {
+    if (await doc.deleteDraft(`حذف مسودة التسوية رقم ${adjustment.id}؟`)) {
+      newAdjustment();
+    }
   };
-  const editingExistingLine = entry.productId != null && lines.some((line) => line.productId === entry.productId
-    && line.batchNumber === entry.batchNumber.trim() && formatExpiry(line.expiryDate) === entry.expiryDate);
 
-  // Rebuilt every render: the delete buttons need the current adjustment and busy state, and the grid only
-  // redraws the cells whose values changed
-  const columnDefs = [
-    { field: 'productName', headerName: 'الصنف', flex: 2, minWidth: 140 },
-    { field: 'batchNumber', headerName: 'التشغيلة', flex: 1, minWidth: 110 },
-    { ...expiryColumn(), valueFormatter: ({ value, node }) => (node.rowPinned ? '' : formatExpiry(value)) },
-    amountColumn('publicPrice', 'سعر الجمهور'),
-    amountColumn('balanceQuantity', posted ? 'الرصيد عند الترحيل' : 'الرصيد الحالي', 100),
-    amountColumn('countedQuantity', 'الكمية الفعلية', 100),
-    {
-      field: 'difference', headerName: 'الفرق', flex: 1, minWidth: 90,
-      valueFormatter: ({ value }) => (value == null ? ''
-        : `${Big(value).signum() > 0 ? '+' : ''}${formatDecimal(Big(value))}`),
-      cellStyle: ({ value }) => {
-        const sign = value == null ? 0 : Big(value).signum();
-        return { ...NUMBER_CELL, color: sign > 0 ? '#2e7d32' : sign < 0 ? '#c62828' : 'inherit' };
-      },
-    },
-    {
-      // The discount the line's cost is: the one entered for stock counted above the balance, else the average
-      // cost's, shown greyed (a loss always goes at the average)
-      field: 'costDiscountPercent', headerName: 'الخصم %', flex: 0.8, minWidth: 80,
-      valueFormatter: ({ value }) => formatAmount(value),
-      cellStyle: ({ data, node }) => ({
-        ...NUMBER_CELL,
-        ...(!node.rowPinned && isAverageCost(data) && { color: '#757575', fontStyle: 'italic' }),
-      }),
-      tooltipValueGetter: ({ data, node }) => (!node.rowPinned && isAverageCost(data) && data.costDiscountPercent != null
-        ? 'خصم متوسط التكلفة' : undefined),
-    },
-    amountColumn('unitCost', 'تكلفة الوحدة', 100),
-    {
-      field: 'value', headerName: 'القيمة', flex: 1, minWidth: 100,
-      // Counted above the balance without a discount (stock taken out since the line was saved): posting needs one.
-      // The total has none then: it's shown as none, the line asks for the discount.
-      valueFormatter: ({ value, node }) => (value != null ? formatAmount(value) : node.rowPinned ? '—'
-        : 'أدخل الخصم'),
-      cellStyle: ({ value, node }) => ({ ...NUMBER_CELL, color: value == null && !node.rowPinned ? '#c62828' : 'inherit' }),
-    },
-    ...deleteColumn(posted, busy, (line) => request(`/lines/${line.id}`, 'DELETE')),
-  ];
+  const columnDefs = gridColumns(isPosted, (line) => doc.sendToDraft(`/lines/${line.id}`, 'DELETE'));
 
-  // The total value, exact (bigdecimal.js); none while a line has no value yet
-  const totalRow = useMemo(() => (lines.length === 0 ? [] : [{
-    id: 'total',
-    productName: 'الإجمالي',
-    value: lines.every((line) => line.value != null)
-      ? lines.reduce((sum, line) => sum.add(Big(line.value)), Big(0)).toPlainString()
-      : null,
-  }]), [lines]);
-
-  return <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 1, gap: 1, boxSizing: 'border-box' }}>
-    {/* Header: one line */}
-    <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexShrink: 0 }}>
+  return <DocumentWindow>
+    <HeaderRow>
       <DocumentTitle title={adjustment ? `تسوية رقم ${adjustment.id}` : 'تسوية جديدة'}
         status={documentStatus(adjustment, { newLabel: 'جديدة', postedLabel: 'مُرحَّلة' })} />
       <HeaderCombobox id={`${formId}-warehouse`} label="المخزن" basis={190} options={warehouses.options}
-        value={header.warehouseId} disabled={posted || busy} onChange={(warehouseId) => changeHeader({ warehouseId })} />
-      <DescriptionField value={header.description} disabled={posted}
-        onChange={(description) => changeHeader({ description }, false)}
-        onBlur={saveTextOnBlur('description', adjustment?.description)} />
-    </Stack>
+        value={header.warehouseId} disabled={!editable} onChange={(warehouseId) => doc.changeHeader({ warehouseId })} />
+      <DescriptionField value={header.description} disabled={!editable}
+        onChange={(description) => doc.editHeader({ description })} onBlur={() => doc.saveHeader()} />
+    </HeaderRow>
 
-    {loadError && <Alert severity="error">{loadError.message}</Alert>}
-    {optionsError && <Alert severity="error">{optionsError.message}</Alert>}
-    {errorMessage && <Alert severity="error" onClose={() => setErrorMessage(null)}>{errorMessage}</Alert>}
-    {entryErrors.warehouseId && <Alert severity="warning">{entryErrors.warehouseId}</Alert>}
+    <DocumentAlerts loadError={doc.loadError} optionsError={warehouses.error ?? products.error}
+      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
+      headerWarning={entryRow.errors.header} />
 
-    {/* Entry row: one batch at a time; Enter moves to the next field */}
-    {!posted && <EntryRow fieldRefs={[productRef, batchRef, expiryRef, countedRef, discountRef, okRef]}>
+    {editable && <EntryRow fieldRefs={[productRef, batchRef, expiryRef, countedRef, discountRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={entry.productId}
-        onChange={setField('productId')} error={entryErrors.productId} />
-      <EntryField label="التشغيلة" kind="batch" value={entry.batchNumber} onChange={setField('batchNumber')} inputRef={batchRef}
-        error={entryErrors.batchNumber} minWidth={100} />
+        onChange={setField('productId')} error={entryRow.errors.productId} />
+      <EntryField label="التشغيلة" kind="batch" value={entry.batchNumber} onChange={setField('batchNumber')}
+        inputRef={batchRef} error={entryRow.errors.batchNumber} minWidth={100} />
       <ExpiryField value={entry.expiryDate} onChange={setField('expiryDate')} inputRef={expiryRef}
-        error={entryErrors.expiryDate} />
+        error={entryRow.errors.expiryDate} />
       <EntryField label="الكمية الفعلية" kind="numeric" value={entry.countedQuantity}
-        onChange={setField('countedQuantity')} inputRef={countedRef} error={entryErrors.countedQuantity}
+        onChange={setField('countedQuantity')} inputRef={countedRef} error={entryRow.errors.countedQuantity}
         minWidth={110} />
       <EntryField label="الخصم %" kind="decimal" placeholder="للزيادة عن الرصيد" value={entry.discountPercent}
-        onChange={setField('discountPercent')} inputRef={discountRef} error={entryErrors.discountPercent}
+        onChange={setField('discountPercent')} inputRef={discountRef} error={entryRow.errors.discountPercent}
         minWidth={130} />
-      <OkButton okRef={okRef} busy={busy} onClick={saveEntry} updating={editingExistingLine} />
+      <OkButton okRef={okRef} onClick={saveEntry} updating={isOneOfTheLines(entry, lines)} />
     </EntryRow>}
 
-    <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={totalRow} posted={posted}
-      onEdit={editLine}
-      emptyText="أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية الفعلية ثم OK" />
+    <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={totals} isPosted={isPosted}
+      onEdit={(line) => entryRow.fill(entryFromLine(line), countedRef)}
+      emptyText={doc.isNew ? NEW_DOCUMENT_HINT
+        : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية الفعلية ثم OK'} />
 
-    <DocumentActions document={adjustment} posted={posted} busy={busy}
-      nextStep={{ onClick: () => request('/post', 'POST'), disabled: lines.length === 0 }}
-      onDeleteDraft={async () => (await deleteDraft(`حذف مسودة التسوية رقم ${adjustment.id}؟`)) && newAdjustment()}
-      onNew={newAdjustment} />
-  </Box>;
+    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
+      nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}
+      onDeleteDraft={deleteThisDraft} onNew={newAdjustment} />
+  </DocumentWindow>;
 }

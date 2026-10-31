@@ -112,22 +112,32 @@ export function makeFieldValidator(field) {
   };
 }
 
+// Comparing values, and whether there is one
+const COMPARISONS = ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull'];
+const RANGES = ['between', 'notBetween'];
+// What only ordered values (numbers, dates) take
+const ORDERED_ONLY = ['>', '<', '<=', '>=', ...RANGES];
+
+const operatorsNamed = (names) => arabicOperators.filter((operator) => names.includes(operator.name));
+
+/** The operators a column's filter offers, by its type. */
 function operatorsFor(field) {
   if (field.inputType === 'number') {
-    return arabicOperators.filter(op => ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull'].includes(op.name));
+    return operatorsNamed(COMPARISONS);
   }
   if (field.inputType === 'date' || field.inputType === 'time') {
-    return arabicOperators.filter(op => ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull', 'between', 'notBetween'].includes(op.name));
+    return operatorsNamed([...COMPARISONS, ...RANGES]);
   }
   // No between for date-times: "between 2026-09-01T00:00 and 2026-09-30T00:00" looks like all of September but
   // drops everything after midnight on the 30th. Users combine >= and < instead.
   if (field.inputType === 'datetime-local') {
-    return arabicOperators.filter(op => ['=', '!=', '>', '<', '<=', '>=', 'null', 'notNull'].includes(op.name));
+    return operatorsNamed(COMPARISONS);
   }
   if (field.valueEditorType === 'checkbox') {
-    return arabicOperators.filter(op => ['='].includes(op.name));
+    return operatorsNamed(['=']);
   }
-  return arabicOperators.filter(op => !['>', '<', '<=', '>=', 'between', 'notBetween'].includes(op.name));
+  // Text: everything but the ordered comparisons
+  return arabicOperators.filter((operator) => !ORDERED_ONLY.includes(operator.name));
 }
 
 /**

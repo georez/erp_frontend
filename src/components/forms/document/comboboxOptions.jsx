@@ -1,0 +1,21 @@
+'use client';
+
+import useSWR from 'swr';
+import { fetchJson } from '@/utils/fetchJson';
+
+/** The Arabic texts of ComboBox2 (Combobox) in the document forms. */
+const COMBOBOX_MESSAGES = {
+  clear: 'مسح الاختيار',
+  typeToJump: (count) => `${count.toLocaleString('ar-EG')} عنصر · اكتب للانتقال`,
+  jumpedBy: (text) => <>انتقال إلى «<bdi>{text}</bdi>»</>,
+  sameCode: (code, count) => <>{count} أصناف بالباركود <bdi>{code}</bdi>: اختر واحداً</>,
+};
+
+/** The props every combobox of the document forms takes. */
+export const COMBOBOX_PROPS = { fullWidth: true, messages: COMBOBOX_MESSAGES };
+
+/** All of a link entity's records (e.g. "products") as ComboBox2 options ({ value, label, code?, detail? }). */
+export function useOptions(linkEntity) {
+  const { data = [], error } = useSWR(`/api/schemacrud/options/entity/${linkEntity}`, fetchJson);
+  return { options: data, error };
+}

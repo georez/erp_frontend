@@ -1,0 +1,57 @@
+'use client';
+
+import AddIcon from '@mui/icons-material/Add';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import SendIcon from '@mui/icons-material/Send';
+import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
+import { formatAmount, NUMBER_CELL } from './amounts';
+
+/** How many requests are still in the queue, with a spinner; nothing when the queue is empty. */
+function PendingIndicator({ pending }) {
+  if (pending === 0) {
+    return null;
+  }
+  return <Stack direction="row" spacing={0.75} role="status" aria-live="polite" sx={{ alignItems: 'center' }}>
+    <CircularProgress size={14} />
+    <Typography variant="body2" color="text.secondary">
+      قيد الإرسال: <bdi>{pending}</bdi>
+    </Typography>
+  </Stack>;
+}
+
+/** One of the totals under the grid: its label and its amount ("—" for none). */
+export function Total({ label, value, strong }) {
+  return <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline' }}>
+    <Typography variant="body2" color="text.secondary">{label}</Typography>
+    <Typography variant={strong ? 'subtitle1' : 'body2'} sx={{ fontWeight: strong ? 700 : 400, ...NUMBER_CELL }}>
+      <bdi>{value == null ? '—' : formatAmount(value)}</bdi>
+    </Typography>
+  </Stack>;
+}
+
+/**
+ * The actions under the grid: for a draft, its next step (posting by default) and deleting it; "جديد" once there's a
+ * document; then the totals (children), at the far end. The actions wait while requests are pending: a line sent
+ * must be answered before the draft is posted or deleted.
+ *
+ * @param nextStep { onClick, disabled, label?, icon? }: the draft's next step; posting unless a label says otherwise
+ * @param pending  how many requests are still to be answered
+ */
+export function DocumentActions({ isNew, isDraft, pending, nextStep, onDeleteDraft, onNew, children }) {
+  const waiting = pending > 0;
+  return <Stack direction="row" spacing={2} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+    {isDraft && <>
+      <Button variant="contained" color="success" startIcon={nextStep.icon ?? <SendIcon />}
+        disabled={waiting || nextStep.disabled} onClick={nextStep.onClick}>
+        {nextStep.label ?? 'ترحيل'}
+      </Button>
+      <Button color="error" startIcon={<DeleteForeverIcon />} disabled={waiting} onClick={onDeleteDraft}>
+        حذف المسودة
+      </Button>
+    </>}
+    {!isNew && <Button startIcon={<AddIcon />} disabled={waiting} onClick={onNew}>جديد</Button>}
+    <PendingIndicator pending={pending} />
+    <Box sx={{ flex: 1 }} />
+    {children}
+  </Stack>;
+}

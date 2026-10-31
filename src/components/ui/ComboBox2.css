@@ -1,0 +1,166 @@
+/* ComboBox2 (Combobox): the field, its caret and clear button, and the popup list (portaled to <body>). */
+
+/* --- the field --- */
+
+.tac {
+  position: relative;
+  width: 280px;
+  font: 14px/1.3 system-ui, sans-serif;
+  color: #1b2733;
+  text-align: start;
+}
+
+.tac-full {
+  width: 100%;
+}
+
+.tac-input {
+  width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+  padding-block: 0;
+  padding-inline: 10px 30px;
+  border: 1px solid #b8c1cc;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  caret-color: transparent;
+  text-overflow: ellipsis;
+}
+
+.tac-has-clear .tac-input {
+  padding-inline-end: 54px;
+}
+
+/* A code (barcode) being typed: shown left to right, highlighted */
+.tac-coding .tac-input {
+  direction: ltr;
+  text-align: end;
+  letter-spacing: 0.04em;
+  background: #fffbe6;
+  border-color: #d4a72c;
+}
+
+.tac-input::placeholder {
+  color: #7a8794;
+  opacity: 1;
+}
+
+.tac-input::selection {
+  background: transparent;
+}
+
+.tac-input:focus-visible {
+  outline: 2px solid #2f6fed;
+  outline-offset: 1px;
+}
+
+.tac-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tac-caret {
+  position: absolute;
+  inset-inline-end: 10px;
+  top: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.tac-clear {
+  position: absolute;
+  inset-inline-end: 28px;
+  top: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #5b6876;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tac-clear:hover {
+  background: #eef1f5;
+}
+
+/* --- the popup --- */
+
+.tac-pop {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  background: #fff;
+  color: #1b2733;
+  font: 14px/1.3 system-ui, sans-serif;
+  text-align: start;
+  border: 1px solid #b8c1cc;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(27, 39, 51, 0.14);
+  overflow: hidden;
+}
+
+.tac-list {
+  overflow-y: auto;
+  position: relative;
+}
+
+.tac-opt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding-block: 0;
+  padding-inline: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  white-space: pre;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tac-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tac-detail {
+  flex-shrink: 0;
+  color: #5b6876;
+  font-size: 13px;
+  direction: ltr;
+}
+
+.tac-opt[data-active="true"] {
+  background: #e6eefc;
+}
+
+.tac-opt[aria-selected="true"] {
+  font-weight: 600;
+}
+
+.tac-foot {
+  box-sizing: border-box;
+  height: 26px;
+  line-height: 25px;
+  padding-block: 0;
+  padding-inline: 10px;
+  font-size: 12px;
+  color: #5b6876;
+  border-top: 1px solid #e3e8ee;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

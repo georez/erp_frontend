@@ -4,56 +4,52 @@ import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Alert, Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography } from '@mui/material';
-import FormFields from './FormFields';
 import useSWR from 'swr';
 import { useContext, useState } from 'react';
-import { validateFormField } from '@/utils/formValidation';
 import { useDebouncedCallback } from 'use-debounce';
-import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { AuthContext } from '@/components/AuthProvider';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
+import { validateFormField } from '@/utils/formValidation';
 import { sendOrShowError } from '@/utils/sendOrShowError';
+import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
+import FormFields from './FormFields';
 
-const allActions = [
-  { icon: <AddIcon />, name: 'جديد' },
-  { icon: <SaveIcon />, name: 'حفظ' },
-  { icon: <DeleteIcon />, name: 'حذف' },
-];
+// A click on an action runs it once, even if clicked twice quickly
+const CLICK_DEBOUNCE_MS = 300;
 
-const isAddNewActions = [
-  { icon: <SaveIcon />, name: 'حفظ' },
-];
+/** The window's URL for a record of the table: a new one (no id), or the one with that id. */
+const formUrl = (schemaName, formTitle, entityId) => {
+  const idPart = entityId == null ? '' : `&entityId=${encodeURIComponent(entityId)}`;
+  return `/dashboard/form?schemaName=${encodeURIComponent(schemaName)}&formTitle=${encodeURIComponent(formTitle)}${idPart}`;
+};
 
-// function useFormFields(schemaName, entityId) {
-// const [formFields, setFormFields] = useState({});
-// useEffect(() => {
-//   async function fetchFormFields() {
-//     const res = await fetch(`/api/schemacrud/${schemaName}${entityId ? `/${entityId}` : ''}`, {
-//       credentials: 'include',
-//     });
-//     const formFields = await res.json();
-//     setFormFields(formFields);
-//   }
-//   fetchFormFields()
-// }, [schemaName, entityId])
-// return formFields;
-// }
+/** Each field's validity, by field name, as the backend checks it. A disabled field is always valid. */
+function validateAll(fields, values) {
+  return Object.fromEntries(fields.map(({ fieldName, validationType, validation, required, disabled }) => [
+    fieldName,
+    !!disabled || validateFormField(validationType, required, validation, values[fieldName]),
+  ]));
+}
 
+/**
+ * The generic form of a table's record (customers, products, accounts...): its fields come from the backend's
+ * metadata (/api/schemacrud/{schemaName}), with the record's values when it has an id. Save creates or updates the
+ * record, new opens an empty form, delete removes it; the window's URL then points to the record (or to a new one).
+ */
 export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) {
   const updateOpenFormUrl = useUpdateOpenForms(formId);
+  const { csrfFetch } = useContext(AuthContext);
+  const isNew = !entityId;
 
-  const isAddNew = !entityId;
-  const { data: formFieldsAndValues, error: loadError, isValidating } = useSWR(
-    `/api/schemacrud/${schemaName}${entityId ? `/${entityId}` : ''}`,
-    fetchJson,
-  );
-  const loadedValues = formFieldsAndValues?.values;
+  const { data: metadata, error: loadError, isValidating } = useSWR(
+    `/api/schemacrud/${schemaName}${isNew ? '' : `/${entityId}`}`, fetchJson);
+  const loadedValues = metadata?.values;
   const [formValues, setFormValues] = useState(loadedValues);
   const [isValid, setIsValid] = useState({});
   const [tryToSubmit, setTryToSubmit] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Reset the form whenever newly loaded values arrive (another entity, or a reload that changed them).
+  // The form's values reset whenever newly loaded values arrive (another record, or a reload that changed them).
   // Done during render rather than in an effect, so React doesn't render once with the stale values first:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [valuesLoadedFrom, setValuesLoadedFrom] = useState(loadedValues);
@@ -62,163 +58,86 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     setFormValues(loadedValues);
   }
 
-  // Needed for every save and delete; shared by the dashboard (AuthProvider)
-  const { csrfFetch } = useContext(AuthContext);
-
-  const validateFields = () => {
-    const newIsValid = formFieldsAndValues.fields.reduce((acc, {
-      fieldName, validationType, validation, required, disabled
-    }) => ({
-      ...acc,
-      [fieldName]: !!disabled || validateFormField(
-        validationType, required, validation, formValues[fieldName]
-      )
-    }), {});
-    setIsValid(newIsValid);
-    const areAllFieldsValid = Object.entries(newIsValid).every(([k, v]) => v);
-    return areAllFieldsValid;
+  /** Checks every field (showing the errors from now on); true if they're all valid. */
+  const fieldsAreValid = () => {
+    setTryToSubmit(true);
+    setErrorMessage(null);
+    const validity = validateAll(metadata.fields, formValues);
+    setIsValid(validity);
+    return Object.values(validity).every(Boolean);
   };
 
-  const debouncedSaveNew = useDebouncedCallback(async () => {
-    setTryToSubmit(true);
-    setErrorMessage(null);
-    if (validateFields()) {
-      const res = await sendOrShowError(() => csrfFetch(`/api/schemacrud/${schemaName}`, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formValues)
-      }), setErrorMessage);
-      if (!res) {
-        return;
-      }
-      if (!res.ok) {
-        setErrorMessage(await readErrorMessage(res));
-        return;
-      }
-      const { id: objectNewId } = await res.json();
-      updateOpenFormUrl(
-        `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-        }&formTitle=${encodeURIComponent(formTitle)
-        }&entityId=${encodeURIComponent(objectNewId)
-        }`
-      );
-
+  /** Sends a request; returns its response if it succeeded, else null after showing why. */
+  const send = async (method, url, body) => {
+    const response = await sendOrShowError(() => csrfFetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    }), setErrorMessage);
+    if (!response) {
+      return null;
     }
-  }, 300);
-
-  const debouncedAddNew = useDebouncedCallback(() => {
-    updateOpenFormUrl(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-      }&formTitle=${encodeURIComponent(formTitle)}`);
-  }, 300);
-
-  const debouncedSaveExisting = useDebouncedCallback(async () => {
-    setTryToSubmit(true);
-    setErrorMessage(null);
-    if (validateFields()) {
-      const res = await sendOrShowError(() => csrfFetch(`/api/schemacrud/${schemaName}/${entityId}`, {
-        method: "PUT",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formValues)
-      }), setErrorMessage);
-      if (!res) {
-        return;
-      }
-      if (!res.ok) {
-        setErrorMessage(await readErrorMessage(res));
-        return;
-      }
-      const { id: objectNewId } = await res.json();
-      updateOpenFormUrl(
-        `/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-        }&formTitle=${encodeURIComponent(formTitle)
-        }&entityId=${encodeURIComponent(objectNewId)
-        }`);
+    if (!response.ok) {
+      setErrorMessage(await readErrorMessage(response));
+      return null;
     }
-  }, 300);
+    return response;
+  };
 
-  const debouncedDeleteExisting = useDebouncedCallback(async () => {
-    setTryToSubmit(true);
-    setErrorMessage(null);
-    if (validateFields()) {
-      const res = await sendOrShowError(() => csrfFetch(`/api/schemacrud/${schemaName}/${entityId}`, {
-        method: "DELETE",
-      }), setErrorMessage);
-      if (!res) {
-        return;
-      }
-      if (!res.ok) {
-        setErrorMessage(await readErrorMessage(res));
-        return;
-      }
-      updateOpenFormUrl(`/dashboard/form?schemaName=${encodeURIComponent(schemaName)
-        }&formTitle=${encodeURIComponent(formTitle)}`);
+  const save = useDebouncedCallback(async () => {
+    if (!fieldsAreValid()) {
+      return;
     }
-  }, 300);
+    const response = isNew
+      ? await send('POST', `/api/schemacrud/${schemaName}`, formValues)
+      : await send('PUT', `/api/schemacrud/${schemaName}/${entityId}`, formValues);
+    if (response) {
+      const { id: savedId } = await response.json();
+      updateOpenFormUrl(formUrl(schemaName, formTitle, savedId));
+    }
+  }, CLICK_DEBOUNCE_MS);
+
+  const openNew = useDebouncedCallback(() => {
+    updateOpenFormUrl(formUrl(schemaName, formTitle, null));
+  }, CLICK_DEBOUNCE_MS);
+
+  const deleteRecord = useDebouncedCallback(async () => {
+    if (!fieldsAreValid()) {
+      return;
+    }
+    if (await send('DELETE', `/api/schemacrud/${schemaName}/${entityId}`)) {
+      updateOpenFormUrl(formUrl(schemaName, formTitle, null));
+    }
+  }, CLICK_DEBOUNCE_MS);
+
+  // A new record can only be saved
+  const actions = isNew
+    ? [{ key: 'save', icon: <SaveIcon />, title: 'حفظ', onClick: save }]
+    : [
+      { key: 'add', icon: <AddIcon />, title: 'جديد', onClick: openNew },
+      { key: 'save', icon: <SaveIcon />, title: 'حفظ', onClick: save },
+      { key: 'delete', icon: <DeleteIcon />, title: 'حذف', onClick: deleteRecord },
+    ];
+
+  const fieldsReady = !isValidating && metadata && formValues;
 
   return <Container maxWidth="sm">
     {loadError && <Alert severity="error">{loadError.message}</Alert>}
     {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
     <Stack spacing={2} sx={{ p: 1 }}>
       <Typography variant="h7" component="div">{formTitle}</Typography>
-      {!isValidating && formFieldsAndValues && formValues &&
-        <FormFields
-          formFields={formFieldsAndValues.fields}
-          formValues={formValues}
-          setFormValues={setFormValues}
-          isValid={isValid}
-          setIsValid={setIsValid}
-          tryToSubmit={tryToSubmit}
-        />}
+      {fieldsReady && <FormFields
+        formFields={metadata.fields}
+        formValues={formValues}
+        setFormValues={setFormValues}
+        isValid={isValid}
+        setIsValid={setIsValid}
+        tryToSubmit={tryToSubmit}
+      />}
     </Stack>
-    <SpeedDial
-      ariaLabel="Page SpeedDial"
-      sx={{ position: 'absolute', bottom: 10, right: 16 }}
-      icon={<SpeedDialIcon />}
-    >
-      {(isAddNew ?
-        <SpeedDialAction
-          icon={<SaveIcon />}
-          slotProps={{
-            tooltip: {
-              title: 'حفظ',
-            },
-          }}
-          onClick={debouncedSaveNew}
-        />
-        :
-        [<SpeedDialAction
-          key="add"
-          icon={<AddIcon />}
-          slotProps={{
-            tooltip: {
-              title: 'جديد',
-            },
-          }}
-          onClick={debouncedAddNew} />,
-        <SpeedDialAction
-          key="save"
-          icon={<SaveIcon />}
-          slotProps={{
-            tooltip: {
-              title: 'حفظ',
-            },
-          }}
-          onClick={debouncedSaveExisting}
-        />,
-        <SpeedDialAction
-          key="delete"
-          icon={<DeleteIcon />}
-          slotProps={{
-            tooltip: {
-              title: 'حذف',
-            },
-          }}
-          onClick={debouncedDeleteExisting} />]
-      )}
+    <SpeedDial ariaLabel="Page SpeedDial" sx={{ position: 'absolute', bottom: 10, right: 16 }} icon={<SpeedDialIcon />}>
+      {actions.map((action) => <SpeedDialAction key={action.key} icon={action.icon}
+        slotProps={{ tooltip: { title: action.title } }} onClick={action.onClick} />)}
     </SpeedDial>
-  </Container>
+  </Container>;
 }

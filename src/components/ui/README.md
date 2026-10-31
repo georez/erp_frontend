@@ -127,7 +127,7 @@ Matching compares characters exactly, so typing `ا` finds labels starting with 
 - **Prefix search, not filtering.** If you need "contains" matching or a text input, use a filtering autocomplete instead.
 - **Dialogs.** The popup lives outside the dialog's DOM. Some dialog libraries treat a click on an option as an outside click. If that happens, pass the dialog element as `portalTarget`.
 - **Touch keyboards.** They are supported through the `beforeinput` event. This was tested with emulated input rather than on physical phones, so please report any device that misbehaves.
-- **Styling.** The default styles are injected by the component, so they load after your stylesheet. To override a `tac-*` class, use a more specific selector than a single class, for example `.tac .tac-input { … }` for the field, or `body .tac-pop { … }` and `body .tac-opt { … }` for the popup (which is rendered in a portal, outside `.tac`).
+- **Styling.** The default styles are in `ComboBox2.css`, which the component imports. To override a `tac-*` class, use a more specific selector than a single class, for example `.tac .tac-input { … }` for the field, or `body .tac-pop { … }` and `body .tac-opt { … }` for the popup (which is rendered in a portal, outside `.tac`).
 
 ## License
 
