@@ -217,6 +217,15 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       // Goods that aren't in stock: posting refuses the return
       valueFormatter: ({ value }) => (value == null ? 'غير متوفر' : formatAmount(value)),
       cellStyle: ({ value }) => ({ ...NUMBER_CELL, color: value == null ? '#c62828' : 'inherit' }),
+      // At the invoice's value while only purchases have moved the product in the warehouse since (no price
+      // difference), else at the average
+      tooltipValueGetter: ({ data }) => {
+        if (!data || data.stockValue == null) {
+          return undefined;
+        }
+        return data.atInvoiceValue ? 'بسعر الفاتورة: لم يتحرك الصنف في المخزن منذ الفاتورة إلا بمشتريات'
+          : 'بمتوسط التكلفة';
+      },
     },
     ...deleteColumn(posted, busy, (line) => request(`/lines/${line.id}`, 'DELETE')),
   ];
