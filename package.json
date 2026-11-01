@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/utils/reportutils.test.mjs src/utils/backend.test.mjs src/utils/csrfTokens.test.mjs src/utils/csrfClientUtils.test.mjs src/utils/sendOrShowError.test.mjs src/utils/errorMessages.test.mjs src/utils/decimals.test.mjs src/utils/expiryDates.test.mjs src/utils/formValidation.test.mjs",
+    "test": "node --test src/utils/reportutils.test.mjs src/utils/trialBalanceTree.test.mjs src/utils/statement.test.mjs src/utils/backend.test.mjs src/utils/csrfTokens.test.mjs src/utils/csrfClientUtils.test.mjs src/utils/sendOrShowError.test.mjs src/utils/errorMessages.test.mjs src/utils/decimals.test.mjs src/utils/expiryDates.test.mjs src/utils/formValidation.test.mjs",
     "check:csrf": "node --test scripts/check-csrf.mjs"
   },
   "dependencies": {
@@ -33,6 +33,7 @@
     "react-dom": "19.2.4",
     "react-querybuilder": "^8.24.1",
     "react-rnd": "^10.5.3",
+    "react-virtuoso": "^4.18.19",
     "stylis": "^4.4.0",
     "swr": "^2.5.1",
     "use-debounce": "^10.1.1",

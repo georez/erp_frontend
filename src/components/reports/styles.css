@@ -39,3 +39,13 @@ li.tabs__item {
   font-size: smaller;
   padding: var(--ifm-badge-padding-vertical) var(--ifm-badge-padding-horizontal);
 }
+/*
+ * The total row pinned under a report's rows. MUI's CssBaseline makes every element inherit box-sizing, which beats
+ * AG Grid's own (zero-specificity) border-box rule; the pinned rows' container is content-box, so its cells inherited
+ * that and grew by their padding and borders: they no longer lined up with the columns, and the last one ran past the
+ * grid's edge.
+ */
+.ag-grid-pinned-bottom-rows .ag-row,
+.ag-grid-pinned-bottom-rows .ag-cell {
+  box-sizing: border-box;
+}

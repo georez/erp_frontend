@@ -13,10 +13,11 @@ const reportLink = (text, reportName) => ({
   text, url: `/dashboard/report?reportName=${reportName}&formTitle=${encodeURIComponent(text)}`,
 });
 
-/** A document's page, e.g. "purchase-invoice" (urlToComponentMap). */
-const documentLink = (text, page) => ({
+/** A document's page, e.g. "purchase-invoice", or a report with a page of its own (urlToComponentMap). */
+const pageLink = (text, page) => ({
   text, url: `/dashboard/${page}?formTitle=${encodeURIComponent(text)}`,
 });
+const documentLink = pageLink;
 
 export const MENU_LINKS = [
   formLink('ادخال الحسابات', 'accounts'),
@@ -32,6 +33,8 @@ export const MENU_LINKS = [
   formLink('ادخال تصنيف الموردين', 'supplier_categories'),
   reportLink('تقرير تصنيف الموردين', 'supplierCategoriesReport'),
   reportLink('تقرير الموردين', 'suppliersReport'),
+  pageLink('كشف حساب مورد', 'supplier-statement'),
+  pageLink('أرصدة الموردين', 'supplier-balances'),
 
   // --- products and warehouses ---
   formLink('ادخال الأصناف', 'products'),
@@ -53,4 +56,8 @@ export const MENU_LINKS = [
   reportLink('تقرير تسويات المخزون', 'stockAdjustmentsReport'),
   reportLink('تقرير التشغيلات والصلاحية', 'stockBatchesReport'),
   reportLink('تقرير حركات المخزون', 'stockMovementsReport'),
+
+  // --- financial reports ---
+  pageLink('ميزان المراجعة', 'trial-balance'),
+  pageLink('كشف حساب', 'account-statement'),
 ];

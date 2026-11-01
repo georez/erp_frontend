@@ -1,0 +1,59 @@
+/*
+ * The trial balance's account column: one 24px segment per tree level before the account's toggle, drawing the guide
+ * lines that join each account to its parent. Logical properties (inline-start), so the lines mirror in right to left.
+ *
+ *   tb-guide-line    an ancestor's line running past this row   │
+ *   tb-guide-branch  this row's own joint, more siblings below  ├
+ *   tb-guide-last    this row's own joint, the last sibling     └
+ */
+.tb-account {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+
+.tb-guide {
+  position: relative;
+  flex: 0 0 24px;
+  align-self: stretch;
+}
+
+.tb-guide-line::before,
+.tb-guide-branch::before,
+.tb-guide-last::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 11px;
+  top: 0;
+  bottom: 0;
+  border-inline-start: 1px solid var(--tb-line-color);
+}
+
+.tb-guide-last::before {
+  bottom: 50%;
+}
+
+.tb-guide-branch::after,
+.tb-guide-last::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 11px;
+  top: 50%;
+  width: 13px;
+  border-top: 1px solid var(--tb-line-color);
+}
+
+/* The toggle's place, kept for a leaf so names line up */
+.tb-toggle {
+  flex: 0 0 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.tb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline-start: 4px;
+}

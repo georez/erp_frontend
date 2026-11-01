@@ -3,6 +3,7 @@ import {
   Checkbox, FormControl, FormControlLabel, FormHelperText, InputLabel, MenuItem, Select, TextField,
 } from "@mui/material";
 import { DatePicker, DateTimePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
+import { LtrPickerDialog, LtrPickerPopper } from "@/components/ui/LtrPickerPopup";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import AutoCompleteFormAdapter from "../ui/AutoCompleteFormAdapter";
 import {
@@ -111,6 +112,8 @@ function DateTimePickerAdapter({ field, value, setFormValues, isValid, setIsVali
           setFormValues((previous) => ({ ...previous, [fieldName]: formatted }));
           setChanged(true);
         }}
+        // The calendar (or clock) left to right, like a printed calendar; the field stays right to left
+        slots={{ popper: LtrPickerPopper, dialog: LtrPickerDialog }}
         slotProps={{
           field: { clearable: !required },
           textField: {

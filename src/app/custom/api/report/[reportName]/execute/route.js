@@ -10,9 +10,14 @@ export async function POST(request, { params }) {
   const { reportName } = await params;
   // query: the query builder's filters (search params 2); reportParams: the report's own params (search
   // params 1). reportParams are only ever bound as values, so the backend checks them, not this route.
-  const { query, reportParams = {} } = await request.json();
+  // sort: the order the user chose, [{ column, direction }]; the backend only lets the report's output column names
+  // into its SQL, so it checks the sort too.
+  const { query, reportParams = {}, sort = [] } = await request.json();
   if (reportParams === null || typeof reportParams !== 'object' || Array.isArray(reportParams)) {
     return Response.json({ success: false, message: 'معايير التقرير غير صحيحة' }, { status: 400 });
+  }
+  if (!Array.isArray(sort)) {
+    return Response.json({ success: false, message: 'ترتيب التقرير غير صحيح' }, { status: 400 });
   }
   const cookieStore = await cookies();
 
@@ -59,7 +64,7 @@ export async function POST(request, { params }) {
   if (!signingSecret) {
     return Response.json({ success: false, message: 'Report signing is not configured' }, { status: 500 });
   }
-  const body = JSON.stringify({ sql, params: sqlParams, reportParams });
+  const body = JSON.stringify({ sql, params: sqlParams, reportParams, sort });
   const signature = createHmac('sha256', signingSecret)
     .update(`${reportName}\n${body}`)
     .digest('hex');

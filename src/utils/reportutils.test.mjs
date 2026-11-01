@@ -3,12 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatQuery } from 'react-querybuilder/formatQuery';
 import {
-  buildLinkUrl,
-  cellFilterNumber,
-  compareDecimalCells,
+  linkTarget,
   formatQueryProblems,
   parseJsonObject,
+  parseReportSort,
   selectReportParams,
+  selectReportSort,
+  totalsRow,
   transformFields,
   validateReportParams,
   validateReportQuery,
@@ -175,50 +176,137 @@ test('params are checked like the CRUD form fields', () => {
 
 const categoryLink = { schemaName: 'customer_categories', idColumn: 'id', formTitle: 'ادخال تصنيف العملاء' };
 
+/** The URL a linked cell opens, or null. */
+const linkUrl = (link, row) => linkTarget(link, row)?.url ?? null;
+
 test("a linked cell opens the CRUD form of the row's record", () => {
-  const url = buildLinkUrl(categoryLink, { id: 7, name: 'جملة' });
-  assert.equal(url, '/dashboard/form?schemaName=customer_categories'
+  const target = linkTarget(categoryLink, { id: 7, name: 'جملة' });
+  assert.equal(target.url, '/dashboard/form?schemaName=customer_categories'
     + `&formTitle=${encodeURIComponent('ادخال تصنيف العملاء')}&entityId=7`);
+  assert.equal(target.title, 'ادخال تصنيف العملاء');
 
   // The same parameters the CRUD form (SchemaCrud) reads
-  const params = new URLSearchParams(url.split('?')[1]);
+  const params = new URLSearchParams(target.url.split('?')[1]);
   assert.deepEqual(Object.fromEntries(params), {
     schemaName: 'customer_categories', formTitle: 'ادخال تصنيف العملاء', entityId: '7',
   });
 });
 
 test("a document's link opens its page with the id in the page's parameter", () => {
-  const link = { document: 'stock-adjustment', idColumn: 'id', formTitle: 'تسوية مخزون' };
-  assert.equal(buildLinkUrl(link, { id: 3 }),
-    `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية مخزون')}&adjustmentId=3`);
-  assert.equal(buildLinkUrl({ ...link, document: 'no-such-page' }, { id: 3 }), null);
-  assert.equal(buildLinkUrl({ document: 'purchase-invoice', idColumn: 'id', formTitle: 'F' }, { id: 4 }),
+  const link = { document: 'stock-adjustment', idColumn: 'id', formTitle: 'تسوية' };
+  assert.deepEqual(linkTarget(link, { id: 3 }), {
+    url: `/dashboard/stock-adjustment?formTitle=${encodeURIComponent('تسوية')}&adjustmentId=3`,
+    title: 'تسوية',
+  }, "titled with the link's formTitle");
+  assert.equal(linkUrl({ ...link, document: 'no-such-page' }, { id: 3 }), null);
+  assert.equal(linkUrl({ document: 'purchase-invoice', idColumn: 'id', formTitle: 'F' }, { id: 4 }),
     '/dashboard/purchase-invoice?formTitle=F&invoiceId=4');
-  assert.equal(buildLinkUrl({ document: 'purchase-return', idColumn: 'id', formTitle: 'R' }, { id: 5 }),
+  assert.equal(linkUrl({ document: 'purchase-return', idColumn: 'id', formTitle: 'R' }, { id: 5 }),
     '/dashboard/purchase-return?formTitle=R&returnId=5');
-  assert.equal(buildLinkUrl({ ...link, document: 'constructor' }, { id: 3 }), null);
+  assert.equal(linkUrl({ document: 'opening-balance', idColumn: 'id', formTitle: 'O' }, { id: 6 }),
+    '/dashboard/opening-balance?formTitle=O&openingBalanceId=6');
+  assert.equal(linkUrl({ ...link, document: 'constructor' }, { id: 3 }), null);
+});
+
+test('a documentColumn link opens the page each row names, titled after that page', () => {
+  const link = { documentColumn: 'page', idColumn: 'source_id' };
+  assert.deepEqual(linkTarget(link, { page: 'purchase-invoice', source_id: '8' }), {
+    url: `/dashboard/purchase-invoice?formTitle=${encodeURIComponent('فاتورة مشتريات')}&invoiceId=8`,
+    title: 'فاتورة مشتريات',
+  });
+  assert.deepEqual(linkTarget(link, { page: 'purchase-return', source_id: '9' }), {
+    url: `/dashboard/purchase-return?formTitle=${encodeURIComponent('مرتجع مشتريات')}&returnId=9`,
+    title: 'مرتجع مشتريات',
+  });
+  assert.equal(linkTarget(link, { page: null, source_id: '9' }), null, 'a row without a document (an opening row)');
+  assert.equal(linkTarget(link, { page: 'no-such-page', source_id: '9' }), null);
+  assert.equal(linkTarget(link, { page: 'toString', source_id: '9' }), null);
+  assert.equal(linkTarget(link, { page: 'purchase-invoice', source_id: null }), null);
 });
 
 test("the id comes from the link's id column, not the clicked column", () => {
   const link = { schemaName: 'customer_categories', idColumn: 'customer_category_id', formTitle: 'T' };
   const row = { id: 1, customer_category_id: '42', customer_category_name: 'x' };
-  assert.equal(new URLSearchParams(buildLinkUrl(link, row).split('?')[1]).get('entityId'), '42');
+  assert.equal(new URLSearchParams(linkUrl(link, row).split('?')[1]).get('entityId'), '42');
 });
 
 test('a row without an id has no link', () => {
-  assert.equal(buildLinkUrl(categoryLink, { id: null }), null);
-  assert.equal(buildLinkUrl(categoryLink, { id: '' }), null);
-  assert.equal(buildLinkUrl(categoryLink, {}), null);
-  assert.equal(buildLinkUrl(categoryLink, undefined), null);
-  assert.notEqual(buildLinkUrl(categoryLink, { id: 0 }), null, '0 is a valid id');
+  assert.equal(linkTarget(categoryLink, { id: null }), null);
+  assert.equal(linkTarget(categoryLink, { id: '' }), null);
+  assert.equal(linkTarget(categoryLink, {}), null);
+  assert.equal(linkTarget(categoryLink, undefined), null);
+  assert.notEqual(linkTarget(categoryLink, { id: 0 }), null, '0 is a valid id');
 });
 
 test('link values are encoded', () => {
-  const url = buildLinkUrl({ schemaName: 'customers', idColumn: 'id', formTitle: 'a&b=c' }, { id: '1&x=2' });
+  const url = linkUrl({ schemaName: 'customers', idColumn: 'id', formTitle: 'a&b=c' }, { id: '1&x=2' });
   const params = new URLSearchParams(url.split('?')[1]);
   assert.equal(params.get('formTitle'), 'a&b=c');
   assert.equal(params.get('entityId'), '1&x=2');
   assert.equal(params.get('x'), null);
+});
+
+// --- the total row ---
+
+const ledgerTotals = {
+  label: 'الإجمالي', labelColumn: 'account_name', columns: ['debit', 'credit'], skipRowsWhere: 'is_parent',
+};
+
+test('the total row adds up the rows exactly, without the skipped ones', () => {
+  const rows = [
+    { account_name: 'Assets', is_parent: true, debit: '300.3', credit: '0' },
+    { account_name: 'Cash', is_parent: false, debit: '100.1', credit: '0' },
+    { account_name: 'Bank', is_parent: false, debit: '200.2', credit: '0.0000001' },
+    { account_name: 'Capital', is_parent: false, debit: '0', credit: '300.3' },
+  ];
+  assert.deepEqual(totalsRow(rows, ledgerTotals),
+    { account_name: 'الإجمالي', debit: '300.3', credit: '300.3000001' }, 'no floating point drift; parents skipped');
+});
+
+test('the total row counts every row without skipRowsWhere, and empty cells as nothing', () => {
+  const totals = { label: 'T', labelColumn: 'name', columns: ['value'] };
+  assert.deepEqual(totalsRow([{ value: '1.5' }, { value: null }, { value: '' }, { value: 2 }], totals),
+    { name: 'T', value: '3.5' });
+  assert.deepEqual(totalsRow([], totals), { name: 'T', value: '0' });
+});
+
+// --- the sort tab ---
+
+const sortColumns = [
+  { name: 'id', sortable: true },
+  { name: 'name', sortable: true },
+  { name: 'uuid_value', sortable: false },
+];
+
+test('the sort kept in the URL is a list, or nothing', () => {
+  assert.deepEqual(parseReportSort('[{"column":"id","direction":"desc"}]'), [{ column: 'id', direction: 'desc' }]);
+  assert.deepEqual(parseReportSort(undefined), []);
+  assert.deepEqual(parseReportSort(''), []);
+  assert.deepEqual(parseReportSort('{"column":"id"}'), [], 'an object is not a sort');
+  assert.deepEqual(parseReportSort('[{'), [], 'unreadable JSON');
+});
+
+test('the sort sent keeps its order and only usable entries', () => {
+  assert.deepEqual(selectReportSort([
+    { column: 'name', direction: 'desc' },
+    { column: 'id', direction: 'asc' },
+  ], sortColumns, false), [{ column: 'name', direction: 'desc' }, { column: 'id', direction: 'asc' }]);
+
+  assert.deepEqual(selectReportSort([
+    { column: 'gone', direction: 'asc' },
+    { column: 'uuid_value', direction: 'asc' },
+    { column: 'id', direction: 'sideways' },
+    null,
+    { column: 'name', direction: 'asc', extra: 'x' },
+    { column: 'name', direction: 'desc' },
+  ], sortColumns, false), [{ column: 'name', direction: 'asc' }],
+  'unknown, unsortable, badly directed, empty and repeated entries are dropped; extra keys too');
+
+  assert.deepEqual(selectReportSort('not a list', sortColumns, false), []);
+});
+
+test('a report with a fixed order takes no sort', () => {
+  assert.deepEqual(selectReportSort([{ column: 'id', direction: 'asc' }], sortColumns, true), []);
 });
 
 // --- date checks of the form fields (validateFormField, used by the CRUD forms and the report params) ---
@@ -240,19 +328,4 @@ test('dates, times and date-times are checked strictly against their format', as
   assert.ok(!valid('datetime', '2026-10-10T08:30'), 'the backend now always sends seconds');
   assert.ok(!valid('datetime', '2026-02-30T08:30:00'));
   assert.ok(!valid('datetime', '2026-10-10 08:30:00'));
-});
-
-test('number cells sort by value, exactly, empty ones first', () => {
-  const cells = ['10', '9', '-2.5', null, '0.0000001', '', '12345678901234567890.1234567', '12345678901234567890.1234566', 3];
-  assert.deepEqual([...cells].sort(compareDecimalCells), [
-    null, '', '-2.5', '0.0000001', 3, '9', '10', '12345678901234567890.1234566', '12345678901234567890.1234567',
-  ]);
-  assert.equal(compareDecimalCells('2.50', '2.5'), 0, 'the same value');
-});
-
-test("the grid's column filter compares numbers", () => {
-  assert.equal(cellFilterNumber('12.5'), 12.5);
-  assert.equal(cellFilterNumber(7), 7);
-  assert.equal(cellFilterNumber(null), null);
-  assert.equal(cellFilterNumber(''), null);
 });
