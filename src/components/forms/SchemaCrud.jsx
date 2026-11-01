@@ -41,8 +41,9 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   const { csrfFetch } = useContext(AuthContext);
   const isNew = !entityId;
 
-  const { data: metadata, error: loadError, isValidating } = useSWR(
-    `/api/schemacrud/${schemaName}${isNew ? '' : `/${entityId}`}`, fetchJson);
+  // Not again when the window regains focus: newly loaded values replace the form's, and so what's being typed
+  const { data: metadata, error: loadError } = useSWR(
+    `/api/schemacrud/${schemaName}${isNew ? '' : `/${entityId}`}`, fetchJson, { revalidateOnFocus: false });
   const loadedValues = metadata?.values;
   const [formValues, setFormValues] = useState(loadedValues);
   const [isValid, setIsValid] = useState({});
@@ -102,9 +103,11 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   }, CLICK_DEBOUNCE_MS);
 
   const deleteRecord = useDebouncedCallback(async () => {
-    if (!fieldsAreValid()) {
+    // What's typed doesn't matter: the record as saved is deleted
+    if (!window.confirm(`حذف السجل رقم ${entityId}؟`)) {
       return;
     }
+    setErrorMessage(null);
     if (await send('DELETE', `/api/schemacrud/${schemaName}/${entityId}`)) {
       updateOpenFormUrl(formUrl(schemaName, formTitle, null));
     }
@@ -119,13 +122,13 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
       { key: 'delete', icon: <DeleteIcon />, title: 'حذف', onClick: deleteRecord },
     ];
 
-  const fieldsReady = !isValidating && metadata && formValues;
+  const fieldsReady = metadata && formValues;
 
   return <Container maxWidth="sm">
     {loadError && <Alert severity="error">{loadError.message}</Alert>}
     {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
     <Stack spacing={2} sx={{ p: 1 }}>
-      <Typography variant="h7" component="div">{formTitle}</Typography>
+      <Typography variant="subtitle1" component="div">{formTitle}</Typography>
       {fieldsReady && <FormFields
         formFields={metadata.fields}
         formValues={formValues}

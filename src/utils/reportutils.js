@@ -1,6 +1,7 @@
 import { defaultOperators, toFullOption } from "react-querybuilder";
 import { Big } from "bigdecimal.js";
 import { validateFormField } from "./formValidation.js";
+import { errorMessageFromBody } from "./errorMessages.js";
 
 const operatorTranslations = {
   '=': 'يساوي',
@@ -349,19 +350,48 @@ export function selectReportParams(paramFields, values) {
 }
 
 /**
- * Checks the params 1 values with the same rules as the CRUD forms (FormFields shows the result).
+ * Checks the params 1 values with the same rules as the CRUD forms (FormFields shows the result), and that no date is
+ * before the date it may not be before (paramOrderProblem says why).
  *
- * @param {Array<{fieldName: string, validationType: string, validation?: string, required?: boolean}>} paramFields
+ * @param {Array<{fieldName: string, validationType: string, validation?: string, required?: boolean,
+ *   notBefore?: string}>} paramFields
  * @param {object} values
  * @returns {Object<string, boolean>} validity by field name
  */
 export function validateReportParams(paramFields, values) {
   const selected = selectReportParams(paramFields, values);
+  const tooEarly = new Set(datesBeforeTheirEarliest(paramFields, selected).map(({ fieldName }) => fieldName));
   return Object.fromEntries(paramFields.map(({ fieldName, validationType, validation, required }) => [
     fieldName,
     // Signed: a report may filter on a negative number
-    validateFormField(validationType, !!required, validation, selected[fieldName], { signed: true }),
+    validateFormField(validationType, !!required, validation, selected[fieldName], { signed: true })
+      && !tooEarly.has(fieldName),
   ]));
+}
+
+/**
+ * Why the params can't run, when a date is before the date it may not be before (its notBefore: a period ending
+ * before it starts), as the backend would say it (REPORT_PARAM_BEFORE); null when none is.
+ */
+export function paramOrderProblem(paramFields, values) {
+  const [first] = datesBeforeTheirEarliest(paramFields, selectReportParams(paramFields, values));
+  if (!first) {
+    return null;
+  }
+  const earliest = paramFields.find(({ fieldName }) => fieldName === first.notBefore);
+  return errorMessageFromBody({
+    errorCode: 'REPORT_PARAM_BEFORE',
+    errorParams: { param: first.displayName, earliestParam: earliest.displayName },
+  }, '');
+}
+
+/** The date params before their notBefore; a missing or invalid date isn't compared (its own check says so). */
+function datesBeforeTheirEarliest(paramFields, selected) {
+  const isDate = (value) => validateFormField('date', true, null, value);
+  return paramFields.filter(({ fieldName, notBefore }) => notBefore
+    && isDate(selected[fieldName]) && isDate(selected[notBefore])
+    // YYYY-MM-DD: as text, in date order
+    && selected[fieldName] < selected[notBefore]);
 }
 
 /**

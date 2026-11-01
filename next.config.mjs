@@ -1,6 +1,4 @@
-// Same variable and default as src/utils/backend.js. Read here directly: importing that file from this config
-// makes Node warn that it's an ES module in a package without "type": "module".
-const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:4000';
+import { BACKEND_URL } from './src/utils/backend.js';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

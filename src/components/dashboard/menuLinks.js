@@ -21,6 +21,7 @@ const documentLink = pageLink;
 
 export const MENU_LINKS = [
   formLink('ادخال الحسابات', 'accounts'),
+  reportLink('تقرير الحسابات', 'accountsReport'),
 
   // --- customers ---
   formLink('ادخال العملاء', 'customers'),
@@ -40,7 +41,9 @@ export const MENU_LINKS = [
   formLink('ادخال الأصناف', 'products'),
   reportLink('تقرير الأصناف', 'productsReport'),
   formLink('ادخال تصنيف الأصناف', 'product_categories'),
+  reportLink('تقرير تصنيف الأصناف', 'productCategoriesReport'),
   formLink('ادخال المخازن', 'warehouses'),
+  reportLink('تقرير المخازن', 'warehousesReport'),
 
   // --- purchases ---
   documentLink('فاتورة مشتريات', 'purchase-invoice'),

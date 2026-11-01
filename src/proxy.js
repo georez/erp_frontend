@@ -46,6 +46,10 @@ async function verifyAccessTokenWithAuthServer(request, accessToken) {
 
 async function refreshAccessTokenWithAuthServer(request) {
   const refreshToken = request.cookies.get('refresh_token')?.value;
+  // Nothing to refresh with: not worth a request
+  if (!refreshToken) {
+    return undefined;
+  }
   const response = await fetch(`${BACKEND_URL}/api/login/refresh`, {
     method: 'POST',
     headers: {
@@ -67,7 +71,8 @@ async function verifyAccessToken(request) {
   // Check if the current route is /dashboard or a sub-route (/dashboard/*)
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const accessToken = request.cookies.get('access_token')?.value;
-    const isAccessTokenValid = await verifyAccessTokenWithAuthServer(request, accessToken);
+    // No cookie: nothing for the backend to verify
+    const isAccessTokenValid = !!accessToken && await verifyAccessTokenWithAuthServer(request, accessToken);
 
     if (!accessToken || !isAccessTokenValid) {
       const refreshedTokens = await refreshAccessTokenWithAuthServer(request);

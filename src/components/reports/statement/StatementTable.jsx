@@ -2,7 +2,7 @@
 
 import { TableVirtuoso } from 'react-virtuoso';
 import { TableCell, TableRow } from '@mui/material';
-import { balanceColumns } from '@/utils/statement';
+import { balanceColumns, statementLineColumns } from '@/utils/statement';
 import { formatAmount } from '@/utils/decimals';
 import { linkTarget } from '@/utils/reportutils';
 import { openLinkOnPlainClick } from '@/utils/useOpenLink';
@@ -24,9 +24,8 @@ const GROUPS = [
 ];
 
 /**
- * The table's columns; a column in a group sits under the group's header. The account column only when the lines are
- * on several accounts (a parent account's statement), the party column only when they name several parties (a
- * control account's statement; on a supplier's own statement it would only repeat the supplier).
+ * The table's columns; a column in a group sits under the group's header. The account and party columns only where
+ * the statement's lines need them (statementLineColumns).
  */
 function statementColumns(showAccount, showParty) {
   return [
@@ -138,15 +137,16 @@ function HeaderRows({ columns, columnWidths, onResize }) {
  * The statement's lines (see virtualTable): the header and the total stay in place while the lines scroll, and the
  * user can resize the columns from their headers.
  *
+ * @param {'account'|'supplier'} props.kind  whose statement it is (StatementPage)
+ * @param {string|number|null} props.subjectId  the account's or the supplier's id the rows were run for
  * @param {Array<object>} props.rows  a statement report's rows: the opening row, then the lines
  * @param {{debit: string, credit: string, closing: string}|null} props.summary  statementSummary: the total row shows
  *   the period's debits and credits, and the closing balance in its debit or credit column
  * @param {Function|null} props.openLink  opens a link as a dashboard window (useOpenLink)
  */
-export default function StatementTable({ rows, summary, openLink }) {
+export default function StatementTable({ kind, subjectId, rows, summary, openLink }) {
   const lines = rows.filter((row) => !isOpeningRow(row));
-  const showAccount = new Set(lines.map((row) => row.account_id)).size > 1;
-  const showParty = new Set(lines.map((row) => row.party_name).filter(Boolean)).size > 1;
+  const { showAccount, showParty } = statementLineColumns(kind, subjectId, lines);
   const columns = statementColumns(showAccount, showParty);
   const { columnWidths, resizeColumn } = useColumnWidths(columns);
   const closing = summary ? balanceColumns(summary.closing) : null;

@@ -95,7 +95,13 @@ export default function DrawerForm({ children, backgroundColor }) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(event) => openLinkOnPlainClick(event, openLink, url, text)}
+              onClick={(event) => {
+                openLinkOnPlainClick(event, openLink, url, text);
+                // Opened as a window: out of the drawer's way, so it's seen (a new tab leaves the drawer open)
+                if (event.defaultPrevented) {
+                  handleDrawerClose();
+                }
+              }}
             >
               <ListItemText primary={text} />
             </ListItemButton>

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import { balanceColumns, statementSummary } from '@/utils/statement';
+import { parseJsonObject } from '@/utils/reportutils';
 import { formatAmount } from '@/utils/decimals';
 import { useOpenLink } from '@/utils/useOpenLink';
 import ReportPageFrame from '../ReportPageFrame';
@@ -70,6 +71,8 @@ export default function StatementPage({ kind, formId, formTitle, execute, reques
     initialParams: { [statement.subjectParam]: null, ...monthToDate() },
   });
   const summary = useMemo(() => statementSummary(report.rows), [report.rows]);
+  // Whose statement the rows are: the params they were run with (the URL's), not the ones being edited
+  const subjectId = parseJsonObject(params, {})[statement.subjectParam] ?? null;
 
   let figures = null;
   if (summary) {
@@ -86,7 +89,7 @@ export default function StatementPage({ kind, formId, formTitle, execute, reques
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {figures}
       <Box sx={{ flex: 1, minHeight: 0 }}>
-        <StatementTable rows={report.rows} summary={summary} openLink={openLink} />
+        <StatementTable kind={kind} subjectId={subjectId} rows={report.rows} summary={summary} openLink={openLink} />
       </Box>
     </Box>
   </ReportPageFrame>;

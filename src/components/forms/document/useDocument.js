@@ -37,7 +37,7 @@ export function useDocument({
   const { data: document, error: loadError } = useSWR(
     documentId ? urlOf(documentId) : null, fetchJson, { revalidateOnFocus: false });
   const draftIdRef = useDraftId(documentId);
-  const shown = useHeaderShown(document, emptyHeader, headerFrom);
+  const shown = useHeaderShown(documentId, document, emptyHeader, headerFrom);
 
   const isNew = !documentId;
   const isPosted = document?.status === 'POSTED';
@@ -147,27 +147,35 @@ export function useDocument({
 
 /**
  * The id the queued requests go to: the window's document, or the draft a first line just created, which a second
- * line queued right behind it must use before the window has moved on to it.
+ * line queued right behind it must use before the window has moved on to it. It follows the window's URL (Back to a
+ * new document: none).
  */
 function useDraftId(documentId) {
   const draftIdRef = useRef(documentId ?? null);
   useEffect(() => {
-    if (documentId) {
-      draftIdRef.current = documentId;
-    }
+    draftIdRef.current = documentId ?? null;
   }, [documentId]);
   return draftIdRef;
 }
 
 /**
  * The header the form shows. It's read from a document once (by id); after that what's typed is the truth, so the
- * answer to a save can't overwrite a field being typed. readAgain() re-reads it, after a refused save.
+ * answer to a save can't overwrite a field being typed. readAgain() re-reads it, after a refused save. When the
+ * window's document changes (another one, Back, Forward), it's read again from that one, or emptied for a new one.
  */
-function useHeaderShown(document, emptyHeader, headerFrom) {
+function useHeaderShown(documentId, document, emptyHeader, headerFrom) {
   const [header, setHeader] = useState(emptyHeader);
   const [readFromId, setReadFromId] = useState(null);
+  const [shownFor, setShownFor] = useState(documentId);
   // Set during render, not in an effect, so a stale header is never shown:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (documentId !== shownFor) {
+    setShownFor(documentId);
+    setReadFromId(null);
+    if (!documentId) {
+      setHeader(emptyHeader);
+    }
+  }
   if (document && document.id !== readFromId) {
     setReadFromId(document.id);
     setHeader(headerFrom(document));

@@ -6,8 +6,8 @@ import { AuthContext } from '@/components/AuthProvider';
 import { useOpenLink } from '@/utils/useOpenLink';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import {
-  parseJsonObject, parseReportSort, selectReportParams, selectReportSort, transformFields, validateReportParams,
-  validateReportQuery,
+  paramOrderProblem, parseJsonObject, parseReportSort, selectReportParams, selectReportSort, transformFields,
+  validateReportParams, validateReportQuery,
 } from '@/utils/reportutils';
 import { executeReport, fetchReportMetadata } from './reportApi';
 import { gridColumnDefs, mergeColumnVisibility, toGridColumns } from './reportGrid';
@@ -141,9 +141,23 @@ export default function Report({ formId, formTitle, reportName, execute, request
   // The params and the query being edited: they start from the URL, and become the report's when Run writes them back
   const [paramValues, setParamValues] = useState(() => parseJsonObject(params, {}));
   const [queryLocal, setQueryLocal] = useState(() => parseJsonObject(query, INITIAL_QUERY));
-  // Each param's validity (shown by FormFields), and whether Run was clicked with invalid params
+  // Each param's validity (shown by FormFields), and whether Run was clicked with invalid params (and why, when the
+  // fields alone can't say: a period ending before it starts)
   const [paramValidity, setParamValidity] = useState({});
   const [showParamErrors, setShowParamErrors] = useState(false);
+  const [paramsProblem, setParamsProblem] = useState('');
+
+  // What's being edited is read again when the URL's values change (Back, Forward), so the tabs show what the rows
+  // are of. Set during render, so they never show the old values first:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [editedFrom, setEditedFrom] = useState({ params, query, sort });
+  if (params !== editedFrom.params || query !== editedFrom.query || sort !== editedFrom.sort) {
+    setEditedFrom({ params, query, sort });
+    setParamValues(parseJsonObject(params, {}));
+    setQueryLocal(parseJsonObject(query, INITIAL_QUERY));
+    setSortLocal(metadata ? selectReportSort(parseReportSort(sort), metadata.columns, metadata.fixedOrder)
+      : parseReportSort(sort));
+  }
 
   const [rows, setRows] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
@@ -226,9 +240,11 @@ export default function Report({ formId, formTitle, reportName, execute, request
     setParamValidity(validity);
     if (!Object.values(validity).every(Boolean)) {
       setShowParamErrors(true);
+      setParamsProblem(paramOrderProblem(paramFields, paramValues) ?? '');
       setTabValue(TABS.QUERY_1);
       return;
     }
+    setParamsProblem('');
     updateOpenFormsUrl(runUrl({
       reportName,
       formTitle,
@@ -252,6 +268,9 @@ export default function Report({ formId, formTitle, reportName, execute, request
     </Stack>
 
     {loadError && <Alert severity="error" sx={{ mx: 1, mb: 1, flexShrink: 0 }}>{loadError}</Alert>}
+    {paramsProblem && <Alert severity="error" onClose={() => setParamsProblem('')} sx={{ mx: 1, mb: 1, flexShrink: 0 }}>
+      {paramsProblem}
+    </Alert>}
 
     <Tabs value={tabValue} onChange={(event, next) => setTabValue(next)} variant="scrollable" scrollButtons="auto"
       aria-label="report tabs" sx={{ flexShrink: 0, borderBottom: 1, borderColor: 'divider' }}>

@@ -36,7 +36,8 @@ ENV PORT=3000
 COPY --from=build --chown=node:node /app/.next/standalone ./
 # output: 'standalone' leaves these out: without them pages load with no scripts, styles or fonts
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
-COPY --from=build --chown=node:node /app/public ./public
+# The app has no public/ folder (no static files of its own); one added later needs copying here too:
+# COPY --from=build --chown=node:node /app/public ./public
 
 USER node
 EXPOSE 3000

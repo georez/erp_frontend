@@ -11,6 +11,7 @@ import {
   selectReportSort,
   totalsRow,
   transformFields,
+  paramOrderProblem,
   validateReportParams,
   validateReportQuery,
 } from './reportutils.js';
@@ -170,6 +171,27 @@ test('params are checked like the CRUD form fields', () => {
   assert.ok(!allValid({ p_text: 'abc', p_date: '2026-02-30' }), 'no such date');
   assert.ok(!allValid({ p_text: 'abc', p_date: '2026-10-1' }), 'not in the YYYY-MM-DD format');
   assert.ok(!allValid({ p_text: 'abc', p_link: 'x' }));
+});
+
+test('a period may not end before it starts', () => {
+  const periodFields = [
+    { fieldName: 'p_from_date', displayName: 'من تاريخ', validationType: 'date', required: true },
+    { fieldName: 'p_to_date', displayName: 'حتى تاريخ', validationType: 'date', required: true,
+      notBefore: 'p_from_date' },
+  ];
+  const period = (from, to) => ({ p_from_date: from, p_to_date: to });
+
+  assert.deepEqual(validateReportParams(periodFields, period('2026-10-01', '2026-10-31')),
+    { p_from_date: true, p_to_date: true });
+  assert.equal(paramOrderProblem(periodFields, period('2026-10-01', '2026-10-01')), null, 'one day is a period');
+
+  assert.deepEqual(validateReportParams(periodFields, period('2026-10-31', '2026-10-01')),
+    { p_from_date: true, p_to_date: false });
+  assert.equal(paramOrderProblem(periodFields, period('2026-10-31', '2026-10-01')),
+    'المعيار "حتى تاريخ" لا يمكن أن يكون قبل "من تاريخ"');
+
+  assert.equal(paramOrderProblem(periodFields, period('not a date', '2026-10-01')), null,
+    "an invalid date is its own field's problem");
 });
 
 // --- linked cells ---

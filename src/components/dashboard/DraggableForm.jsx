@@ -38,6 +38,13 @@ export default function DraggableForm({
   const [box, setBox] = useState(initialBox);
   const [maximized, setMaximized] = useState(false);
 
+  // Brought to the front by a press anywhere in it; one in front stays as it is (no URL change)
+  const bringToFront = () => {
+    if (focusedForm !== formId) {
+      updateSearchParam('focusedForm', formId);
+    }
+  };
+
   const close = () => {
     const remaining = openForms.filter((form) => form.formId !== formId);
     updateSearchParam('openForms', encodeOpenForms(remaining));
@@ -74,7 +81,7 @@ export default function DraggableForm({
     size={{ width: box.width, height: box.height }}
     onDragStop={(event, dragged) => setBox((previous) => ({ ...previous, x: dragged.x, y: dragged.y }))}
     onResizeStop={(event, direction, element, delta, position) => setBox({
-      x: position.x, y: position.y, width: element.style.width, height: element.style.height,
+      x: position.x, y: position.y, width: element.offsetWidth, height: element.offsetHeight,
     })}
     style={{ zIndex: focusedForm === formId ? 1200 : 1199 }}
     dragHandleClassName="rnd-drag-handle"
@@ -82,11 +89,11 @@ export default function DraggableForm({
   >
     {/* A column: the title bar keeps its height, and only the body scrolls */}
     <Paper elevation={3} sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-      overflow: 'hidden' }}>
-      <Box className="rnd-drag-handle" sx={{ cursor: 'move', backgroundColor: 'primary.light', flexShrink: 0 }}
-        onMouseDown={() => updateSearchParam('focusedForm', formId)}>
+      overflow: 'hidden' }} onMouseDown={bringToFront}>
+      <Box className="rnd-drag-handle" sx={{ cursor: 'move', backgroundColor: 'primary.light', flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-          <IconButton aria-label="close" size="small" onClick={close}>
+          {/* Not brought to the front first: two URL changes at once, and the window is going anyway */}
+          <IconButton aria-label="close" size="small" onClick={close} onMouseDown={(event) => event.stopPropagation()}>
             <CloseIcon fontSize="inherit" color="secondary" />
           </IconButton>
           {maximized
@@ -99,7 +106,7 @@ export default function DraggableForm({
           <IconButton aria-label="open in new" size="small" onClick={() => window.open(url, '_blank')}>
             <OpenInNewIcon fontSize="inherit" color="secondary" />
           </IconButton>
-          <Typography variant="h7" component="div">{formTitle}</Typography>
+          <Typography variant="subtitle1" component="div">{formTitle}</Typography>
         </Box>
       </Box>
 

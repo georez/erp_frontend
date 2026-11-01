@@ -27,12 +27,16 @@ export const ERROR_MESSAGES = Object.freeze({
   // --- accounts ---
   CONTRA_ACCOUNT_NOT_FOUND: 'الحساب المعكوس ضده رقم {accountId} غير موجود',
   CONTRA_ACCOUNT_SIDE_NOT_ALLOWED: 'الحساب المعاكس يكون عكس طبيعة الحساب المعكوس ضده، فلا يمكن أن يكون "{debitOrCredit}"',
+  PARENT_ACCOUNT_REQUIRED: 'اختر الحساب الأم (الحساب المعاكس وحده يوضع تحت الحساب الأم للحساب المعكوس ضده)',
   PARENT_ACCOUNT_NOT_FOUND: 'الحساب الأم رقم {accountId} غير موجود أو لا يمكن اختياره كحساب أم',
   ACCOUNT_SIDE_DIFFERS_FROM_PARENT: 'طبيعة الحساب تكون مثل طبيعة الحساب الأم، فلا يمكن أن تكون "{debitOrCredit}"',
   PARENT_ACCOUNT_NOT_NODE: 'الحساب الأم رقم {accountId} يجب أن يكون حساباً رئيسياً (NODE)',
   ACCOUNT_INVALID_COMBINATION: 'بيانات الحساب غير متوافقة: راجع الحساب الأم والحساب المعاكس ونوع الحساب (NODE/LEAF)',
   ACCOUNT_PARENT_CYCLE: 'لا يمكن أن يكون الحساب الأم هو الحساب نفسه أو أحد حساباته الفرعية',
   ACCOUNT_WITH_LINES_CANT_BE_NODE: 'على هذا الحساب قيود، فلا يمكن تحويله إلى حساب رئيسي (NODE)',
+  ACCOUNT_WITH_SUB_ACCOUNTS_STAYS_NODE: 'لهذا الحساب حسابات فرعية، فيبقى حساباً رئيسياً (NODE) بنفس الطبيعة (مدين أو دائن)',
+  ACCOUNT_WITH_CONTRA_ACCOUNTS_STAYS_LEAF:
+    'لهذا الحساب حسابات معاكسة، فيبقى حساباً فرعياً (LEAF) عادياً بنفس الطبيعة (مدين أو دائن)',
   SEEDED_ACCOUNT_CANT_CHANGE: 'الحساب رقم {accountId} من الحسابات الأساسية للنظام ولا يمكن تعديله أو حذفه',
 
   // --- login ---
@@ -46,6 +50,7 @@ export const ERROR_MESSAGES = Object.freeze({
   REPORT_PARAM_TOO_LONG: 'النص في المعيار "{param}" أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   REPORT_PARAM_INVALID_CHOICE: 'اختيار غير صحيح في المعيار "{param}"',
   REPORT_PARAM_INVALID: 'قيمة غير صحيحة في المعيار "{param}"',
+  REPORT_PARAM_BEFORE: 'المعيار "{param}" لا يمكن أن يكون قبل "{earliestParam}"',
 
   // --- ledger ---
   ENTRY_REQUIRED: 'بيانات القيد مطلوبة',

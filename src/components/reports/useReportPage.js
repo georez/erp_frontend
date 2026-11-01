@@ -3,7 +3,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthContext } from '@/components/AuthProvider';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
-import { parseJsonObject, selectReportParams, validateReportParams } from '@/utils/reportutils';
+import { paramOrderProblem, parseJsonObject, selectReportParams, validateReportParams } from '@/utils/reportutils';
 import { executeReport, fetchReportMetadata } from './reportApi';
 
 /** All of a report's rows: a page of its own has no query builder. */
@@ -80,8 +80,15 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
   const { metadata, loadError } = useReportMetadata(reportName);
   const paramFields = useMemo(() => metadata?.params ?? [], [metadata]);
 
-  // The params being edited: from the URL, or the initial ones
+  // The params being edited: from the URL, or the initial ones; read again when the URL's change (Back, Forward), so
+  // the form shows what the rows are of. Set during render, so the form never shows the old ones first:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [paramValues, setParamValues] = useState(() => parseJsonObject(params, initialParams));
+  const [paramsReadFrom, setParamsReadFrom] = useState(params);
+  if (params !== paramsReadFrom) {
+    setParamsReadFrom(params);
+    setParamValues(parseJsonObject(params, initialParams));
+  }
   const [paramValidity, setParamValidity] = useState({});
   const [showParamErrors, setShowParamErrors] = useState(false);
 
@@ -142,8 +149,10 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
     setParamValidity(validity);
     if (!Object.values(validity).every(Boolean)) {
       setShowParamErrors(true);
+      setRunError(paramOrderProblem(paramFields, paramValues) ?? '');
       return;
     }
+    setRunError('');
     updateOpenFormsUrl(reportPageUrl(page, formTitle, selectReportParams(paramFields, paramValues)));
   };
 
