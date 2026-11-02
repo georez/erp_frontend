@@ -59,16 +59,16 @@ export function balanceColumns(value) {
  * rather than from how many of each the period's lines happen to have:
  * - an account's: the account when it's a parent account (its lines are on the accounts under it), the party when
  *   any line has one (a control account's);
- * - a supplier's: never the party (the supplier itself); the account only when the lines are on more than one of
- *   the supplier control accounts (with one, every line is on it).
+ * - a supplier's or a customer's: never the party (the statement's own); the account only when the lines are on more
+ *   than one of the party's control accounts (with one, every line is on it).
  *
- * @param {'account'|'supplier'} kind
- * @param {string|number|null} subjectId  the account's or the supplier's id the statement was run for
+ * @param {'account'|'supplier'|'customer'} kind
+ * @param {string|number|null} subjectId  the account's, the supplier's or the customer's id the statement was run for
  * @param {Array<{account_id: string|number, party_name?: string|null}>} lines  the period's lines
  * @returns {{showAccount: boolean, showParty: boolean}}
  */
 export function statementLineColumns(kind, subjectId, lines) {
-  if (kind === 'supplier') {
+  if (kind !== 'account') {
     return { showAccount: new Set(lines.map((line) => String(line.account_id))).size > 1, showParty: false };
   }
   return {

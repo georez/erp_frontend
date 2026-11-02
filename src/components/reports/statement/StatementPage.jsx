@@ -46,6 +46,11 @@ const STATEMENTS = {
     reportName: 'supplierStatementReport', page: 'supplier-statement', title: 'كشف حساب مورد',
     subjectParam: 'p_supplier_id',
   },
+  // A customer's lines, on the customer control accounts. A journal entry's customer line opens it.
+  customer: {
+    reportName: 'customerStatementReport', page: 'customer-statement', title: 'كشف حساب عميل',
+    subjectParam: 'p_customer_id',
+  },
 };
 
 /**
@@ -55,7 +60,7 @@ const STATEMENTS = {
  * The page's state is in its URL (useReportPage). All props but kind come from the dashboard URL's search parameters,
  * so they are strings.
  *
- * @param {'account'|'supplier'} props.kind  fixed by the page's URL (urlToComponentMap)
+ * @param {'account'|'supplier'|'customer'} props.kind  fixed by the page's URL (urlToComponentMap)
  */
 export default function StatementPage({ kind, formId, formTitle, execute, requestTime, params }) {
   const statement = STATEMENTS[kind];

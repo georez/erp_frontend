@@ -44,3 +44,8 @@ test("a supplier statement's lines never repeat the supplier", () => {
   assert.deepEqual(statementLineColumns('supplier', '3', [{ account_id: '17' }, { account_id: '40' }]),
     { showAccount: true, showParty: false });
 });
+
+test("a customer statement's lines never repeat the customer", () => {
+  assert.deepEqual(statementLineColumns('customer', '5', [{ account_id: '14', party_name: 'عميل 1' }]),
+    { showAccount: false, showParty: false });
+});

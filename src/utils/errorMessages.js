@@ -86,6 +86,11 @@ export const ERROR_MESSAGES = Object.freeze({
   REVERSAL_BEFORE_ORIGINAL: 'لا يمكن أن يكون تاريخ القيد العكسي قبل تاريخ القيد رقم {entryId}',
   ENTRY_INVENTORY_NOT_MATCHING_STOCK: 'مبالغ حساب المخزون في القيد رقم {entryId} لا تساوي قيمة حركات المخزون',
   ENTRY_MOVES_STOCK: 'القيد رقم {entryId} به حركات مخزون، فلا يُعكَس؛ صحّحه بمستند مخزون آخر',
+  ENTRY_LINE_NOT_FOUND: 'السطر غير موجود في القيد رقم {entryId}؛ ربما حُذف',
+
+  // --- manual journal entries ---
+  JOURNAL_ENTRY_NOT_MANUAL: 'القيد رقم {entryId} قيد مستند؛ يتغير أو يُلغى من مستنده فقط',
+  JOURNAL_LINE_ACCOUNT_REQUIRED: 'حدّد الحساب',
 
   // --- stock ---
   WAREHOUSE_NOT_FOUND: 'المخزن رقم {warehouseId} غير موجود',

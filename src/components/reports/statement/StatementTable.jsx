@@ -13,6 +13,8 @@ import {
 
 // Each line's document: the page its row names (document_page), with its id (source_id)
 const DOCUMENT_LINK = { documentColumn: 'document_page', idColumn: 'source_id' };
+// Each line's journal entry, on the journal entry form
+const ENTRY_LINK = { document: 'journal-entry', idColumn: 'entry_id', formTitle: 'قيد يومية' };
 
 /** The opening row comes first (row_order 0); the others are the period's lines. */
 const isOpeningRow = (row) => Number(row.row_order) === 0;
@@ -59,6 +61,14 @@ function amountText(value) {
   return value === null || value === undefined || Number(value) === 0 ? '' : formatAmount(value);
 }
 
+/** A link that opens as a dashboard window on a plain click (see useOpenLink). */
+function WindowLink({ target, openLink, children }) {
+  return <a href={target.url} target="_blank" rel="noopener noreferrer"
+    onClick={(event) => openLinkOnPlainClick(event, openLink, target.url, target.title)}>
+    {children}
+  </a>;
+}
+
 function DocumentCell({ row, openLink }) {
   if (isOpeningRow(row)) {
     return null;
@@ -67,10 +77,13 @@ function DocumentCell({ row, openLink }) {
   if (!target) {
     return 'قيد يدوي';
   }
-  return <a href={target.url} target="_blank" rel="noopener noreferrer"
-    onClick={(event) => openLinkOnPlainClick(event, openLink, target.url, target.title)}>
-    {`${target.title} ${row.source_id}`}
-  </a>;
+  return <WindowLink target={target} openLink={openLink}>{`${target.title} ${row.source_id}`}</WindowLink>;
+}
+
+/** The line's entry number, which opens the entry with all its lines. */
+function EntryCell({ row, openLink }) {
+  const target = linkTarget(ENTRY_LINK, row);
+  return target ? <WindowLink target={target} openLink={openLink}>{row.entry_id}</WindowLink> : null;
 }
 
 /** What each column shows for a row. */
@@ -79,7 +92,7 @@ function cellContent(column, row, openLink) {
     case 'date':
       return dateText(row);
     case 'entry':
-      return row.entry_id;
+      return <EntryCell row={row} openLink={openLink} />;
     case 'document':
       return <DocumentCell row={row} openLink={openLink} />;
     case 'description':
@@ -137,8 +150,8 @@ function HeaderRows({ columns, columnWidths, onResize }) {
  * The statement's lines (see virtualTable): the header and the total stay in place while the lines scroll, and the
  * user can resize the columns from their headers.
  *
- * @param {'account'|'supplier'} props.kind  whose statement it is (StatementPage)
- * @param {string|number|null} props.subjectId  the account's or the supplier's id the rows were run for
+ * @param {'account'|'supplier'|'customer'} props.kind  whose statement it is (StatementPage)
+ * @param {string|number|null} props.subjectId  the account's, the supplier's or the customer's id the rows were run for
  * @param {Array<object>} props.rows  a statement report's rows: the opening row, then the lines
  * @param {{debit: string, credit: string, closing: string}|null} props.summary  statementSummary: the total row shows
  *   the period's debits and credits, and the closing balance in its debit or credit column

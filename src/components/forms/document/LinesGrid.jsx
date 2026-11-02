@@ -48,13 +48,16 @@ export const deleteColumn = (isPosted, onDelete, nameOf = (row) => row.productNa
   }];
 };
 
-/** A grid of the document's rows; a click on a row (not on its buttons) edits it, unless the document is posted. */
+/**
+ * A grid of the document's rows; a click on a row (not on its buttons or links) edits it, unless the document is
+ * posted.
+ */
 export function LinesGrid({
   rows, columnDefs, pinnedBottomRowData, isPosted, onEdit, emptyText, minHeight = 160, flex = 1,
 }) {
   const handleRowClicked = ({ data, node, event }) => {
-    const clickedAButton = event?.target?.closest?.('button');
-    if (!isPosted && !node.rowPinned && !clickedAButton) {
+    const clickedAControl = event?.target?.closest?.('button, a');
+    if (!isPosted && !node.rowPinned && !clickedAControl) {
       onEdit(data);
     }
   };

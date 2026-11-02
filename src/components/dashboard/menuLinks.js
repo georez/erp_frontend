@@ -25,6 +25,7 @@ export const MENU_MODULES = [
     links: [
       formLink('ادخال الحسابات', 'accounts'),
       reportLink('تقرير الحسابات', 'accountsReport'),
+      documentLink('قيد يومية', 'journal-entry'),
       pageLink('دليل الحسابات', 'chart-of-accounts'),
       pageLink('ميزان المراجعة', 'trial-balance'),
       pageLink('كشف حساب', 'account-statement'),
@@ -37,6 +38,7 @@ export const MENU_MODULES = [
       formLink('ادخال تصنيف العملاء', 'customer_categories'),
       reportLink('تقرير تصنيف العملاء', 'customerCategoriesReport'),
       reportLink('تقرير العملاء', 'customersReport'),
+      pageLink('كشف حساب عميل', 'customer-statement'),
     ],
   },
   {
