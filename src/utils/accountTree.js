@@ -1,6 +1,7 @@
 /*
- * The trial balance's account tree: the rows of trialBalanceReport (one per account, each right after its parent,
- * in sort_path order) as a tree, and the rows to show for the accounts that are expanded.
+ * An account tree (the trial balance, the chart of accounts): a report's rows (one per account, each right after its
+ * parent, in sort_path order: see trialBalanceReport) as a tree, and the rows to show for the accounts that are
+ * expanded.
  */
 
 /**

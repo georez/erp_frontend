@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '@/components/AuthProvider';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { paramOrderProblem, parseJsonObject, selectReportParams, validateReportParams } from '@/utils/reportutils';
@@ -71,10 +71,8 @@ function useReportMetadata(reportName) {
  * @param {string} [options.execute]  from the URL
  * @param {string} [options.requestTime]  from the URL
  * @param {object} options.initialParams  the form's values when the URL has none
- * @param {Function} [options.onRows]  called with each new result, e.g. to open a tree
  */
-export function useReportPage({ reportName, page, formId, formTitle, params, execute, requestTime, initialParams,
-  onRows }) {
+export function useReportPage({ reportName, page, formId, formTitle, params, execute, requestTime, initialParams }) {
   const updateOpenFormsUrl = useUpdateOpenForms(formId);
   const { csrfFetch } = useContext(AuthContext);
   const { metadata, loadError } = useReportMetadata(reportName);
@@ -97,12 +95,6 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
   const [loading, setLoading] = useState(false);
   const [runError, setRunError] = useState('');
 
-  // Read through a ref, so a new callback each render doesn't run the report again
-  const onRowsRef = useRef(onRows);
-  useEffect(() => {
-    onRowsRef.current = onRows;
-  });
-
   // Runs when the URL asks for it, and again on every Run (requestTime changes), once the metadata is in. A newer run
   // discards the result of an older one still in flight.
   const shouldExecute = execute === 'true';
@@ -123,7 +115,6 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
         }
         setRows(result);
         setHasRun(true);
-        onRowsRef.current?.(result);
       } catch (error) {
         console.error('Report page error:', error);
         if (!cancelled) {

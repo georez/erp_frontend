@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildAccountTree, parentAccountIds, treeDepth, visibleTreeRows } from './trialBalanceTree.js';
+import { buildAccountTree, parentAccountIds, treeDepth, visibleTreeRows } from './accountTree.js';
 
 // Shaped like trialBalanceReport's rows, in sort_path order:
 // 1 root

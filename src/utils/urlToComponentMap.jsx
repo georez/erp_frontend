@@ -1,6 +1,7 @@
 import SchemaCrud from '@/components/forms/SchemaCrud';
 import Report from '@/components/reports/Report';
 import TrialBalance from '@/components/reports/trialBalance/TrialBalance';
+import ChartOfAccounts from '@/components/reports/chartOfAccounts/ChartOfAccounts';
 import StatementPage from '@/components/reports/statement/StatementPage';
 import SupplierBalances from '@/components/reports/supplierBalances/SupplierBalances';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
@@ -14,6 +15,7 @@ const urlToComponentMap = {
   '/dashboard/form': (props) => <SchemaCrud {...props} />,
   '/dashboard/report': (props) => <Report {...props} />,
   '/dashboard/trial-balance': (props) => <TrialBalance {...props} />,
+  '/dashboard/chart-of-accounts': (props) => <ChartOfAccounts {...props} />,
   '/dashboard/account-statement': (props) => <StatementPage kind="account" {...props} />,
   '/dashboard/supplier-statement': (props) => <StatementPage kind="supplier" {...props} />,
   '/dashboard/supplier-balances': (props) => <SupplierBalances {...props} />,

@@ -1,16 +1,12 @@
 'use client';
 
 import { TableVirtuoso } from 'react-virtuoso';
-import { IconButton, TableCell, TableRow } from '@mui/material';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { TableCell, TableRow } from '@mui/material';
 import { formatAmount } from '@/utils/decimals';
-import { openLinkOnPlainClick } from '@/utils/useOpenLink';
+import { ACCOUNT_TREE_TABLE_COMPONENTS, AccountTreeCell } from '../accountTree/AccountTree';
 import {
   Amount, AMOUNT_CELL, FOOTER_CELL, HEADER_CELL, ResizableHeaderCell, ROW_HEIGHT, useColumnWidths,
-  virtualTableComponents,
 } from '../virtualTable';
-import './trialBalance.css';
 
 /** The amount columns, in order, under their group headers. */
 const AMOUNT_GROUPS = [
@@ -26,13 +22,6 @@ const COLUMNS = [
   { key: 'account_name', width: 380 },
   ...AMOUNT_COLUMNS.map((column) => ({ key: column, width: 140 })),
 ];
-
-// Made once: TableVirtuoso keeps its parts for the table's life (the widths come through its context)
-const TABLE_COMPONENTS = virtualTableComponents(
-  // Parent accounts in bold
-  (item) => ({ '& td': { fontWeight: item?.hasChildren ? 'bold' : 'normal' } }),
-  { '--tb-line-color': 'rgba(0, 0, 0, 0.3)' },
-);
 
 /** An amount cell's text: empty for zero, so the accounts' real amounts stand out. */
 function amountText(value) {
@@ -55,44 +44,12 @@ function HeaderRows({ widthOf, onResize }) {
   </>;
 }
 
-/**
- * The account's guide lines (one segment per level), its expand/collapse toggle and its name, which opens the
- * account's statement for the same period.
- */
-function AccountCell({ item, onToggle, statementLink, openLink }) {
-  const { row } = item;
-  const statement = statementLink(row);
-  const ancestorSegments = item.ancestorHasNext.slice(1);
-  let ownSegment = null;
-  if (item.depth > 0) {
-    ownSegment = <span className={`tb-guide ${item.isLast ? 'tb-guide-last' : 'tb-guide-branch'}`} />;
-  }
-
-  return <div className="tb-account">
-    {ancestorSegments.map((runsOn, level) =>
-      <span key={`level-${level}`} className={runsOn ? 'tb-guide tb-guide-line' : 'tb-guide'} />)}
-    {ownSegment}
-    <span className="tb-toggle">
-      {item.hasChildren && <IconButton size="small" sx={{ p: 0.25 }} onClick={() => onToggle(row.account_id)}
-        aria-label={item.expanded ? 'طي' : 'توسيع'} aria-expanded={item.expanded}>
-        {item.expanded ? <ExpandMoreIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
-      </IconButton>}
-    </span>
-    <span className="tb-name" title={`كشف حساب ${row.account_name}`}>
-      <a href={statement.url} target="_blank" rel="noopener noreferrer"
-        onClick={(event) => openLinkOnPlainClick(event, openLink, statement.url, statement.title)}>
-        {row.account_name}
-      </a>
-    </span>
-  </div>;
-}
-
 function AccountRowCells({ item, context }) {
   const { row } = item;
   return <>
     <TableCell data-column-key="account_id" sx={{ py: 0 }}>{row.account_id}</TableCell>
     <TableCell data-column-key="account_name" sx={{ py: 0, height: ROW_HEIGHT }}>
-      <AccountCell item={item} onToggle={context.onToggle} statementLink={context.statementLink}
+      <AccountTreeCell item={item} onToggle={context.onToggle} statementLink={context.statementLink}
         openLink={context.openLink} />
     </TableCell>
     {AMOUNT_COLUMNS.map((column) => <TableCell key={column} data-column-key={column} sx={{ ...AMOUNT_CELL, py: 0 }}>
@@ -129,7 +86,7 @@ export default function TrialBalanceTable({ items, total, onToggle, statementLin
   return <TableVirtuoso
     style={{ height: '100%' }}
     data={items}
-    components={TABLE_COMPONENTS}
+    components={ACCOUNT_TREE_TABLE_COMPONENTS}
     context={{ onToggle, statementLink, openLink, columnWidths }}
     fixedItemHeight={ROW_HEIGHT}
     computeItemKey={(index, item) => item.row.account_id}

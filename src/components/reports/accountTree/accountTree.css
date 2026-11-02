@@ -1,0 +1,60 @@
+/*
+ * An account tree's account column (the trial balance, the chart of accounts): one 24px segment per tree level before
+ * the account's toggle, drawing the guide lines that join each account to its parent. Logical properties
+ * (inline-start), so the lines mirror in right to left.
+ *
+ *   tree-guide-line    an ancestor's line running past this row   │
+ *   tree-guide-branch  this row's own joint, more siblings below  ├
+ *   tree-guide-last    this row's own joint, the last sibling     └
+ */
+.tree-account {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+
+.tree-guide {
+  position: relative;
+  flex: 0 0 24px;
+  align-self: stretch;
+}
+
+.tree-guide-line::before,
+.tree-guide-branch::before,
+.tree-guide-last::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 11px;
+  top: 0;
+  bottom: 0;
+  border-inline-start: 1px solid var(--tree-line-color);
+}
+
+.tree-guide-last::before {
+  bottom: 50%;
+}
+
+.tree-guide-branch::after,
+.tree-guide-last::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 11px;
+  top: 50%;
+  width: 13px;
+  border-top: 1px solid var(--tree-line-color);
+}
+
+/* The toggle's place, kept for a leaf so names line up */
+.tree-toggle {
+  flex: 0 0 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline-start: 4px;
+}
