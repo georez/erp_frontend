@@ -4,11 +4,12 @@ import { readErrorMessage } from '@/utils/fetchJson';
 /**
  * Loads the report's metadata from the backend: its params (search params 1, shaped like CRUD form fields), its
  * output columns, which serve the query builder (the filterable ones), the sort tab (the sortable ones) and the result
- * grid (all of them), and whether the report has a fixed order (then the sort tab offers no columns).
+ * grid (all but the internal ones, which only the links, indents and totals read), and whether the report has a fixed
+ * order (then the sort tab offers no columns).
  *
  * @returns {Promise<{title: string, params: Array<object>, columns: Array<{name: string, label: string,
  *   inputType?: string, valueEditorType?: string, filterable: boolean, sortable: boolean, indentBy?: string,
- *   hidden: boolean, format?: string, link?: {schemaName?: string, document?: string, documentColumn?: string,
+ *   hidden: boolean, internal: boolean, format?: string, link?: {schemaName?: string, document?: string, documentColumn?: string,
  *   idColumn: string, formTitle?: string}}>, fixedOrder: boolean,
  *   totals: {label: string, labelColumn: string, columns: string[], skipRowsWhere?: string}|null}>}
  * @throws {Error} with fromBackend set when the backend refused (its reason, in Arabic: a report that doesn't

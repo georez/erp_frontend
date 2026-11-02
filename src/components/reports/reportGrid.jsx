@@ -69,16 +69,17 @@ export function autoSizeColumns({ api, columns }) {
 
 /**
  * The backend's column list as the result grid's columns. Width (auto-sized) and resizing are left to the grid
- * defaults (DEFAULT_COLUMN_DEF).
+ * defaults (DEFAULT_COLUMN_DEF). An internal column (a link's document page, a tree level) isn't one of them: the
+ * rows still carry its values, which the links, the indent and the totals read, but it's never offered.
  *
  * @param {Array<{name: string, label?: string, inputType?: string, link?: object, indentBy?: string,
- *   hidden?: boolean}>} backendColumns
+ *   hidden?: boolean, internal?: boolean}>} backendColumns
  * @returns {Array<{field: string, headerName: string, visibleByDefault: boolean, numeric: boolean, link: object|null,
  *   indentBy: string|null, sortable: boolean, format: string|null}>}  sortable: offered in the sort tab (not the
  *   grid's own sorting)
  */
 export function toGridColumns(backendColumns) {
-  return backendColumns.map((column) => ({
+  return backendColumns.filter((column) => column.internal !== true).map((column) => ({
     field: column.name,
     headerName: column.label ?? column.name,
     visibleByDefault: column.hidden !== true,
