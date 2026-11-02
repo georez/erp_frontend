@@ -26,6 +26,8 @@ export const MENU_MODULES = [
       formLink('ادخال الحسابات', 'accounts'),
       reportLink('تقرير الحسابات', 'accountsReport'),
       documentLink('قيد يومية', 'journal-entry'),
+      reportLink('دفتر اليومية', 'generalJournalReport'),
+      reportLink('تقرير القيود', 'journalEntriesReport'),
       pageLink('دليل الحسابات', 'chart-of-accounts'),
       pageLink('ميزان المراجعة', 'trial-balance'),
       pageLink('كشف حساب', 'account-statement'),
