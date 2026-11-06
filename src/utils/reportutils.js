@@ -1,6 +1,7 @@
 import { defaultOperators, toFullOption } from "react-querybuilder";
 import { Big } from "bigdecimal.js";
 import { validateFormField } from "./formValidation.js";
+import { errorMessageFromBody } from "./errorMessages.js";
 
 const operatorTranslations = {
   '=': 'يساوي',
@@ -254,6 +255,85 @@ export function parseJsonObject(text, fallback) {
   }
 }
 
+/** The directions a sort column may take, as the backend names them, with their labels. */
+export const SORT_DIRECTIONS = Object.freeze([
+  { value: 'asc', label: 'تصاعدي' },
+  { value: 'desc', label: 'تنازلي' },
+]);
+
+/**
+ * The total row of a report (its metadata's totals): each total column added up exactly over the rows given (those the
+ * grid shows after its filters), leaving out the rows whose skipRowsWhere column is true, and the label in the label
+ * column. Totals are plain decimal text, like the backend's numbers.
+ *
+ * @param {Array<object>} rows
+ * @param {{label: string, labelColumn: string, columns: string[], skipRowsWhere?: string}} totals
+ * @returns {object}
+ */
+export function totalsRow(rows, totals) {
+  const countedRows = rows.filter((row) => !(totals.skipRowsWhere && row[totals.skipRowsWhere] === true));
+  const total = { [totals.labelColumn]: totals.label };
+  for (const column of totals.columns) {
+    let sum = Big(0);
+    for (const row of countedRows) {
+      const value = row[column];
+      if (value !== null && value !== undefined && value !== '') {
+        sum = sum.add(Big(String(value)));
+      }
+    }
+    total[column] = sum.stripTrailingZeros().toPlainString();
+  }
+  return total;
+}
+
+/**
+ * Parses the sort kept in the URL: a JSON list of { column, direction }, most important column first. Anything
+ * else, including unreadable JSON, gives no sort.
+ *
+ * @param {string|undefined} text
+ * @returns {Array<{column: string, direction: string}>}
+ */
+export function parseReportSort(text) {
+  if (!text) {
+    return [];
+  }
+  try {
+    const value = JSON.parse(text);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The sort to send, in its order: each entry on a column the report may be sorted by, once, with a known direction.
+ * Entries left over from an older version of the report (a column that's gone) are dropped. A report with a fixed
+ * order (its own orderBy) takes no sort at all.
+ *
+ * @param {Array<{column: string, direction: string}>} sort
+ * @param {Array<{name: string, sortable?: boolean}>} columns  the report's columns (from its metadata)
+ * @param {boolean} fixedOrder  the report's metadata fixedOrder
+ * @returns {Array<{column: string, direction: string}>}
+ */
+export function selectReportSort(sort, columns, fixedOrder) {
+  if (fixedOrder || !Array.isArray(sort)) {
+    return [];
+  }
+  const sortableColumns = new Set(columns.filter((column) => column.sortable).map((column) => column.name));
+  const knownDirections = new Set(SORT_DIRECTIONS.map((direction) => direction.value));
+  const sortedColumns = new Set();
+  const selected = [];
+  for (const entry of sort) {
+    const usable = entry && sortableColumns.has(entry.column) && !sortedColumns.has(entry.column)
+      && knownDirections.has(entry.direction);
+    if (usable) {
+      sortedColumns.add(entry.column);
+      selected.push({ column: entry.column, direction: entry.direction });
+    }
+  }
+  return selected;
+}
+
 /**
  * The report's params 1 values to send: one entry per declared param (null when empty), so values left
  * over from an older version of the report are never sent.
@@ -270,79 +350,97 @@ export function selectReportParams(paramFields, values) {
 }
 
 /**
- * Checks the params 1 values with the same rules as the CRUD forms (FormFields shows the result).
+ * Checks the params 1 values with the same rules as the CRUD forms (FormFields shows the result), and that no date is
+ * before the date it may not be before (paramOrderProblem says why).
  *
- * @param {Array<{fieldName: string, validationType: string, validation?: string, required?: boolean}>} paramFields
+ * @param {Array<{fieldName: string, validationType: string, validation?: string, required?: boolean,
+ *   notBefore?: string}>} paramFields
  * @param {object} values
  * @returns {Object<string, boolean>} validity by field name
  */
 export function validateReportParams(paramFields, values) {
   const selected = selectReportParams(paramFields, values);
+  const tooEarly = new Set(datesBeforeTheirEarliest(paramFields, selected).map(({ fieldName }) => fieldName));
   return Object.fromEntries(paramFields.map(({ fieldName, validationType, validation, required }) => [
     fieldName,
     // Signed: a report may filter on a negative number
-    validateFormField(validationType, !!required, validation, selected[fieldName], { signed: true }),
+    validateFormField(validationType, !!required, validation, selected[fieldName], { signed: true })
+      && !tooEarly.has(fieldName),
   ]));
 }
 
 /**
- * The pages of documents a report may link to (a link's document), and the URL parameter each takes its id in.
- * The backend accepts only these names in report.json (SchemaNameValidator.DOCUMENT_PAGES).
+ * Why the params can't run, when a date is before the date it may not be before (its notBefore: a period ending
+ * before it starts), as the backend would say it (REPORT_PARAM_BEFORE); null when none is.
  */
-const DOCUMENT_PAGES = Object.freeze({
-  'stock-adjustment': 'adjustmentId',
-  'opening-balance': 'openingBalanceId',
-  'purchase-invoice': 'invoiceId',
-  'purchase-return': 'returnId',
-});
+export function paramOrderProblem(paramFields, values) {
+  const [first] = datesBeforeTheirEarliest(paramFields, selectReportParams(paramFields, values));
+  if (!first) {
+    return null;
+  }
+  const earliest = paramFields.find(({ fieldName }) => fieldName === first.notBefore);
+  return errorMessageFromBody({
+    errorCode: 'REPORT_PARAM_BEFORE',
+    errorParams: { param: first.displayName, earliestParam: earliest.displayName },
+  }, '');
+}
+
+/** The date params before their notBefore; a missing or invalid date isn't compared (its own check says so). */
+function datesBeforeTheirEarliest(paramFields, selected) {
+  const isDate = (value) => validateFormField('date', true, null, value);
+  return paramFields.filter(({ fieldName, notBefore }) => notBefore
+    && isDate(selected[fieldName]) && isDate(selected[notBefore])
+    // YYYY-MM-DD: as text, in date order
+    && selected[fieldName] < selected[notBefore]);
+}
 
 /**
- * The dashboard URL that a linked report cell opens (the same URL the form itself uses): a CRUD form
- * (link.schemaName) or a document's page (link.document). Null when the row has no id to open, or for a document
- * this frontend has no page for.
- *
- * @param {{schemaName?: string, document?: string, idColumn: string, formTitle: string}} link  a column's link,
- *   from the report metadata
- * @param {object} row  the result row
- * @returns {string|null}
+ * The pages of documents a report may link to (a link's document, or a row's page in its documentColumn): the URL
+ * parameter each takes its id in, and the title a row's page opens with when the row names it. The backend accepts
+ * only these names as a link's document in report.json (SchemaNameValidator.DOCUMENT_PAGES).
  */
-export function buildLinkUrl(link, row) {
+const DOCUMENT_PAGES = Object.freeze({
+  'stock-adjustment': { idParam: 'adjustmentId', title: 'تسوية مخزون' },
+  'opening-balance': { idParam: 'openingBalanceId', title: 'رصيد افتتاحي للمخزون' },
+  'purchase-invoice': { idParam: 'invoiceId', title: 'فاتورة مشتريات' },
+  'purchase-return': { idParam: 'returnId', title: 'مرتجع مشتريات' },
+  'journal-entry': { idParam: 'entryId', title: 'قيد يومية' },
+});
+
+/** The document page's settings, or null for a name this frontend has no page for. */
+function documentPage(name) {
+  return typeof name === 'string' && Object.hasOwn(DOCUMENT_PAGES, name) ? DOCUMENT_PAGES[name] : null;
+}
+
+/**
+ * What a linked report cell opens (the same URL the form itself uses), and the title of its window: a CRUD form
+ * (link.schemaName), a document's page (link.document), or the document page the row names in link.documentColumn
+ * (titled after that page). Null when the row has no id to open, or for a document this frontend has no page for.
+ *
+ * @param {{schemaName?: string, document?: string, documentColumn?: string, idColumn: string, formTitle?: string}}
+ *   link  a column's link, from the report metadata
+ * @param {object} row  the result row
+ * @returns {{url: string, title: string}|null}
+ */
+export function linkTarget(link, row) {
   const id = row?.[link.idColumn];
   if (id === null || id === undefined || id === '') {
     return null;
   }
-  if (link.document) {
-    const idParam = Object.hasOwn(DOCUMENT_PAGES, link.document) ? DOCUMENT_PAGES[link.document] : null;
-    return idParam && `/dashboard/${link.document}?formTitle=${encodeURIComponent(link.formTitle)
-      }&${idParam}=${encodeURIComponent(String(id))}`;
-  }
-  return `/dashboard/form?schemaName=${encodeURIComponent(link.schemaName)
-    }&formTitle=${encodeURIComponent(link.formTitle)
-    }&entityId=${encodeURIComponent(String(id))}`;
-}
+  const encodedId = encodeURIComponent(String(id));
 
-/**
- * Orders two report cells of a number column by value, exactly: the backend sends numeric and bigint values as
- * decimal text (a JavaScript number would lose digits) and the other numbers as JSON numbers, so the text must not
- * be compared as text ("10" before "9"). Empty cells come first, as the grid puts them.
- *
- * @param {string|number|null|undefined} a
- * @param {string|number|null|undefined} b
- * @returns {number} negative, zero or positive
- */
-export function compareDecimalCells(a, b) {
-  const aEmpty = a === null || a === undefined || a === '';
-  const bEmpty = b === null || b === undefined || b === '';
-  if (aEmpty || bEmpty) {
-    return aEmpty === bEmpty ? 0 : aEmpty ? -1 : 1;
+  if (link.schemaName) {
+    const url = `/dashboard/form?schemaName=${encodeURIComponent(link.schemaName)
+      }&formTitle=${encodeURIComponent(link.formTitle)}&entityId=${encodedId}`;
+    return { url, title: link.formTitle };
   }
-  return Big(a).compareTo(Big(b));
-}
 
-/**
- * A number cell as a JavaScript number, for the grid's own column filter, which only compares numbers: exact up to
- * about 15 significant digits. The query builder's filters run in the database and are exact. Null for an empty cell.
- */
-export function cellFilterNumber(value) {
-  return value === null || value === undefined || value === '' ? null : Number(value);
+  const pageName = link.document ?? row[link.documentColumn];
+  const page = documentPage(pageName);
+  if (!page) {
+    return null;
+  }
+  const title = link.document ? link.formTitle : page.title;
+  const url = `/dashboard/${pageName}?formTitle=${encodeURIComponent(title)}&${page.idParam}=${encodedId}`;
+  return { url, title };
 }

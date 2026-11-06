@@ -1,16 +1,24 @@
 'use client';
 
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import 'react-querybuilder/dist/query-builder.css';
 import './styles.css';
 import {
-  Alert, Box, Checkbox, CircularProgress, Divider, FormControlLabel, FormGroup, Stack, Typography,
+  Alert, Box, Button, Checkbox, CircularProgress, Divider, FormControlLabel, FormGroup, IconButton, MenuItem, Stack,
+  TextField, Tooltip, Typography,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { AgGridProvider, AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule } from 'ag-grid-community';
 import FormFields from '@/components/forms/FormFields';
-import { arabicOperators } from '@/utils/reportutils';
-import { DEFAULT_COLUMN_DEF } from './reportGrid';
+import { arabicOperators, SORT_DIRECTIONS } from '@/utils/reportutils';
+import {
+  AUTO_SIZE_STRATEGY, autoSizeColumns, DEFAULT_COLUMN_DEF, pinnedTotalRows, totalRowStyle,
+} from './reportGrid';
 
 const modules = [AllCommunityModule];
 
@@ -22,7 +30,7 @@ export const TABS = {
   QUERY_1: 0, // the report's own params (search params 1)
   QUERY_2: 1, // the query builder: filters on the result's columns (search params 2)
   COLUMNS: 2,
-  SORT: 3, // not implemented yet
+  SORT: 3, // the columns the rows are sorted by
   RESULT: 4,
 };
 
@@ -123,16 +131,105 @@ export function ColumnsTab({ loading, reportColumns, visibleColumns, setVisibleC
   </Scrollable>;
 }
 
-/** Sort: not implemented yet (see the sort state in Report). */
-export function SortTab() {
+/** The list with the entry at `from` moved to `to`. */
+function moved(list, from, to) {
+  const result = [...list];
+  const [entry] = result.splice(from, 1);
+  result.splice(to, 0, entry);
+  return result;
+}
+
+/**
+ * One sort column: which column, which direction, and buttons to move it up or down the order or remove it.
+ *
+ * @param {Array<{field: string, headerName: string}>} props.choices  the columns this entry may take: its own and
+ *   those no other entry sorts by
+ */
+function SortRow({ index, entry, choices, isFirst, isLast, onChange, onMove, onRemove }) {
+  return <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+    <Typography sx={{ minWidth: 24 }}>{index + 1}.</Typography>
+    <TextField select size="small" label="العمود" value={entry.column} sx={{ minWidth: 200 }}
+      onChange={(event) => onChange({ ...entry, column: event.target.value })}>
+      {choices.map((column) => <MenuItem key={column.field} value={column.field}>{column.headerName}</MenuItem>)}
+    </TextField>
+    <TextField select size="small" label="الاتجاه" value={entry.direction} sx={{ minWidth: 120 }}
+      onChange={(event) => onChange({ ...entry, direction: event.target.value })}>
+      {SORT_DIRECTIONS.map((direction) => <MenuItem key={direction.value} value={direction.value}>
+        {direction.label}
+      </MenuItem>)}
+    </TextField>
+    <Tooltip title="أعلى">
+      <span><IconButton size="small" disabled={isFirst} onClick={() => onMove(index - 1)}>
+        <ArrowUpwardIcon fontSize="small" />
+      </IconButton></span>
+    </Tooltip>
+    <Tooltip title="أسفل">
+      <span><IconButton size="small" disabled={isLast} onClick={() => onMove(index + 1)}>
+        <ArrowDownwardIcon fontSize="small" />
+      </IconButton></span>
+    </Tooltip>
+    <Tooltip title="حذف">
+      <IconButton size="small" onClick={onRemove}><DeleteIcon fontSize="small" /></IconButton>
+    </Tooltip>
+  </Stack>;
+}
+
+/**
+ * Sort: the columns the backend sorts the rows by, most important first, each ascending or descending; applies on the
+ * next Run. A report with a fixed order comes in its own order, so it offers no columns.
+ *
+ * @param {Array<{field: string, headerName: string, sortable: boolean}>} props.reportColumns  the grid columns
+ * @param {Array<{column: string, direction: string}>} props.sort
+ */
+export function SortTab({ loading, fixedOrder, reportColumns, sort, setSort }) {
+  if (loading) {
+    return <Scrollable><Loading /></Scrollable>;
+  }
+  if (fixedOrder) {
+    return <Scrollable>
+      <Typography variant="h6" sx={{ mb: 1 }}>ترتيب حسب</Typography>
+      <Typography variant="body2" color="text.secondary">هذا التقرير يظهر بترتيب ثابت.</Typography>
+    </Scrollable>;
+  }
+
+  const sortableColumns = reportColumns.filter((column) => column.sortable);
+  const sortedFields = new Set(sort.map((entry) => entry.column));
+  const unsortedColumns = sortableColumns.filter((column) => !sortedFields.has(column.field));
+
+  const add = () => setSort([...sort, { column: unsortedColumns[0].field, direction: 'asc' }]);
+  const change = (index, entry) => setSort(sort.map((current, i) => (i === index ? entry : current)));
+  const move = (from, to) => setSort(moved(sort, from, to));
+  const remove = (index) => setSort(sort.filter((current, i) => i !== index));
+  const choicesFor = (entry) => sortableColumns.filter((column) =>
+    column.field === entry.column || !sortedFields.has(column.field));
+
   return <Scrollable>
     <Typography variant="h6" sx={{ mb: 1 }}>ترتيب حسب</Typography>
-    <Typography variant="body2" color="text.secondary">أضف إعدادات الترتيب هنا.</Typography>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      اختر الأعمدة التي ترتب بها النتيجة، الأهم أولا.
+    </Typography>
+    <Stack spacing={1.5} sx={{ pt: 1 }}>
+      {sort.map((entry, index) => <SortRow key={entry.column} index={index} entry={entry}
+        choices={choicesFor(entry)} isFirst={index === 0} isLast={index === sort.length - 1}
+        onChange={(changed) => change(index, changed)} onMove={(to) => move(index, to)}
+        onRemove={() => remove(index)} />)}
+    </Stack>
+    <Button size="small" startIcon={<AddIcon />} onClick={add} disabled={unsortedColumns.length === 0}
+      sx={{ mt: 2 }}>
+      إضافة عمود
+    </Button>
   </Scrollable>;
 }
 
-/** Result: the last run's error, its progress, and the result grid. */
-export function ResultTab({ reportError, onCloseError, reportLoading, rows, columnDefs }) {
+/**
+ * Result: the last run's error, its progress, and the result grid, with the report's total row (if it has totals)
+ * pinned under the rows: the total of the rows on screen, i.e. of the rows left after the query builder's filters.
+ *
+ * @param {object|null} props.totals  the report metadata's totals
+ */
+export function ResultTab({ reportError, onCloseError, reportLoading, rows, columnDefs, totals }) {
+  const totalRows = useMemo(() => pinnedTotalRows(rows, totals), [rows, totals]);
+
   return <Box sx={{ ...FILL, width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
     overflow: 'hidden' }}>
     {reportError && <Alert severity="error" onClose={onCloseError} sx={{ mb: 1, flexShrink: 0 }}>
@@ -145,6 +242,13 @@ export function ResultTab({ reportError, onCloseError, reportLoading, rows, colu
           rowData={rows}
           columnDefs={columnDefs}
           defaultColDef={DEFAULT_COLUMN_DEF}
+          autoSizeStrategy={AUTO_SIZE_STRATEGY}
+          onRowDataUpdated={autoSizeColumns}
+          onColumnVisible={autoSizeColumns}
+          pinnedBottomRowData={totalRows}
+          getRowStyle={totalRowStyle}
+          // Every column is drawn, also those scrolled out of view, so auto-sizing can measure them all
+          suppressColumnVirtualisation
           enableRtl
           // Users can select and copy cell text (the grid blocks selection by default); ensureDomOrder keeps the
           // cells in DOM order so a selection across cells copies in order

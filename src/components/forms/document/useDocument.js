@@ -8,7 +8,7 @@ import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { useRequestQueue } from './useRequestQueue';
 
 /**
- * A stock document in a form window (stock adjustment, opening balance, purchase invoice or return).
+ * A document in a form window (stock adjustment, opening balance, purchase invoice or return, journal entry).
  *
  * - New: the header is typed in. The first line's OK creates the draft with it; the window's URL then points to the
  *   draft.
@@ -37,7 +37,7 @@ export function useDocument({
   const { data: document, error: loadError } = useSWR(
     documentId ? urlOf(documentId) : null, fetchJson, { revalidateOnFocus: false });
   const draftIdRef = useDraftId(documentId);
-  const shown = useHeaderShown(document, emptyHeader, headerFrom);
+  const shown = useHeaderShown(documentId, document, emptyHeader, headerFrom);
 
   const isNew = !documentId;
   const isPosted = document?.status === 'POSTED';
@@ -113,6 +113,28 @@ export function useDocument({
     return requests.enqueue(async () => (await requests.send(urlOf(draftIdRef.current), 'DELETE')) != null);
   };
 
+  /**
+   * Sends a request whose answer is another document (POST "/reverse" answers with the reversing entry), and opens
+   * that one in the window; true if it was answered.
+   */
+  const sendAndOpenAnswer = (path, method, body) => requests.enqueue(async () => {
+    const answered = await requests.send(urlOf(draftIdRef.current, path), method, body);
+    if (!answered) {
+      return false;
+    }
+    await mutateCache(urlOf(answered.id), answered, { revalidate: false });
+    // The document sent from changed too (e.g. it's now reversed)
+    await mutateCache(urlOf(draftIdRef.current));
+    openDocument(answered.id);
+    return true;
+  });
+
+  /** Another document in the window (e.g. one whose number was typed). */
+  const openDocument = (id) => {
+    requests.setErrorMessage(null);
+    openInWindow(id);
+  };
+
   /** A new document in the window, its header empty. */
   const openNew = () => {
     draftIdRef.current = null;
@@ -137,7 +159,9 @@ export function useDocument({
     // The draft's requests, one at a time; pending: how many are still to be answered
     addLine,
     sendToDraft,
+    sendAndOpenAnswer,
     deleteDraft,
+    openDocument,
     openNew,
     pending: requests.pending,
     errorMessage: requests.errorMessage,
@@ -147,32 +171,42 @@ export function useDocument({
 
 /**
  * The id the queued requests go to: the window's document, or the draft a first line just created, which a second
- * line queued right behind it must use before the window has moved on to it.
+ * line queued right behind it must use before the window has moved on to it. It follows the window's URL (Back to a
+ * new document: none).
  */
 function useDraftId(documentId) {
   const draftIdRef = useRef(documentId ?? null);
   useEffect(() => {
-    if (documentId) {
-      draftIdRef.current = documentId;
-    }
+    draftIdRef.current = documentId ?? null;
   }, [documentId]);
   return draftIdRef;
 }
 
 /**
- * The header the form shows. It's read from a document once (by id); after that what's typed is the truth, so the
- * answer to a save can't overwrite a field being typed. readAgain() re-reads it, after a refused save.
+ * The header the form shows. It's read from a document once (by id and status); after that what's typed is the
+ * truth, so the answer to a save can't overwrite a field being typed. readAgain() re-reads it, after a refused save.
+ * It's read again when the document is posted, which may fill it in (a journal entry's date-time is set then), and
+ * when the window's document changes (another one, Back, Forward), or emptied for a new one.
  */
-function useHeaderShown(document, emptyHeader, headerFrom) {
+function useHeaderShown(documentId, document, emptyHeader, headerFrom) {
   const [header, setHeader] = useState(emptyHeader);
-  const [readFromId, setReadFromId] = useState(null);
+  const [readFrom, setReadFrom] = useState(null);
+  const [shownFor, setShownFor] = useState(documentId);
   // Set during render, not in an effect, so a stale header is never shown:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-  if (document && document.id !== readFromId) {
-    setReadFromId(document.id);
+  if (documentId !== shownFor) {
+    setShownFor(documentId);
+    setReadFrom(null);
+    if (!documentId) {
+      setHeader(emptyHeader);
+    }
+  }
+  const documentVersion = document ? `${document.id}/${document.status}` : null;
+  if (document && documentVersion !== readFrom) {
+    setReadFrom(documentVersion);
     setHeader(headerFrom(document));
   }
-  return { header, setHeader, readAgain: () => setReadFromId(null) };
+  return { header, setHeader, readAgain: () => setReadFrom(null) };
 }
 
 /** Whether two header bodies are the same values. */

@@ -1,4 +1,4 @@
-import { Big } from 'bigdecimal.js';
+import { Big, RoundingMode } from 'bigdecimal.js';
 
 /**
  * Exact decimal numbers for quantities and money, with bigdecimal.js: a JavaScript number can't hold 0.1 exactly
@@ -36,6 +36,24 @@ export function formatDecimal(value) {
   const [integer, fraction] = plain.split('.');
   const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return fraction ? `${grouped}.${fraction}` : grouped;
+}
+
+/**
+ * A report cell's amount (decimal text, or a JSON number for small integers) rounded half up to two decimals, with
+ * thousands separators: "1234.565" → "1,234.57", "7" → "7.00". Empty for an empty cell; anything that isn't a number
+ * is shown as it is.
+ */
+export function formatAmount(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  const text = String(value);
+  if (!DECIMAL_TEXT.test(text)) {
+    return text;
+  }
+  const rounded = Big(text).setScale(2, RoundingMode.HALF_UP).toPlainString();
+  const [integer, fraction] = rounded.split('.');
+  return `${integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
 }
 
 const WHOLE_NUMBER = /^\d+$/;

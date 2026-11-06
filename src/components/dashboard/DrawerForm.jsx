@@ -1,19 +1,21 @@
 'use client';
 
 import {
-  AppBar, Box, Divider, Drawer, IconButton,
+  AppBar, Box, Collapse, Divider, Drawer, IconButton,
   List, ListItem, ListItemButton,
   ListItemText, Toolbar, Typography,
 } from "@mui/material";
 import { useContext, useState } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 import { jwtDecode } from "jwt-decode";
 import { AuthContext } from "../AuthProvider";
 import { deleteJwtCookiesAction } from "@/actions/deleteJwtCookieAction";
 import { useRouter } from "next/navigation";
 import { openLinkOnPlainClick, useOpenLink } from "@/utils/useOpenLink";
-import { MENU_LINKS } from "./menuLinks";
+import { MENU_MODULES } from "./menuLinks";
 
 const drawerWidth = 240;
 
@@ -53,6 +55,20 @@ export default function DrawerForm({ children, backgroundColor }) {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  // The modules shown open, by title: all closed at first; the drawer stays mounted, so they stay as the user left them
+  const [openModules, setOpenModules] = useState(() => new Set());
+
+  const toggleModule = (title) => {
+    setOpenModules((current) => {
+      const next = new Set(current);
+      if (next.has(title)) {
+        next.delete(title);
+      } else {
+        next.add(title);
+      }
+      return next;
+    });
+  };
 
   const handleDrawerClose = () => {
     setIsClosing(true);
@@ -87,20 +103,40 @@ export default function DrawerForm({ children, backgroundColor }) {
       </Toolbar>
       <Divider />
       <List>
-        {MENU_LINKS.map(({ text, url }) => (
-          // Opens like the report grid's links: a dashboard window or a new tab (see useOpenLink)
-          <ListItem key={url} disablePadding>
-            <ListItemButton
-              component="a"
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(event) => openLinkOnPlainClick(event, openLink, url, text)}
-            >
-              <ListItemText primary={text} />
+        {MENU_MODULES.map(({ title, links }) => {
+          const isOpen = openModules.has(title);
+          return <Box key={title}>
+            <ListItemButton onClick={() => toggleModule(title)} aria-expanded={isOpen}>
+              <ListItemText primary={title} slotProps={{ primary: { sx: { fontWeight: 'bold' } } }} />
+              {isOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
-          </ListItem>
-        ))}
+            <Collapse in={isOpen} timeout="auto">
+              <List disablePadding>
+                {links.map(({ text, url }) => (
+                  // Opens like the report grid's links: a dashboard window or a new tab (see useOpenLink)
+                  <ListItem key={url} disablePadding>
+                    <ListItemButton
+                      component="a"
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ pl: 4 }}
+                      onClick={(event) => {
+                        openLinkOnPlainClick(event, openLink, url, text);
+                        // Opened as a window: out of the drawer's way, so it's seen (a new tab leaves the drawer open)
+                        if (event.defaultPrevented) {
+                          handleDrawerClose();
+                        }
+                      }}
+                    >
+                      <ListItemText primary={text} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          </Box>;
+        })}
       </List>
     </div>
   );

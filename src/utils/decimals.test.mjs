@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Big } from 'bigdecimal.js';
 import {
   formatDecimal, normalizeDecimalText, parseDecimal, parsePercent, parseWholeUnits,
+  formatAmount,
 } from './decimals.js';
 
 test('parses plain decimal text, and nothing else', () => {
@@ -25,6 +26,19 @@ test('formats without trailing zeros, with thousands separators', () => {
   assert.equal(formatDecimal(Big('-1234')), '-1,234');
   assert.equal(formatDecimal(Big('0.0000000')), '0');
   assert.equal(formatDecimal(Big('1E+3')), '1,000');
+});
+
+test('amounts: two decimals, rounded half up, with thousands separators', () => {
+  assert.equal(formatAmount('1234.565'), '1,234.57');
+  assert.equal(formatAmount('116868.87'), '116,868.87');
+  assert.equal(formatAmount('7'), '7.00');
+  assert.equal(formatAmount(7), '7.00', 'a JSON number');
+  assert.equal(formatAmount('0.004'), '0.00');
+  assert.equal(formatAmount('-1234567.5'), '-1,234,567.50');
+  assert.equal(formatAmount('12345678901234567890.1234567'), '12,345,678,901,234,567,890.12', 'exact, no lost digits');
+  assert.equal(formatAmount(null), '');
+  assert.equal(formatAmount(''), '');
+  assert.equal(formatAmount('n/a'), 'n/a');
 });
 
 test('whole units: digits only, no fraction, no sign', () => {
