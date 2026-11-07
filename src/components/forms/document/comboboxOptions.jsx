@@ -14,6 +14,12 @@ const COMBOBOX_MESSAGES = {
 /** The props every combobox of the document forms takes. */
 export const COMBOBOX_PROPS = { fullWidth: true, messages: COMBOBOX_MESSAGES };
 
+/** The accounts a manual entry's lines or a payment may go on, as ComboBox2 options with their subledgers. */
+export function useAccountOptions() {
+  const { data = [], error } = useSWR('/api/journal-entries/accounts', fetchJson);
+  return { options: data, error };
+}
+
 /** All of a link entity's records (e.g. "products") as ComboBox2 options ({ value, label, code?, detail? }). */
 export function useOptions(linkEntity) {
   const { data = [], error } = useSWR(`/api/schemacrud/options/entity/${linkEntity}`, fetchJson);

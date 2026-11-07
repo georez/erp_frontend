@@ -69,6 +69,7 @@ const DOCUMENT_PAGE_OF_TYPE = Object.freeze({
   opening_balance: 'opening-balance',
   purchase_invoice: 'purchase-invoice',
   purchase_return: 'purchase-return',
+  payment: 'payment',
 });
 
 /** The page that opens an entry's document, or null (a manual entry, or a document with no page). */

@@ -240,6 +240,10 @@ test('a documentColumn link opens the page each row names, titled after that pag
     url: `/dashboard/purchase-return?formTitle=${encodeURIComponent('مرتجع مشتريات')}&returnId=9`,
     title: 'مرتجع مشتريات',
   });
+  assert.deepEqual(linkTarget(link, { page: 'payment', source_id: '5' }), {
+    url: `/dashboard/payment?formTitle=${encodeURIComponent('سند صرف')}&paymentId=5`,
+    title: 'سند صرف',
+  });
   assert.equal(linkTarget(link, { page: null, source_id: '9' }), null, 'a row without a document (an opening row)');
   assert.equal(linkTarget(link, { page: 'no-such-page', source_id: '9' }), null);
   assert.equal(linkTarget(link, { page: 'toString', source_id: '9' }), null);

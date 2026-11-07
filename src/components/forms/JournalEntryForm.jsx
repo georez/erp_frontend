@@ -6,16 +6,14 @@ import {
 } from '@mui/material';
 import { Big } from 'bigdecimal.js';
 import { useRef, useState } from 'react';
-import useSWR from 'swr';
 import { Combobox } from '@/components/ui/ComboBox2';
 import { reportPageUrl } from '@/components/reports/useReportPage';
 import { parseWholeUnits } from '@/utils/decimals';
-import { fetchJson } from '@/utils/fetchJson';
 import { checkLineAmounts, documentPageOf, partyKind, statementPeriod } from '@/utils/journalEntries';
 import { linkTarget } from '@/utils/reportutils';
-import { openLinkOnPlainClick, useOpenLink } from '@/utils/useOpenLink';
+import { useOpenLink } from '@/utils/useOpenLink';
 import { formatAmount, isNonZero } from './document/amounts';
-import { COMBOBOX_PROPS, useOptions } from './document/comboboxOptions';
+import { COMBOBOX_PROPS, useAccountOptions, useOptions } from './document/comboboxOptions';
 import { DocumentActions, Total } from './document/DocumentActions';
 import { DescriptionField, DocumentTitle, HeaderRow, Labelled } from './document/DocumentHeader';
 import { DocumentAlerts, DocumentWindow, NEW_DOCUMENT_HINT } from './document/DocumentLayout';
@@ -24,6 +22,7 @@ import { hasErrors, MAX_DESCRIPTION_LENGTH } from './document/entryChecks';
 import { amountColumn, deleteColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { WindowLink } from './document/WindowLink';
 
 /*
  * The journal entry form: any journal entry with its lines, and manual entries made here.
@@ -58,12 +57,6 @@ const PARTIES = {
   supplier: { label: 'المورد', missing: 'حدّد المورد', page: 'supplier-statement', title: 'كشف حساب مورد',
     param: 'p_supplier_id' },
 };
-
-/** The accounts a manual entry's lines may go on, as combobox options with their subledgers. */
-function useAccountOptions() {
-  const { data = [], error } = useSWR('/api/journal-entries/accounts', fetchJson);
-  return { options: data, error };
-}
 
 /** What a new entry's header lacks for its first line to be sent, or null. */
 function headerProblem(header) {
@@ -135,14 +128,6 @@ function subledgerTarget(line, entry, period) {
     return { url: stockMovementsUrl(entry.id), title: 'حركات المخزون' };
   }
   return null;
-}
-
-/** A link opening a dashboard window on a plain click (see useOpenLink). */
-function WindowLink({ target, openLink, children }) {
-  return <a href={target.url} target="_blank" rel="noopener noreferrer"
-    onClick={(event) => openLinkOnPlainClick(event, openLink, target.url, target.title)}>
-    {children}
-  </a>;
 }
 
 /** A debit or credit column: a line's other side, zero, is left empty so its amount stands out; the total shows both. */

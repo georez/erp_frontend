@@ -3,6 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkLineAmounts, documentPageOf, partyKind, statementPeriod } from './journalEntries.js';
 
+test("a payment's entry opens the payment", () => {
+  assert.equal(documentPageOf('payment'), 'payment');
+});
+
 test('a line has its amount on one side; the other, left empty, is zero', () => {
   assert.deepEqual(checkLineAmounts('1250.5', ''), { debit: '1250.5', credit: '0' });
   assert.deepEqual(checkLineAmounts('', '٣٠٠'), { debit: '0', credit: '300' }, 'Arabic digits');

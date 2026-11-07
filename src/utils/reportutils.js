@@ -404,6 +404,7 @@ const DOCUMENT_PAGES = Object.freeze({
   'opening-balance': { idParam: 'openingBalanceId', title: 'رصيد افتتاحي للمخزون' },
   'purchase-invoice': { idParam: 'invoiceId', title: 'فاتورة مشتريات' },
   'purchase-return': { idParam: 'returnId', title: 'مرتجع مشتريات' },
+  payment: { idParam: 'paymentId', title: 'سند صرف' },
   'journal-entry': { idParam: 'entryId', title: 'قيد يومية' },
 });
 

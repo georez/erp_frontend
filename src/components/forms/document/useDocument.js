@@ -8,10 +8,10 @@ import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { useRequestQueue } from './useRequestQueue';
 
 /**
- * A document in a form window (stock adjustment, opening balance, purchase invoice or return, journal entry).
+ * A document in a form window (stock adjustment, opening balance, purchase invoice or return, journal entry, payment).
  *
  * - New: the header is typed in. The first line's OK creates the draft with it; the window's URL then points to the
- *   draft.
+ *   draft. A document without lines (a payment) is created from its header alone (createFromHeader).
  * - Draft: the header can still be changed; a field is saved when it's left (saveHeader), a choice when it's made
  *   (changeHeader). Lines and actions are sent one request at a time (useRequestQueue); posting and deleting wait
  *   until every request is answered.
@@ -101,6 +101,18 @@ export function useDocument({
     return saved;
   });
 
+  /** Creates the draft from the header, for a document without lines; the window opens it. True if it was created. */
+  const createFromHeader = () => requests.enqueue(async () => {
+    const created = await requests.send(api, 'POST', headerBody(shown.header));
+    if (!created) {
+      return false;
+    }
+    draftIdRef.current = created.id;
+    await mutateCache(urlOf(created.id), created, { revalidate: false });
+    openInWindow(created.id);
+    return true;
+  });
+
   /** Sends a request to the draft (DELETE "/lines/3", POST "/post", PUT "/lines/3/batches" with a body...). */
   const sendToDraft = (path, method, body) =>
     requests.enqueue(() => sendAndShow(draftIdRef.current, path, method, body));
@@ -157,6 +169,7 @@ export function useDocument({
     saveHeader,
     changeHeader,
     // The draft's requests, one at a time; pending: how many are still to be answered
+    createFromHeader,
     addLine,
     sendToDraft,
     sendAndOpenAnswer,
