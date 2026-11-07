@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkLineAmounts, documentPageOf, partyKind, statementPeriod } from './journalEntries.js';
 
-test("a payment's entry opens the payment", () => {
+test("a payment's or a receipt's entry opens it", () => {
   assert.equal(documentPageOf('payment'), 'payment');
+  assert.equal(documentPageOf('receipt'), 'receipt');
 });
 
 test('a line has its amount on one side; the other, left empty, is zero', () => {

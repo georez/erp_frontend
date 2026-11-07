@@ -28,6 +28,8 @@ export const MENU_MODULES = [
       documentLink('قيد يومية', 'journal-entry'),
       documentLink('سند صرف', 'payment'),
       reportLink('تقرير سندات الصرف', 'paymentsReport'),
+      documentLink('سند قبض', 'receipt'),
+      reportLink('تقرير سندات القبض', 'receiptsReport'),
       reportLink('دفتر اليومية', 'generalJournalReport'),
       reportLink('تقرير القيود', 'journalEntriesReport'),
       pageLink('دليل الحسابات', 'chart-of-accounts'),

@@ -3,11 +3,11 @@ import { normalizeDecimalText, parseDecimal } from './decimals.js';
 import { partyKind } from './journalEntries.js';
 
 /*
- * The payment form's rules (components/forms/PaymentForm.jsx), checked before a payment is sent to the backend (which
- * checks them again).
+ * The rules of the payment and receipt form (components/forms/CashDocumentForm.jsx), checked before a document is sent
+ * to the backend (which checks them again).
  */
 
-// payments.amount is numeric(20, 2), in piasters; reference and description are varchar(100) and varchar(500)
+// The amounts are numeric(20, 2), in piasters; reference and description are varchar(100) and varchar(500)
 const MAX_DECIMALS = 2;
 const MAX_INTEGER_DIGITS = 18;
 const MAX_REFERENCE_LENGTH = 100;
@@ -16,7 +16,7 @@ const MAX_DESCRIPTION_LENGTH = 500;
 const MISSING_PARTY = { customer: 'حدّد العميل', supplier: 'حدّد المورد' };
 
 /** The amount as typed: { amount } (decimal text) or { error }. */
-export function checkPaymentAmount(text) {
+export function checkAmount(text) {
   const normalized = normalizeDecimalText(text);
   if (normalized === '') {
     return { error: 'مطلوب' };
@@ -36,50 +36,50 @@ export function checkPaymentAmount(text) {
 }
 
 /**
- * The payment's errors by field (a field without one is left out).
+ * The document's errors by field (a field without one is left out).
  *
- * @param payment   the form's fields: { cashAccountId, accountId, customerId, supplierId, amount, reference, description }
- * @param subledger the subledger of the account paid to, or null
+ * @param document  the form's fields: { cashAccountId, accountId, customerId, supplierId, amount, reference, description }
+ * @param subledger the subledger of the other account, or null
  */
-export function checkPayment(payment, subledger) {
+export function checkCashDocument(document, subledger) {
   const errors = {};
-  if (payment.cashAccountId == null) {
+  if (document.cashAccountId == null) {
     errors.cashAccountId = 'حدّد الخزينة أو البنك';
   }
-  if (payment.accountId == null) {
+  if (document.accountId == null) {
     errors.accountId = 'حدّد الحساب';
-  } else if (payment.accountId === payment.cashAccountId) {
-    errors.accountId = 'لا يمكن الصرف إلى نفس الحساب';
+  } else if (document.accountId === document.cashAccountId) {
+    errors.accountId = 'لا يمكن أن يكون نفس الخزينة أو البنك';
   }
 
   const kind = partyKind(subledger);
-  const partyId = kind === 'customer' ? payment.customerId : payment.supplierId;
+  const partyId = kind === 'customer' ? document.customerId : document.supplierId;
   if (kind && partyId == null) {
     errors.partyId = MISSING_PARTY[kind];
   }
 
-  const amount = checkPaymentAmount(payment.amount);
+  const amount = checkAmount(document.amount);
   if (amount.error) {
     errors.amount = amount.error;
   }
-  if (payment.reference.trim().length > MAX_REFERENCE_LENGTH) {
+  if (document.reference.trim().length > MAX_REFERENCE_LENGTH) {
     errors.reference = `الحد الأقصى ${MAX_REFERENCE_LENGTH} حرف`;
   }
-  if (payment.description.trim().length > MAX_DESCRIPTION_LENGTH) {
+  if (document.description.trim().length > MAX_DESCRIPTION_LENGTH) {
     errors.description = `الحد الأقصى ${MAX_DESCRIPTION_LENGTH} حرف`;
   }
   return errors;
 }
 
 /**
- * Whether the amount typed is more than the cash account has. Only a warning: a bank may allow an overdraft the books
- * don't know, so the payment isn't refused. False while the amount can't be read or the balance isn't known.
+ * Whether the amount typed is more than the cash account has, for a payment. Only a warning: a bank may allow an
+ * overdraft the books don't know, so it isn't refused. False while the amount can't be read or the balance isn't known.
  *
  * @param amountText the amount as typed
  * @param balance    the account's balance (decimal text), or null
  */
 export function isOverBalance(amountText, balance) {
-  const { amount } = checkPaymentAmount(amountText);
+  const { amount } = checkAmount(amountText);
   if (amount == null || balance == null) {
     return false;
   }

@@ -131,16 +131,19 @@ export const ERROR_MESSAGES = Object.freeze({
     'للصنف "{productName}" حركات في "{warehouseName}" بالفعل، فلا يُدخَل له رصيد افتتاحي فيه؛ صحّح رصيده بتسوية مخزون',
   OPENING_BALANCE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الرصيد الافتتاحي',
 
-  // --- payments ---
+  // --- payments and receipts ---
+  CASH_DOCUMENT_CASH_ACCOUNT_REQUIRED: 'اختر الخزينة أو البنك',
+  CASH_DOCUMENT_CASH_ACCOUNT_INVALID: 'الحساب رقم {accountId} ليس خزينة ولا حساب بنك',
+  CASH_DOCUMENT_ACCOUNT_REQUIRED: 'اختر الحساب',
+  CASH_DOCUMENT_SAME_ACCOUNT: 'لا يمكن أن يكون الحساب هو نفسه الخزينة أو البنك',
+  CASH_DOCUMENT_AMOUNT_INVALID: 'المبلغ يجب أن يكون أكبر من صفر، وبحد أقصى رقمين عشريين',
+  CASH_DOCUMENT_REFERENCE_TOO_LONG: 'رقم المرجع أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   PAYMENT_NOT_FOUND: 'سند الصرف رقم {paymentId} غير موجود',
   PAYMENT_POSTED: 'سند الصرف رقم {paymentId} مُرحَّل ولا يمكن تعديله؛ صحّحه بعكس السند',
   PAYMENT_NOT_POSTED: 'سند الصرف رقم {paymentId} مسودة؛ عدّله أو احذفه بدلاً من عكسه',
-  PAYMENT_CASH_ACCOUNT_REQUIRED: 'اختر الخزينة أو البنك الذي يُصرف منه',
-  PAYMENT_CASH_ACCOUNT_INVALID: 'الحساب رقم {accountId} ليس خزينة ولا حساب بنك',
-  PAYMENT_ACCOUNT_REQUIRED: 'اختر الحساب الذي يُصرف له',
-  PAYMENT_SAME_ACCOUNT: 'لا يمكن الصرف إلى نفس الحساب الذي يُصرف منه',
-  PAYMENT_AMOUNT_INVALID: 'المبلغ يجب أن يكون أكبر من صفر، وبحد أقصى رقمين عشريين',
-  PAYMENT_REFERENCE_TOO_LONG: 'رقم المرجع أطول من المسموح (الحد الأقصى {maxLength} حرف)',
+  RECEIPT_NOT_FOUND: 'سند القبض رقم {receiptId} غير موجود',
+  RECEIPT_POSTED: 'سند القبض رقم {receiptId} مُرحَّل ولا يمكن تعديله؛ صحّحه بعكس السند',
+  RECEIPT_NOT_POSTED: 'سند القبض رقم {receiptId} مسودة؛ عدّله أو احذفه بدلاً من عكسه',
 
   // --- purchase invoices ---
   SUPPLIER_INVOICE_NUMBER_TOO_LONG: 'رقم فاتورة المورد أطول من المسموح (الحد الأقصى {maxLength} حرف)',
