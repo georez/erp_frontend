@@ -4,7 +4,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import SendIcon from '@mui/icons-material/Send';
 import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
-import { formatAmount, NUMBER_CELL } from './amounts';
+import { formatAmount } from './amounts';
 
 /** How many requests are still in the queue, with a spinner; nothing when the queue is empty. */
 function PendingIndicator({ pending }) {
@@ -19,12 +19,15 @@ function PendingIndicator({ pending }) {
   </Stack>;
 }
 
-/** One of the totals under the grid: its label and its amount ("—" for none). */
+/**
+ * One of the totals under the grid: its label and its amount ("—" for none). The amount reads left to right (a minus
+ * before it), styled inline: the theme's RTL plugin flips sx, which would make NUMBER_CELL's ltr rtl.
+ */
 export function Total({ label, value, strong }) {
   return <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline' }}>
     <Typography variant="body2" color="text.secondary">{label}</Typography>
-    <Typography variant={strong ? 'subtitle1' : 'body2'} sx={{ fontWeight: strong ? 700 : 400, ...NUMBER_CELL }}>
-      <bdi>{value == null ? '—' : formatAmount(value)}</bdi>
+    <Typography variant={strong ? 'subtitle1' : 'body2'} sx={{ fontWeight: strong ? 700 : 400 }}>
+      <bdi style={{ direction: 'ltr' }}>{value == null ? '—' : formatAmount(value)}</bdi>
     </Typography>
   </Stack>;
 }
