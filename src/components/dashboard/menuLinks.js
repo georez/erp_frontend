@@ -43,6 +43,8 @@ export const MENU_MODULES = [
       formLink('ادخال العملاء', 'customers'),
       formLink('ادخال تصنيف العملاء', 'customer_categories'),
       reportLink('تقرير تصنيف العملاء', 'customerCategoriesReport'),
+      formLink('ادخال شرائح العملاء', 'customer_tiers'),
+      reportLink('تقرير شرائح العملاء', 'customerTiersReport'),
       reportLink('تقرير العملاء', 'customersReport'),
       pageLink('كشف حساب عميل', 'customer-statement'),
     ],
@@ -67,6 +69,8 @@ export const MENU_MODULES = [
       reportLink('تقرير تصنيف الأصناف', 'productCategoriesReport'),
       formLink('ادخال المخازن', 'warehouses'),
       reportLink('تقرير المخازن', 'warehousesReport'),
+      formLink('ادخال خصومات الشرائح', 'warehouse_tier_discounts'),
+      reportLink('تقرير خصومات الشرائح', 'warehouseTierDiscountsReport'),
     ],
   },
   {
@@ -79,6 +83,16 @@ export const MENU_MODULES = [
     ],
   },
   {
+    title: 'المبيعات',
+    links: [
+      documentLink('فاتورة مبيعات', 'sales-invoice'),
+      reportLink('تقرير فواتير المبيعات', 'salesInvoicesReport'),
+      reportLink('تقرير الكميات المحجوزة', 'salesReservationsReport'),
+      documentLink('مرتجع مبيعات', 'sales-return'),
+      reportLink('تقرير مرتجعات المبيعات', 'salesReturnsReport'),
+    ],
+  },
+  {
     title: 'المخزون',
     links: [
       documentLink('رصيد افتتاحي للمخزون', 'opening-balance'),
@@ -88,6 +102,12 @@ export const MENU_MODULES = [
       reportLink('تقرير تسويات المخزون', 'stockAdjustmentsReport'),
       reportLink('تقرير التشغيلات والصلاحية', 'stockBatchesReport'),
       reportLink('تقرير حركات المخزون', 'stockMovementsReport'),
+    ],
+  },
+  {
+    title: 'الإعدادات',
+    links: [
+      pageLink('الإعدادات', 'settings'),
     ],
   },
 ];

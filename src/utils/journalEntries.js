@@ -71,6 +71,8 @@ const DOCUMENT_PAGE_OF_TYPE = Object.freeze({
   purchase_return: 'purchase-return',
   payment: 'payment',
   receipt: 'receipt',
+  sales_invoice: 'sales-invoice',
+  sales_return: 'sales-return',
 });
 
 /** The page that opens an entry's document, or null (a manual entry, or a document with no page). */

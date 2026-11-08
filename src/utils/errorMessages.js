@@ -166,6 +166,33 @@ export const ERROR_MESSAGES = Object.freeze({
   PURCHASE_RETURN_EXCEEDS_INVOICE:
     'لا يمكن إرجاع أكثر من {available} من "{productName}" (التشغيلة "{batchNumber}") من هذه الفاتورة',
   BATCH_NOT_FOUND: 'التشغيلة "{batchNumber}" غير موجودة',
+  // sales invoices (SalesInvoiceService)
+  CUSTOMER_REQUIRED: 'حدّد العميل',
+  CUSTOMER_NOT_FOUND: 'العميل رقم {customerId} غير موجود',
+  SALES_INVOICE_NOT_FOUND: 'فاتورة المبيعات رقم {invoiceId} غير موجودة',
+  SALES_INVOICE_POSTED: 'فاتورة المبيعات رقم {invoiceId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بمرتجع مبيعات',
+  SALES_INVOICE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الفاتورة',
+  SALES_INVOICE_BATCHES_NOT_STARTED: 'انتقل إلى إدخال التشغيلات في الفاتورة رقم {invoiceId} أولاً',
+  SALES_INVOICE_BATCH_NOT_FOUND: 'التشغيلة رقم {batchId} غير موجودة في الفاتورة',
+  SALES_INVOICE_HAS_LINES: 'لا يمكن تغيير العميل أو المخزن بعد إدخال أصناف الفاتورة رقم {invoiceId}؛ احذف الأصناف أولاً',
+  SALES_TIER_DISCOUNT_MISSING: 'لا يوجد خصم للشريحة "{tierName}" في "{warehouseName}"',
+  SALES_DISCOUNT_CHANGE_NOT_ALLOWED: 'ليس لديك صلاحية تعديل خصم البيع',
+  SALES_DISCOUNT_UNDER_MINIMUM: 'لا يُباع "{productName}" بخصم أقل من {minimum}%',
+  SALES_STOCK_INSUFFICIENT: 'المتاح للبيع من "{productName}" {available} فقط (الرصيد مطروحاً منه المحجوز لفواتير أخرى)',
+  SALES_BATCH_NOT_FOUND: 'لا توجد تشغيلة "{batchNumber}" للصنف "{productName}"',
+  SALES_BATCH_INSUFFICIENT: 'المتاح من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
+  SALES_BATCHES_OVER_QUANTITY: 'تشغيلات "{productName}" مجموعها {batched}، أكثر من الكمية {quantity}',
+  SALES_POST_NEEDS_BATCHES_PHASE: 'ليس لديك صلاحية الترحيل دون إدخال التشغيلات؛ انتقل إلى إدخال التشغيلات أولاً',
+  SALES_CREDIT_LIMIT_EXCEEDED: 'رصيد "{customerName}" {balance} ومع الفاتورة ({total}) يتجاوز حد الائتمان {creditLimit}',
+  // sales returns (SalesReturnService)
+  SALES_RETURN_NOT_FOUND: 'مرتجع المبيعات رقم {returnId} غير موجود',
+  SALES_RETURN_POSTED: 'مرتجع المبيعات رقم {returnId} مُرحَّل ولا يمكن تعديله',
+  SALES_RETURN_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في المرتجع',
+  SALES_RETURN_HAS_LINES: 'لا يمكن تغيير العميل أو المخزن أو الفاتورة بعد إدخال سطور المرتجع رقم {returnId}؛ احذف السطور أولاً',
+  SALES_RETURN_INVOICE_INVALID: 'فاتورة المبيعات رقم {invoiceId} غير موجودة أو غير مُرحَّلة أو لعميل آخر',
+  SALES_RETURN_NOT_ON_INVOICE: 'لم تُسحب التشغيلة "{batchNumber}" من "{productName}" في هذه الفاتورة',
+  SALES_RETURN_EXCEEDS_INVOICE: 'المتاح للإرجاع من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
+  SALES_RETURN_COST_REQUIRED: 'لا يوجد رصيد من "{productName}" في المخزن لحساب متوسط التكلفة: أدخل خصم التكلفة',
 });
 
 const PLACEHOLDER = /\{(\w+)\}/g;

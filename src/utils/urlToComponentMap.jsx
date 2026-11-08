@@ -11,6 +11,9 @@ import PurchaseReturnForm from '@/components/forms/PurchaseReturnForm';
 import JournalEntryForm from '@/components/forms/JournalEntryForm';
 import PaymentForm from '@/components/forms/PaymentForm';
 import ReceiptForm from '@/components/forms/ReceiptForm';
+import SalesInvoiceForm from '@/components/forms/SalesInvoiceForm';
+import SalesReturnForm from '@/components/forms/SalesReturnForm';
+import SettingsForm from '@/components/forms/SettingsForm';
 
 // Each dashboard URL renders a fixed component. The entries return elements (rather than being the
 // components themselves) so callers never render a component chosen at render time.
@@ -30,6 +33,9 @@ const urlToComponentMap = {
   '/dashboard/opening-balance': (props) => <OpeningBalanceForm {...props} />,
   '/dashboard/purchase-invoice': (props) => <PurchaseInvoiceForm {...props} />,
   '/dashboard/purchase-return': (props) => <PurchaseReturnForm {...props} />,
+  '/dashboard/sales-invoice': (props) => <SalesInvoiceForm {...props} />,
+  '/dashboard/sales-return': (props) => <SalesReturnForm {...props} />,
+  '/dashboard/settings': (props) => <SettingsForm {...props} />,
 };
 
 function pathOf(url) {

@@ -50,10 +50,18 @@ export function useDocument({
     updateOpenFormUrl(`${page}?formTitle=${encodeURIComponent(formTitle)}${idPart}`);
   };
 
-  /** Sends a request to the document and shows what it answers with; loads the document again if it failed. */
+  /**
+   * Sends a request to the document and shows what it answers with; loads the document again if it failed, showing
+   * it as it was meanwhile (mutate with the key alone: given undefined as the data, SWR would empty the cache, and the
+   * form would show a new document).
+   */
   const sendAndShow = async (id, path, method, body) => {
     const answered = await requests.send(urlOf(id, path), method, body);
-    await mutateCache(urlOf(id), answered ?? undefined, { revalidate: !answered });
+    if (answered) {
+      await mutateCache(urlOf(id), answered, { revalidate: false });
+    } else {
+      await mutateCache(urlOf(id));
+    }
     return answered != null;
   };
 

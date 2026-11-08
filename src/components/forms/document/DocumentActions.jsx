@@ -41,10 +41,12 @@ export function Total({ label, value, strong }) {
  *                 their first line)
  * @param newStepRef the new step's button, for Enter to reach it
  * @param nextStep { onClick, disabled, label?, icon? }: the draft's next step; posting unless a label says otherwise
+ * @param otherSteps [{ key, onClick, disabled, label, icon? }]: a draft's other steps, beside its next one (a sales
+ *                 invoice posted without its batches phase)
  * @param pending  how many requests are still to be answered
  */
 export function DocumentActions({
-  isNew, isDraft, pending, newStep, newStepRef, nextStep, onDeleteDraft, onNew, children,
+  isNew, isDraft, pending, newStep, newStepRef, nextStep, otherSteps = [], onDeleteDraft, onNew, children,
 }) {
   const waiting = pending > 0;
   return <Stack direction="row" spacing={2} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
@@ -57,6 +59,10 @@ export function DocumentActions({
         disabled={waiting || nextStep.disabled} onClick={nextStep.onClick}>
         {nextStep.label ?? 'ترحيل'}
       </Button>
+      {otherSteps.map((step) => <Button key={step.key} variant="outlined" color="success"
+        startIcon={step.icon ?? <SendIcon />} disabled={waiting || step.disabled} onClick={step.onClick}>
+        {step.label}
+      </Button>)}
       <Button color="error" startIcon={<DeleteForeverIcon />} disabled={waiting} onClick={onDeleteDraft}>
         حذف المسودة
       </Button>
