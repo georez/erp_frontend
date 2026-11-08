@@ -7,10 +7,14 @@ import FilterNoneIcon from '@mui/icons-material/FilterNone';
 import { useSearchParams } from "next/navigation";
 import { encodeOpenForms, readOpenForms, useUpdateSearchParam } from "@/utils/useUpdateSearchParams";
 import { useCallback, useEffect, useState } from "react";
+import { FloatingLayerContext } from "./FloatingPanel";
 
 // A maximized window leaves this much room around it (and the app bar above)
 const MAXIMIZED_MARGIN = 10;
 const MAXIMIZED_TOP = 50;
+
+// Within the window: above its body's own stacking (ag-grid's header and overlays)
+const FLOATING_LAYER_Z_INDEX = 100;
 
 /** The window's box when maximized: the whole browser window, less a margin. */
 const maximizedBox = () => ({
@@ -22,7 +26,8 @@ const maximizedBox = () => ({
 
 /**
  * A dashboard window: dragged by its title bar, resized from its edges, maximized, opened in a browser tab of its own,
- * or closed (which removes it from the URL's openForms). The window in front is the URL's focusedForm.
+ * or closed (which removes it from the URL's openForms). The window in front is the URL's focusedForm. Its form's
+ * floating panels (FloatingPanel) go in its floating layer, over its body.
  */
 export default function DraggableForm({
   x = 20, y = 60, width = 900, height = 600,
@@ -37,6 +42,7 @@ export default function DraggableForm({
   const initialBox = { x, y, width, height };
   const [box, setBox] = useState(initialBox);
   const [maximized, setMaximized] = useState(false);
+  const [floatingLayer, setFloatingLayer] = useState(null);
 
   // Brought to the front by a press anywhere in it; one in front stays as it is (no URL change)
   const bringToFront = () => {
@@ -111,8 +117,15 @@ export default function DraggableForm({
       </Box>
 
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        {children}
+        <FloatingLayerContext value={floatingLayer}>
+          {children}
+        </FloatingLayerContext>
       </Box>
     </Paper>
+    {/* Outside the body, so a panel isn't cut off by it, and inside the window, so it stacks with the window. A press
+        on a panel still brings the window to the front: React passes it up from the portal to the Paper. At the
+        window's corner, where a panel's position is measured from, and over what the body stacks (the grid's
+        header). */}
+    <div ref={setFloatingLayer} style={{ position: 'absolute', top: 0, left: 0, zIndex: FLOATING_LAYER_Z_INDEX }} />
   </Rnd>;
 }
