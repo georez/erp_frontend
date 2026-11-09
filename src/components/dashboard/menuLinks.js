@@ -90,6 +90,7 @@ export const MENU_MODULES = [
       reportLink('تقرير الكميات المحجوزة', 'salesReservationsReport'),
       documentLink('مرتجع مبيعات', 'sales-return'),
       reportLink('تقرير مرتجعات المبيعات', 'salesReturnsReport'),
+      reportLink('ربحية فواتير المبيعات بعد مرتجعاتها', 'salesInvoiceProfitReport'),
     ],
   },
   {
