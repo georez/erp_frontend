@@ -11,6 +11,10 @@ const NUMBER_CELL = { direction: 'ltr' };
 // How far each level of an indented column (indentBy) moves its cells in
 const INDENT_STEP_EM = 1.5;
 
+// Frozen columns are pinned to the grid's start: its right edge, the grid being right to left (AG Grid keeps "left"
+// and "right" as on screen, also right to left)
+const FROZEN_PINNED = 'right';
+
 /**
  * Defaults for every grid column. No flex: each column is as wide as its content (AUTO_SIZE_STRATEGY), and the grid
  * scrolls sideways when the columns don't fit. The grid doesn't sort or filter: the sort tab and the query builder do
@@ -73,16 +77,17 @@ export function autoSizeColumns({ api, columns }) {
  * rows still carry its values, which the links, the indent and the totals read, but it's never offered.
  *
  * @param {Array<{name: string, label?: string, inputType?: string, link?: object, indentBy?: string,
- *   hidden?: boolean, internal?: boolean}>} backendColumns
- * @returns {Array<{field: string, headerName: string, visibleByDefault: boolean, numeric: boolean, link: object|null,
- *   indentBy: string|null, sortable: boolean, format: string|null}>}  sortable: offered in the sort tab (not the
- *   grid's own sorting)
+ *   hidden?: boolean, frozen?: boolean, internal?: boolean}>} backendColumns
+ * @returns {Array<{field: string, headerName: string, visibleByDefault: boolean, frozenByDefault: boolean,
+ *   numeric: boolean, link: object|null, indentBy: string|null, sortable: boolean, format: string|null}>}  sortable:
+ *   offered in the sort tab (not the grid's own sorting)
  */
 export function toGridColumns(backendColumns) {
   return backendColumns.filter((column) => column.internal !== true).map((column) => ({
     field: column.name,
     headerName: column.label ?? column.name,
     visibleByDefault: column.hidden !== true,
+    frozenByDefault: column.frozen === true,
     numeric: column.inputType === 'number',
     link: column.link ?? null,
     indentBy: column.indentBy ?? null,
@@ -92,18 +97,29 @@ export function toGridColumns(backendColumns) {
 }
 
 /**
- * Visibility for a freshly loaded column list: keeps the user's current choice for columns that still exist, and uses
- * each new column's default otherwise.
+ * A yes/no choice per column (shown, frozen) for a freshly loaded column list: keeps the user's current choice for
+ * columns that still exist, and uses each new column's default otherwise.
  *
- * @param {Object<string, boolean>} previous  current visibility, keyed by column field
- * @param {Array<{field: string, visibleByDefault?: boolean}>} columns
+ * @param {Object<string, boolean>} previous  current choices, keyed by column field
+ * @param {Array<{field: string}>} columns
+ * @param {function(object): boolean} byDefault  a new column's choice
  * @returns {Object<string, boolean>}
  */
-export function mergeColumnVisibility(previous, columns) {
+function mergeColumnChoices(previous, columns, byDefault) {
   return Object.fromEntries(columns.map((column) => {
     const chosen = Object.prototype.hasOwnProperty.call(previous, column.field);
-    return [column.field, chosen ? previous[column.field] : column.visibleByDefault !== false];
+    return [column.field, chosen ? previous[column.field] : byDefault(column)];
   }));
+}
+
+/** Which columns are shown, for a freshly loaded column list (see mergeColumnChoices). */
+export function mergeColumnVisibility(previous, columns) {
+  return mergeColumnChoices(previous, columns, (column) => column.visibleByDefault !== false);
+}
+
+/** Which columns are frozen, for a freshly loaded column list (see mergeColumnChoices). */
+export function mergeFrozenColumns(previous, columns) {
+  return mergeColumnChoices(previous, columns, (column) => column.frozenByDefault === true);
 }
 
 /**
@@ -153,11 +169,14 @@ const NUMBER_COLUMN_DEF = {
 };
 
 /**
- * AG Grid column definitions; hidden columns stay defined (with hide), so showing them again needs no new data.
+ * AG Grid column definitions; hidden columns stay defined (with hide), so showing them again needs no new data. A
+ * frozen column is pinned to the grid's start, in the report's column order, and stays in view while the others
+ * scroll sideways. Only the columns tab freezes and unfreezes: a column can't be dragged in or out of the frozen ones
+ * (lockPinned), so the tab always shows what the grid does.
  *
  * @param openLink opens a linked cell as a dashboard window (useOpenLink), or null for a new tab
  */
-export function gridColumnDefs(reportColumns, visibleColumns, openLink) {
+export function gridColumnDefs(reportColumns, visibleColumns, frozenColumns, openLink) {
   return reportColumns.map((column) => {
     const columnDef = {
       field: column.field,
@@ -165,6 +184,8 @@ export function gridColumnDefs(reportColumns, visibleColumns, openLink) {
       type: null,
       ...(column.numeric && NUMBER_COLUMN_DEF),
       hide: visibleColumns[column.field] === false,
+      pinned: frozenColumns[column.field] === true ? FROZEN_PINNED : null,
+      lockPinned: true,
       ...(column.link && {
         cellRenderer: LinkCell,
         cellRendererParams: { link: column.link, openLink },

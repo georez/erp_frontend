@@ -12,6 +12,8 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { AgGridProvider, AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule } from 'ag-grid-community';
 import FormFields from '@/components/forms/FormFields';
@@ -98,8 +100,12 @@ export function QueryTab({ loading, fields, query, setQuery }) {
   </Scrollable>;
 }
 
-/** Columns: which columns the result grid shows (applies at once, no re-run). */
-export function ColumnsTab({ loading, reportColumns, visibleColumns, setVisibleColumns }) {
+/**
+ * Columns: which columns the result grid shows, and which of them are frozen at its start, in view while the others
+ * scroll sideways (both apply at once, no re-run).
+ */
+export function ColumnsTab({ loading, reportColumns, visibleColumns, setVisibleColumns, frozenColumns,
+  setFrozenColumns }) {
   const allSelected = reportColumns.length > 0 && reportColumns.every((column) => visibleColumns[column.field]);
   const someSelected = reportColumns.some((column) => visibleColumns[column.field]);
 
@@ -111,11 +117,13 @@ export function ColumnsTab({ loading, reportColumns, visibleColumns, setVisibleC
     const checked = event.target.checked;
     setVisibleColumns((previous) => ({ ...previous, [field]: checked }));
   };
+  const toggleFrozen = (field) => () =>
+    setFrozenColumns((previous) => ({ ...previous, [field]: !previous[field] }));
 
   return <Scrollable>
     <Typography variant="h6" sx={{ mb: 1 }}>اختيار الأعمدة</Typography>
     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-      اختر الأعمدة التي ستظهر في نتيجة التقرير.
+      اختر الأعمدة التي ستظهر في نتيجة التقرير، وثبّت منها ما يبقى ظاهراً في بداية الجدول عند التمرير.
     </Typography>
     {loading && <Progress text="تحميل الأعمدة..." marginBottom={2} />}
     <Divider sx={{ mb: 1 }} />
@@ -124,11 +132,29 @@ export function ColumnsTab({ loading, reportColumns, visibleColumns, setVisibleC
     } />
     <Divider sx={{ mb: 1 }} />
     <FormGroup>
-      {reportColumns.map((column) => <FormControlLabel key={column.field} label={column.headerName} control={
-        <Checkbox checked={Boolean(visibleColumns[column.field])} onChange={toggle(column.field)} />
-      } />)}
+      {reportColumns.map((column) => <FrozenToggleRow key={column.field} frozen={Boolean(frozenColumns[column.field])}
+        onToggleFrozen={toggleFrozen(column.field)}>
+        <FormControlLabel label={column.headerName} control={
+          <Checkbox checked={Boolean(visibleColumns[column.field])} onChange={toggle(column.field)} />
+        } />
+      </FrozenToggleRow>)}
     </FormGroup>
   </Scrollable>;
+}
+
+/**
+ * A column's row in the columns tab: a pin that freezes or unfreezes it, then its shown checkbox. The pin comes first,
+ * so the pins line up whatever the labels' lengths.
+ */
+function FrozenToggleRow({ frozen, onToggleFrozen, children }) {
+  return <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+    <Tooltip title={frozen ? 'إلغاء تثبيت العمود' : 'تثبيت العمود'}>
+      <IconButton size="small" onClick={onToggleFrozen} aria-pressed={frozen} color={frozen ? 'primary' : 'default'}>
+        {frozen ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+      </IconButton>
+    </Tooltip>
+    {children}
+  </Stack>;
 }
 
 /** The list with the entry at `from` moved to `to`. */

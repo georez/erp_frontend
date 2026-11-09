@@ -10,7 +10,7 @@ import {
   validateReportParams, validateReportQuery,
 } from '@/utils/reportutils';
 import { executeReport, fetchReportMetadata } from './reportApi';
-import { gridColumnDefs, mergeColumnVisibility, toGridColumns } from './reportGrid';
+import { gridColumnDefs, mergeColumnVisibility, mergeFrozenColumns, toGridColumns } from './reportGrid';
 import {
   ColumnsTab, ParamsTab, QueryTab, ResultTab, SortTab, TabPanel, TABS, tabProps,
 } from './ReportTabs';
@@ -105,8 +105,8 @@ function useReportMetadata(reportName, onLoaded) {
  *    sort tab's columns and the grid columns all come from it.
  * 2. Run checks the params, then writes them, the query and the sort into the URL; the run effect sees the new URL
  *    values and runs the report.
- * 3. The rows are shown in AG Grid. Showing or hiding columns happens in the grid only and doesn't re-run. Linked
- *    columns open the row's record (see reportGrid's LinkCell).
+ * 3. The rows are shown in AG Grid. Showing, hiding, freezing or unfreezing columns happens in the grid only and
+ *    doesn't re-run. Linked columns open the row's record (see reportGrid's LinkCell).
  *
  * All props come from the dashboard URL's search parameters, so they are strings.
  */
@@ -121,6 +121,8 @@ export default function Report({ formId, formTitle, reportName, execute, request
   const [tabValue, setTabValue] = useState(shouldExecute ? TABS.RESULT : TABS.QUERY_1);
   /** Which columns are shown, keyed by column field: { [field]: true | false }. */
   const [visibleColumns, setVisibleColumns] = useState({});
+  /** Which columns are frozen at the grid's start, keyed by column field: { [field]: true | false }. */
+  const [frozenColumns, setFrozenColumns] = useState({});
 
   // The sort being edited: it starts from the URL, and becomes the report's when Run writes it back
   const [sortLocal, setSortLocal] = useState(() => parseReportSort(sort));
@@ -129,6 +131,7 @@ export default function Report({ formId, formTitle, reportName, execute, request
     (loaded, gridColumns) => {
       // The user's column choices are kept where the columns still exist
       setVisibleColumns((previous) => mergeColumnVisibility(previous, gridColumns));
+      setFrozenColumns((previous) => mergeFrozenColumns(previous, gridColumns));
       // And the sort, where its columns may still be sorted by
       setSortLocal((previous) => selectReportSort(previous, loaded.columns, loaded.fixedOrder));
       // A report without params has nothing on the first tab: start on the query builder instead
@@ -220,8 +223,8 @@ export default function Report({ formId, formTitle, reportName, execute, request
     };
   }, [shouldExecute, requestTime, reportName, params, query, metadata, reportColumns, sort, csrfFetch]);
 
-  const columnDefs = useMemo(() => gridColumnDefs(reportColumns, visibleColumns, openLink),
-    [reportColumns, visibleColumns, openLink]);
+  const columnDefs = useMemo(() => gridColumnDefs(reportColumns, visibleColumns, frozenColumns, openLink),
+    [reportColumns, visibleColumns, frozenColumns, openLink]);
 
   // The edited query is checked with the same validateReportQuery the report route runs, so Run is only enabled for
   // queries the route would accept (the query builder highlights the invalid rules). Until the metadata has loaded
@@ -291,7 +294,7 @@ export default function Report({ formId, formTitle, reportName, execute, request
     </TabPanel>
     <TabPanel value={tabValue} index={TABS.COLUMNS}>
       <ColumnsTab loading={metadataLoading} reportColumns={reportColumns} visibleColumns={visibleColumns}
-        setVisibleColumns={setVisibleColumns} />
+        setVisibleColumns={setVisibleColumns} frozenColumns={frozenColumns} setFrozenColumns={setFrozenColumns} />
     </TabPanel>
     <TabPanel value={tabValue} index={TABS.SORT}>
       {/* Loading until the metadata is in: a sort from the URL names columns the tab can't offer before that */}
