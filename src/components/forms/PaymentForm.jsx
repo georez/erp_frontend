@@ -10,6 +10,7 @@ import { CashDocumentForm } from './CashDocumentForm';
 const PAYMENT = {
   api: '/api/payments',
   page: '/dashboard/payment',
+  printout: 'payment',
   idParam: 'paymentId',
   name: 'سند صرف',
   theName: 'سند الصرف',

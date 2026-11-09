@@ -21,6 +21,7 @@ import {
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The sales invoice document: stock sold to a customer, on credit.
@@ -439,7 +440,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
       otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newInvoice}
-      onPrint={invoice ? () => window.open(`/print/sales-invoice/${invoice.id}`, '_blank') : undefined}>
+      onPrint={invoice ? () => openPrintout('sales-invoice', invoice.id) : undefined}>
       <Total label="التكلفة" value={invoice?.costTotal ?? null} />
       <Total label="الصافي" value={invoice?.netTotal ?? '0'} />
       <Total label="الضريبة" value={invoice?.vatTotal ?? '0'} />

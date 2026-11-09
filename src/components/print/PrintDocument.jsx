@@ -3,7 +3,7 @@
 import useSWR from 'swr';
 import { useEffect, useRef, useState } from 'react';
 import { fetchJson } from '@/utils/fetchJson';
-import { Big } from 'bigdecimal.js';
+import { Big, RoundingMode } from 'bigdecimal.js';
 import { formatAmount, formatDecimal } from '@/utils/decimals';
 
 const SETTINGS_URL = '/api/settings';
@@ -22,17 +22,34 @@ export function Amount({ value }) {
   return <bdi dir="ltr">{formatAmount(value)}</bdi>;
 }
 
+/**
+ * A customer's or supplier's balance as printed (debits less credits, as their statement keeps it): rounded to two
+ * decimals, without a sign, then the side it's on: "1,200.00 مدين" (they owe it), "94,854.60 دائن" (it's owed to them),
+ * "0.00".
+ */
+export function Balance({ value }) {
+  const rounded = Big(value).setScale(2, RoundingMode.HALF_UP);
+  let side = '';
+  if (rounded.signum() > 0) {
+    side = ' مدين';
+  } else if (rounded.signum() < 0) {
+    side = ' دائن';
+  }
+  return <><Amount value={rounded.abs().toPlainString()} />{side}</>;
+}
+
 /** The text as a CSS string's content, between double quotes; "<" escaped too, so it can't end the <style> element. */
 const cssString = (text) => String(text).replace(/[\\"]/g, '\\$&').replace(/</g, '\\3c ').replace(/[\r\n]+/g, ' ');
 
 /**
- * The end of a printout: the recipient's signature, room for the company's stamp, and who prepared it.
+ * The end of a printout: a signature (the recipient's by default), room for the company's stamp, and who prepared it.
  *
- * @param preparedLabel "أعدها" for a فاتورة, "أعده" for a سند
+ * @param preparedLabel "أعدها" for a فاتورة, "أعده" for a سند or a مرتجع
+ * @param signedBy      whose signature: "المستلم" unless said otherwise
  */
-export function Signatures({ preparedLabel, preparedBy }) {
+export function Signatures({ preparedLabel, preparedBy, signedBy = 'المستلم' }) {
   return <div className="signatures">
-    <div className="signature">توقيع المستلم: ....................</div>
+    <div className="signature">توقيع {signedBy}: ....................</div>
     <div className="stamp" aria-hidden="true" />
     <div className="signature">{preparedLabel}: {preparedBy}</div>
   </div>;
@@ -50,19 +67,21 @@ function Labelled({ label, number }) {
  * A printed document on A5 paper (app/(print)/print.css): the company's details and logo (the settings page), the
  * document's title and number, the customer or supplier, the document's details, then its own content (children).
  * Every page ends with the document's title and number, the customer's or supplier's name, and "صفحة X من Y". A draft
- * is marked مسودة across every page.
+ * is marked مسودة across every page, a reversed document معكوس.
  *
  * The print dialog opens by itself once the document, the company's details and the logo have loaded; ?print=no in
  * the address stops it (to look at the page first). Closing the dialog leaves the page, with a button to print again.
  *
  * @param title   e.g. "فاتورة مبيعات"
  * @param number  the document's number; null while it loads
- * @param isDraft whether it's unposted: marked مسودة
- * @param party   { label, contact: { name, address, phone, taxRegistrationNo } }: e.g. the customer
+ * @param mark    across every page and under the number: "مسودة" for a draft, "معكوس" for a reversed document; none
+ *                for a document that stands
+ * @param party   { label, contact: { name, address, phone, taxRegistrationNo } }: e.g. the customer; none for a
+ *                document without one (a payment of an expense)
  * @param details [{ label, value }]: the date, the warehouse...
  * @param error   the document's loading error, shown instead of it
  */
-export default function PrintDocument({ title, number, isDraft, party, details = [], error, children }) {
+export default function PrintDocument({ title, number, mark, party, details = [], error, children }) {
   const { data: company, error: companyError } = useSWR(SETTINGS_URL, fetchJson, { revalidateOnFocus: false });
   const [logoSettled, setLogoSettled] = useState(false);
   const printed = useRef(false);
@@ -93,7 +112,8 @@ export default function PrintDocument({ title, number, isDraft, party, details =
     return <div className="message">جاري التحميل…</div>;
   }
 
-  const contact = party.contact;
+  const contact = party?.contact;
+  const footer = [`${title} رقم ${number}`, contact?.name, 'صفحة '].filter(Boolean).join(' - ');
 
   return <>
     <div className="toolbar no-print">
@@ -103,11 +123,11 @@ export default function PrintDocument({ title, number, isDraft, party, details =
     </div>
     {/* Every page's foot: the margin boxes of @page, which only CSS can fill */}
     <style>{`@page { @bottom-center {
-      content: "${cssString(`${title} رقم ${number} - ${contact.name} - صفحة `)}" counter(page) " من " counter(pages);
+      content: "${cssString(footer)}" counter(page) " من " counter(pages);
       font-family: var(--font-cairo), sans-serif; font-size: 7.5pt; color: #555; } }`}</style>
 
     <div className="sheet">
-      {isDraft && <div className="watermark" aria-hidden="true">مسودة</div>}
+      {mark && <div className="watermark" aria-hidden="true">{mark}</div>}
 
       <header className="head">
         <div className="company">
@@ -126,7 +146,7 @@ export default function PrintDocument({ title, number, isDraft, party, details =
         <div className="doc-title">
           <h1>{title}</h1>
           <div>رقم <strong>{number}</strong></div>
-          {isDraft && <div className="draft-tag">مسودة</div>}
+          {mark && <div className="draft-tag">{mark}</div>}
         </div>
         {company.hasLogo &&
           // eslint-disable-next-line @next/next/no-img-element -- the backend's image, not a static one
@@ -135,7 +155,7 @@ export default function PrintDocument({ title, number, isDraft, party, details =
       </header>
 
       <section className="info">
-        <div className="party">
+        {contact ? <div className="party">
           <span className="party-label">{party.label}: </span>
           <span className="party-name">{contact.name}</span>
           {contact.address && <div>{contact.address}</div>}
@@ -143,7 +163,7 @@ export default function PrintDocument({ title, number, isDraft, party, details =
           {contact.taxRegistrationNo && <div>
             <Labelled label="رقم التسجيل الضريبي" number={contact.taxRegistrationNo} />
           </div>}
-        </div>
+        </div> : <div className="party-none" />}
         <table className="meta">
           <tbody>
             {details.map(({ label, value }) => <tr key={label}><th>{label}</th><td>{value}</td></tr>)}

@@ -20,6 +20,7 @@ import {
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The sales return document: stock a customer sends back.
@@ -344,7 +345,8 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: postReturn, disabled: !hasLines || salesReturn?.stockValue == null }}
-      onDeleteDraft={deleteThisDraft} onNew={newReturn}>
+      onDeleteDraft={deleteThisDraft} onNew={newReturn}
+      onPrint={salesReturn ? () => openPrintout('sales-return', salesReturn.id) : undefined}>
       <Total label="التكلفة" value={salesReturn ? salesReturn.stockValue : '0'} />
       <Total label="الصافي" value={salesReturn?.netTotal ?? '0'} />
       <Total label="الضريبة" value={salesReturn?.vatTotal ?? '0'} />

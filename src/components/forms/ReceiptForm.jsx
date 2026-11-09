@@ -9,6 +9,7 @@ import { CashDocumentForm } from './CashDocumentForm';
 const RECEIPT = {
   api: '/api/receipts',
   page: '/dashboard/receipt',
+  printout: 'receipt',
   idParam: 'receiptId',
   name: 'سند قبض',
   theName: 'سند القبض',

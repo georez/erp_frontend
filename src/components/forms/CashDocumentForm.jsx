@@ -21,6 +21,7 @@ import { moveOnEnter } from './document/EntryFields';
 import { hasErrors } from './document/entryChecks';
 import { useDocument } from './document/useDocument';
 import { WindowLink } from './document/WindowLink';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The form of a payment or a receipt (PaymentForm, ReceiptForm): money moving between a cash box or bank account and any
@@ -109,8 +110,8 @@ function Field({ id, label, error, children }) {
 }
 
 /**
- * @param kind       what makes it a payment or a receipt: { api, page, idParam, name, theName, cashLabel, accountLabel,
- *                   dateLabel, warnsOverBalance }
+ * @param kind       what makes it a payment or a receipt: { api, page, printout, idParam, name, theName, cashLabel,
+ *                   accountLabel, dateLabel, warnsOverBalance }; printout names its printout (printPages)
  * @param documentId the document the window shows; none for a new one
  */
 export function CashDocumentForm({ kind: documentKind, formId, formTitle, documentId }) {
@@ -270,7 +271,8 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
     <DocumentActions isNew={doc.isNew} isDraft={doc.isDraft} pending={doc.pending}
       newStep={{ onClick: saveNew, label: 'حفظ', icon: <SaveIcon /> }} newStepRef={saveRef}
       nextStep={{ onClick: () => sendAndReloadBalances('/post'), disabled: hasErrors(errors) }}
-      onDeleteDraft={deleteThisDraft} onNew={newDocument}>
+      onDeleteDraft={deleteThisDraft} onNew={newDocument}
+      onPrint={cashDocument ? () => openPrintout(documentKind.printout, cashDocument.id) : undefined}>
       {cashDocument?.canBeReversed && <Button color="error" startIcon={<UndoIcon />} disabled={doc.pending > 0}
         onClick={reverse}>عكس السند</Button>}
     </DocumentActions>

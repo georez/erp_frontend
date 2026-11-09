@@ -126,13 +126,19 @@ A document's printout is a page of its own, `/print/<document>/<id>` (`src/app/(
 form's طباعة button (`DocumentActions`' `onPrint`). It has its own layout, without the dashboard or MUI, so the browser
 lays it out predictably: `print.css` sets A5 portrait paper, and `components/print/PrintDocument.jsx` draws what every
 printout shares (the company's details and logo from the settings page, the customer or supplier, the مسودة mark on a
-draft, the room for the company's stamp, and each page's foot through `@page` margin boxes: the document's title and
-number, the customer or supplier, and "صفحة X من Y"). A table's column titles repeat on every page; a line and its
-batches aren't split between pages.
+draft or معكوس on a reversed voucher, the room for the company's stamp, and each page's foot through `@page` margin
+boxes: the document's title and number, the customer or supplier, and "صفحة X من Y"). `components/print/printPages.js`
+maps each `<document>` to its printout; `ProductLines.jsx` holds the product table and totals that the sales invoice
+and return share. A table's column titles repeat on every page; a line and its batches aren't split between pages.
 
-- **Amounts of money are rounded to two decimals** (`Amount`: prices, values, totals, balances: "66.00"); quantities and
-  percents (a discount, a VAT rate) are printed exactly (`Num`: "16.667", "100").
-- **A sales invoice without VAT** (no line with a VAT rate) leaves out the VAT column and the VAT total.
+- **Amounts of money are rounded to two decimals** (`Amount`: prices, values, totals: "66.00"); quantities and
+  percents (a discount, a VAT rate) are printed exactly (`Num`: "16.667", "100"). A customer's or supplier's balance
+  is printed without a sign, then the side it's on (`Balance`: "1,200.00 مدين" owed by them, "94,854.60 دائن" owed to
+  them).
+- **A document without VAT** (no line with a VAT rate) leaves out the VAT column and the VAT total.
+- **Payments and receipts** print as vouchers (`CashDocumentPrint.jsx`): the amount and in words, who it was paid to or
+  received from, the account, the cash box or bank, the reference and the description, and the customer's or
+  supplier's balances when the account names one.
 
 - **The print dialog opens by itself** once the document, the company's details and the logo have loaded. Add
   `?print=no` to the address to look at the page without it; the toolbar's button prints again. "Save as PDF" in the

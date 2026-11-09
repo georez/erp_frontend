@@ -187,6 +187,11 @@ body {
   border-radius: 1.5mm;
 }
 
+/* Without a customer or supplier, the space they'd take, so the details stay at the far side */
+.party-none {
+  flex: 1;
+}
+
 .party-label,
 .meta th {
   color: var(--muted);
@@ -327,6 +332,34 @@ table.lines tr.batches td {
 
 .description {
   margin: 2mm 0 0;
+}
+
+/* --- a payment's or receipt's voucher: its details one under the other, the amount first --- */
+
+table.voucher {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+}
+
+table.voucher th {
+  width: 24mm;
+  padding: 1.2mm 2mm;
+  color: var(--muted);
+  font-weight: 400;
+  text-align: start;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+table.voucher td {
+  padding: 1.2mm 2mm;
+  border-bottom: 0.5px dotted var(--rule);
+}
+
+table.voucher tr.voucher-amount td {
+  font-size: 13pt;
+  font-weight: 700;
 }
 
 /* The recipient's signature and who prepared it on the two sides, level with the foot of the stamp's room between them */
