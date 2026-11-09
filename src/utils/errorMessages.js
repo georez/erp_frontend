@@ -193,6 +193,10 @@ export const ERROR_MESSAGES = Object.freeze({
   SALES_RETURN_NOT_ON_INVOICE: 'لم تُسحب التشغيلة "{batchNumber}" من "{productName}" في هذه الفاتورة',
   SALES_RETURN_EXCEEDS_INVOICE: 'المتاح للإرجاع من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
   SALES_RETURN_COST_REQUIRED: 'لا يوجد رصيد من "{productName}" في المخزن لحساب متوسط التكلفة: أدخل خصم التكلفة',
+
+  // --- settings ---
+  LOGO_TOO_LARGE: 'الشعار أكبر من المسموح (الحد الأقصى {maxKilobytes} كيلوبايت)',
+  LOGO_TYPE_INVALID: 'الشعار يجب أن يكون صورة PNG أو JPEG',
 });
 
 const PLACEHOLDER = /\{(\w+)\}/g;

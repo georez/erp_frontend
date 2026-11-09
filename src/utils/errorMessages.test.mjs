@@ -163,6 +163,8 @@ const BACKEND_CODES = {
   SALES_RETURN_NOT_ON_INVOICE: ['productName', 'batchNumber'],
   SALES_RETURN_EXCEEDS_INVOICE: ['productName', 'batchNumber', 'available'],
   SALES_RETURN_COST_REQUIRED: ['productName'],
+  LOGO_TOO_LARGE: ['maxKilobytes'],
+  LOGO_TYPE_INVALID: [],
 };
 
 test('every backend code has a message, and no other code does', () => {
