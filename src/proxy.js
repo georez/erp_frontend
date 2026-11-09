@@ -68,8 +68,8 @@ async function refreshAccessTokenWithAuthServer(request) {
 async function verifyAccessToken(request) {
   const { pathname, search } = request.nextUrl;
 
-  // Check if the current route is /dashboard or a sub-route (/dashboard/*)
-  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+  // Check if the current route is /dashboard or a sub-route (/dashboard/*), or a printed document (/print/*)
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/') || pathname.startsWith('/print/')) {
     const accessToken = request.cookies.get('access_token')?.value;
     // No cookie: nothing for the backend to verify
     const isAccessTokenValid = !!accessToken && await verifyAccessTokenWithAuthServer(request, accessToken);

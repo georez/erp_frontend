@@ -1,0 +1,357 @@
+/* Printed documents (components/print) on A5 portrait paper. On screen the page shows as an A5 sheet under a toolbar;
+   printed, only the sheet's content. The document's own footer (its number and page X of Y) is in PrintDocument. */
+
+@page {
+  size: A5 portrait;
+  margin: 9mm 8mm 11mm;
+}
+
+:root {
+  --ink: #111;
+  --muted: #555;
+  --rule: #888;
+  --light-rule: #ccc;
+  --shade: #eee;
+}
+
+html,
+body {
+  margin: 0;
+  background: #d9d9d9;
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-cairo), sans-serif;
+  font-size: 9pt;
+  line-height: 1.35;
+}
+
+/* --- on screen --- */
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid #bbb;
+  font-size: 14px;
+}
+
+.toolbar button {
+  font: inherit;
+  padding: 4px 20px;
+  cursor: pointer;
+}
+
+.toolbar .hint {
+  color: var(--muted);
+}
+
+.toolbar .warning {
+  color: #b26a00;
+}
+
+/* 148 mm less the page's side margins; the height is A5's, so the sheet shows how much a page holds */
+.sheet {
+  position: relative;
+  box-sizing: border-box;
+  width: 148mm;
+  min-height: 210mm;
+  margin: 16px auto;
+  padding: 9mm 8mm 11mm;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.message {
+  max-width: 148mm;
+  margin: 32px auto;
+  padding: 16px;
+  background: #fff;
+  font-size: 14px;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .sheet {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+}
+
+/* --- the draft's mark: across the sheet on screen, on every page printed --- */
+
+.watermark {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 70pt;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.09);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media print {
+  .watermark {
+    position: fixed;
+  }
+}
+
+/* --- the header: the company, the document's title and number, the logo --- */
+
+.head {
+  display: flex;
+  gap: 4mm;
+  align-items: flex-start;
+  padding-bottom: 2mm;
+  margin-bottom: 2.5mm;
+  border-bottom: 1.5px solid var(--ink);
+}
+
+.company {
+  flex: 1;
+  min-width: 0;
+}
+
+.company-name {
+  font-size: 11.5pt;
+  font-weight: 700;
+}
+
+.company-line {
+  color: var(--muted);
+  font-size: 8pt;
+}
+
+.doc-title {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.doc-title h1 {
+  margin: 0;
+  font-size: 12.5pt;
+  font-weight: 700;
+}
+
+.doc-title .draft-tag {
+  display: inline-block;
+  margin-top: 0.5mm;
+  padding: 0 2mm;
+  border: 1px solid var(--ink);
+  font-weight: 600;
+}
+
+.logo {
+  max-width: 30mm;
+  max-height: 17mm;
+  object-fit: contain;
+}
+
+/* --- the customer or supplier, and the document's details --- */
+
+.info {
+  display: flex;
+  gap: 3mm;
+  align-items: stretch;
+  margin-bottom: 2.5mm;
+}
+
+.party {
+  flex: 1;
+  min-width: 0;
+  padding: 1mm 2.5mm;
+  border: 1px solid var(--rule);
+  border-radius: 1.5mm;
+}
+
+.party-label,
+.meta th {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.party-name {
+  font-weight: 700;
+}
+
+.meta {
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.meta th,
+.meta td {
+  padding: 0 1.5mm;
+  text-align: start;
+}
+
+/* --- the lines: column titles on every page, a product's line and its batches kept together --- */
+
+/* Rows close together: a product and its batches take little more than two lines of text */
+table.lines {
+  line-height: 1.25;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.lines thead {
+  display: table-header-group;
+}
+
+table.lines th {
+  padding: 0.5mm 0.8mm;
+  white-space: nowrap;
+  background: var(--shade);
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-align: center;
+}
+
+table.lines tbody {
+  break-inside: avoid;
+}
+
+table.lines td {
+  padding: 0.3mm 0.8mm;
+  vertical-align: top;
+}
+
+table.lines tbody td {
+  border-bottom: 0.5px solid var(--light-rule);
+}
+
+table.lines tbody tr:has(+ tr.batches) td {
+  border-bottom: 0;
+}
+
+table.lines tr.batches td {
+  padding-top: 0;
+  padding-bottom: 0.4mm;
+  line-height: 1.2;
+  color: var(--muted);
+  font-size: 7.5pt;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+/* Numbers read left to right, in the middle of their column */
+.number {
+  direction: ltr;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* --- after the lines: totals, the total in words, balances, signatures --- */
+
+.summary {
+  break-inside: avoid;
+  margin-top: 2.5mm;
+}
+
+.totals-row {
+  display: flex;
+  gap: 3mm;
+  align-items: flex-start;
+}
+
+.words {
+  flex: 1;
+  padding: 1mm 2mm;
+  border: 1px solid var(--rule);
+  border-radius: 1.5mm;
+  font-weight: 600;
+}
+
+.totals {
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.totals th {
+  padding: 0.4mm 2mm;
+  color: var(--muted);
+  font-weight: 400;
+  text-align: start;
+}
+
+.totals td {
+  padding: 0.4mm 2mm;
+}
+
+.totals tr.grand th,
+.totals tr.grand td {
+  border-top: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 10pt;
+  font-weight: 700;
+}
+
+.balances {
+  display: flex;
+  gap: 6mm;
+  margin-top: 2mm;
+  padding: 1mm 2mm;
+  background: var(--shade);
+}
+
+.balances span {
+  color: var(--muted);
+}
+
+.description {
+  margin: 2mm 0 0;
+}
+
+/* The recipient's signature and who prepared it on the two sides, level with the foot of the stamp's room between them */
+.signatures {
+  display: flex;
+  gap: 3mm;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 4mm;
+  color: var(--muted);
+}
+
+.signature {
+  flex: 1;
+}
+
+.signature:last-child {
+  text-align: end;
+}
+
+/* An empty box for the company's stamp */
+.stamp {
+  box-sizing: border-box;
+  width: 34mm;
+  height: 24mm;
+  border: 1px dashed var(--rule);
+  border-radius: 2mm;
+}

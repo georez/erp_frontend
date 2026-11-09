@@ -438,7 +438,8 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     </>}
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
-      otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newInvoice}>
+      otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newInvoice}
+      onPrint={invoice ? () => window.open(`/print/sales-invoice/${invoice.id}`, '_blank') : undefined}>
       <Total label="التكلفة" value={invoice?.costTotal ?? null} />
       <Total label="الصافي" value={invoice?.netTotal ?? '0'} />
       <Total label="الضريبة" value={invoice?.vatTotal ?? '0'} />

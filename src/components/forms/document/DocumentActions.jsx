@@ -2,6 +2,7 @@
 
 import AddIcon from '@mui/icons-material/Add';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import PrintIcon from '@mui/icons-material/Print';
 import SendIcon from '@mui/icons-material/Send';
 import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import { formatAmount } from './amounts';
@@ -44,9 +45,10 @@ export function Total({ label, value, strong }) {
  * @param otherSteps [{ key, onClick, disabled, label, icon? }]: a draft's other steps, beside its next one (a sales
  *                 invoice posted without its batches phase)
  * @param pending  how many requests are still to be answered
+ * @param onPrint  opens the document's printout, for a document that has one; offered once it's saved
  */
 export function DocumentActions({
-  isNew, isDraft, pending, newStep, newStepRef, nextStep, otherSteps = [], onDeleteDraft, onNew, children,
+  isNew, isDraft, pending, newStep, newStepRef, nextStep, otherSteps = [], onDeleteDraft, onNew, onPrint, children,
 }) {
   const waiting = pending > 0;
   return <Stack direction="row" spacing={2} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
@@ -67,6 +69,7 @@ export function DocumentActions({
         حذف المسودة
       </Button>
     </>}
+    {!isNew && onPrint && <Button startIcon={<PrintIcon />} disabled={waiting} onClick={onPrint}>طباعة</Button>}
     {!isNew && <Button startIcon={<AddIcon />} disabled={waiting} onClick={onNew}>جديد</Button>}
     <PendingIndicator pending={pending} />
     <Box sx={{ flex: 1 }} />

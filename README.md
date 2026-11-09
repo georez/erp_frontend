@@ -120,6 +120,26 @@ does), never `errorMessage` directly.
 checks that every code has a message and that each message's placeholders are exactly its code's params. When a code
 is added or its params change in the backend, update the copy and the message together.
 
+## Printed documents
+
+A document's printout is a page of its own, `/print/<document>/<id>` (`src/app/(print)/`), opened in a new tab by the
+form's طباعة button (`DocumentActions`' `onPrint`). It has its own layout, without the dashboard or MUI, so the browser
+lays it out predictably: `print.css` sets A5 portrait paper, and `components/print/PrintDocument.jsx` draws what every
+printout shares (the company's details and logo from the settings page, the customer or supplier, the مسودة mark on a
+draft, the room for the company's stamp, and each page's foot through `@page` margin boxes: the document's title and
+number, the customer or supplier, and "صفحة X من Y"). A table's column titles repeat on every page; a line and its
+batches aren't split between pages.
+
+- **Amounts of money are rounded to two decimals** (`Amount`: prices, values, totals, balances: "66.00"); quantities and
+  percents (a discount, a VAT rate) are printed exactly (`Num`: "16.667", "100").
+- **A sales invoice without VAT** (no line with a VAT rate) leaves out the VAT column and the VAT total.
+
+- **The print dialog opens by itself** once the document, the company's details and the logo have loaded. Add
+  `?print=no` to the address to look at the page without it; the toolbar's button prints again. "Save as PDF" in the
+  dialog makes a PDF, named after the tab's title (e.g. "فاتورة مبيعات 125").
+- **Signed out**, the proxy sends `/print/*` to the sign-in page, as it does `/dashboard/*`.
+- **Totals in words** (تفقيط) come from `src/utils/amountInWords.js`: Egyptian pounds and piasters, rounded half up.
+
 ## Getting Started
 
 First, run the development server:
