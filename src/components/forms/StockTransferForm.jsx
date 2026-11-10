@@ -198,7 +198,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
   const stockHelp = stock && `الرصيد ${formatAmount(stock.available)}`
-    + (stock.unitCost ? ` · تكلفة الوحدة ${formatAmount(stock.unitCost)}` : '');
+    + (stock.discountPercent ? ` · الخصم المرجح ${formatAmount(stock.discountPercent)}%` : '');
 
   /** Sends the line; the product stays chosen, the rest is cleared at once. */
   const saveLine = () => {
