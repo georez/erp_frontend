@@ -3,8 +3,17 @@ import assert from 'node:assert/strict';
 import { Big } from 'bigdecimal.js';
 import {
   formatDecimal, normalizeDecimalText, parseDecimal, parsePercent, parseWholeUnits,
-  formatAmount,
+  formatAmount, formatExactAmount,
 } from './decimals.js';
+
+test('exact amounts: every decimal they have, at least two', () => {
+  assert.equal(formatExactAmount('1652.9135000'), '1,652.9135');
+  assert.equal(formatExactAmount('850'), '850.00');
+  assert.equal(formatExactAmount('61900.5000000'), '61,900.50');
+  assert.equal(formatExactAmount('0.0036000'), '0.0036');
+  assert.equal(formatExactAmount('9739.4610015'), '9,739.4610015');
+  assert.equal(formatExactAmount('-1234567.1'), '-1,234,567.10');
+});
 
 test('parses plain decimal text, and nothing else', () => {
   assert.equal(parseDecimal(' 12.50 ').toPlainString(), '12.50');

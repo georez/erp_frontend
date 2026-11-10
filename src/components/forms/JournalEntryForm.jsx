@@ -23,6 +23,7 @@ import { amountColumn, deleteColumn, LinesGrid, textColumn } from './document/Li
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { WindowLink } from './document/WindowLink';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The journal entry form: any journal entry with its lines, and manual entries made here.
@@ -392,7 +393,8 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
 
     <DocumentActions isNew={doc.isNew} isDraft={isManualDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: !balanced }}
-      onDeleteDraft={deleteThisDraft} onNew={newEntry}>
+      onDeleteDraft={deleteThisDraft} onNew={newEntry}
+      onPrint={entry ? () => openPrintout('journal-entry', entry.id) : undefined}>
       {entry?.canBeReversed && <Button color="error" startIcon={<UndoIcon />} disabled={doc.pending > 0}
         onClick={() => setReversing(true)}>عكس القيد</Button>}
       <OpenEntryField onOpenEntry={openEntry} />

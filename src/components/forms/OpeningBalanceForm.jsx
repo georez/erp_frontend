@@ -13,6 +13,7 @@ import {
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The opening balance document: the stock a warehouse starts with, against Capital. Its header (warehouse,
@@ -164,7 +165,8 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}
-      onDeleteDraft={deleteThisDraft} onNew={newOpeningBalance}>
+      onDeleteDraft={deleteThisDraft} onNew={newOpeningBalance}
+      onPrint={openingBalance ? () => openPrintout('opening-balance', openingBalance.id) : undefined}>
       <Total label="القيمة" value={openingBalance?.totalValue ?? '0'} strong />
     </DocumentActions>
   </DocumentWindow>;

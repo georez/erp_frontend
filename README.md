@@ -139,6 +139,12 @@ and return share. A table's column titles repeat on every page; a line and its b
 - **Payments and receipts** print as vouchers (`CashDocumentPrint.jsx`): the amount and in words, who it was paid to or
   received from, the account, the cash box or bank, the reference and the description, and the customer's or
   supplier's balances when the account names one.
+- **Documents without a party** read their form's own request (`GET /api/stock-adjustments/{id}`, opening balances,
+  journal entries): a stock adjustment prints each batch's balance, count, signed difference and value with the gains,
+  losses and net; an opening balance its batches and total value; a journal entry its lines with their parties, its
+  source document, and معكوس when it was reversed. These internal documents have no total in words. A journal entry's
+  amounts are printed exactly as the books keep them, with at least two decimals (`formatExactAmount`: "1,652.90625",
+  "850.00").
 
 - **The print dialog opens by itself** once the document, the company's details and the logo have loaded. Add
   `?print=no` to the address to look at the page without it; the toolbar's button prints again. "Save as PDF" in the

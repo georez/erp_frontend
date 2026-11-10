@@ -19,6 +19,7 @@ import {
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The purchase invoice document: stock bought from a supplier, on credit.
@@ -333,7 +334,8 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     </>}
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
-      onDeleteDraft={deleteThisDraft} onNew={newInvoice}>
+      onDeleteDraft={deleteThisDraft} onNew={newInvoice}
+      onPrint={invoice ? () => openPrintout('purchase-invoice', invoice.id) : undefined}>
       <Total label="الصافي" value={invoice?.netTotal ?? '0'} />
       <Total label="الضريبة" value={invoice?.vatTotal ?? '0'} />
       {invoice && isNonZero(invoice.roundingDifference) &&

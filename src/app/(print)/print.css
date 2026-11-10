@@ -273,6 +273,22 @@ table.lines tr.batches td {
   white-space: nowrap;
 }
 
+/* A journal entry's line: its customer or supplier under its account; the totals under the lines */
+.line-party {
+  color: var(--muted);
+  font-size: 7.5pt;
+}
+
+table.lines tbody.entry-totals td {
+  border-top: 1px solid var(--ink);
+  border-bottom: 0;
+  font-weight: 700;
+}
+
+.entry-description {
+  margin: 0 0 2mm;
+}
+
 /* --- after the lines: totals, the total in words, balances, signatures --- */
 
 .summary {
@@ -284,6 +300,11 @@ table.lines tr.batches td {
   display: flex;
   gap: 3mm;
   align-items: flex-start;
+}
+
+/* Where the total in words goes, for a document without one: keeps the totals at the far side */
+.totals-space {
+  flex: 1;
 }
 
 .words {

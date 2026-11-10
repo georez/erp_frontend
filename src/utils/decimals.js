@@ -56,6 +56,17 @@ export function formatAmount(value) {
   return `${integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
 }
 
+/**
+ * An amount (decimal text) exactly, with every decimal it has but never fewer than two, and thousands separators:
+ * "1652.9135000" → "1,652.9135", "850" → "850.00", "0.0036" → "0.0036".
+ */
+export function formatExactAmount(value) {
+  const number = Big(value);
+  const decimals = Math.max(number.stripTrailingZeros().scale(), 2);
+  const [integer, fraction] = number.setScale(decimals).toPlainString().split('.');
+  return `${integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
+}
+
 const WHOLE_NUMBER = /^\d+$/;
 
 /**

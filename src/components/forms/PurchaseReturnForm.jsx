@@ -19,6 +19,7 @@ import {
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The purchase return document: stock sent back to a supplier.
@@ -312,7 +313,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: postReturn, disabled: lines.length === 0 }}
-      onDeleteDraft={deleteThisDraft} onNew={newReturn}>
+      onDeleteDraft={deleteThisDraft} onNew={newReturn}
+      onPrint={purchaseReturn ? () => openPrintout('purchase-return', purchaseReturn.id) : undefined}>
       <Total label="تكلفة البضاعة" value={purchaseReturn ? purchaseReturn.stockValue : '0'} />
       <Total label="فرق السعر" value={purchaseReturn ? purchaseReturn.priceDifference : '0'} />
       <Total label="الصافي" value={purchaseReturn?.netTotal ?? '0'} />

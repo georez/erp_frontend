@@ -17,6 +17,7 @@ import {
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The stock adjustment document: the stock counted in one warehouse. Its header (warehouse, description) is typed in
@@ -259,6 +260,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}
-      onDeleteDraft={deleteThisDraft} onNew={newAdjustment} />
+      onDeleteDraft={deleteThisDraft} onNew={newAdjustment}
+      onPrint={adjustment ? () => openPrintout('stock-adjustment', adjustment.id) : undefined} />
   </DocumentWindow>;
 }
