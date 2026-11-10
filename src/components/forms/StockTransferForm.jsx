@@ -18,6 +18,7 @@ import { checkQuantity, hasErrors, headerProblem, missingProduct } from './docum
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
+import { openPrintout } from '@/components/print/printPages';
 
 /*
  * The stock transfer document: stock moved from one warehouse to another, in one step, at what it costs in the first.
@@ -136,6 +137,8 @@ const lineColumns = ({ batchesPhase, isPosted, onDelete }) => [
   amountColumn('quantity', 'الكمية', 80),
   ...(isPosted ? [] : [availableColumn]),
   ...(batchesPhase && !isPosted ? [batchedColumn] : []),
+  amountColumn('publicPrice', 'سعر الجمهور', 85),
+  amountColumn('discountPercent', 'الخصم %', 80),
   amountColumn('unitCost', 'تكلفة الوحدة', 90),
   amountColumn('value', 'القيمة', 100),
   ...deleteColumn(isPosted, onDelete),
@@ -367,7 +370,8 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     </>}
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
-      otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newTransfer}>
+      otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newTransfer}
+      onPrint={transfer ? () => openPrintout('stock-transfer', transfer.id) : undefined}>
       <Total label="إجمالي الكمية" value={totalQuantity(lines)} />
       <Total label="القيمة بالتكلفة" value={transfer?.valueTotal ?? (hasLines ? null : '0')} strong />
     </DocumentActions>

@@ -401,6 +401,11 @@ table.voucher tr.voucher-amount td {
   text-align: end;
 }
 
+/* Several signatures one under the other, room to sign between them */
+.signature > div + div {
+  margin-top: 6mm;
+}
+
 /* An empty box for the company's stamp */
 .stamp {
   box-sizing: border-box;

@@ -45,11 +45,15 @@ const cssString = (text) => String(text).replace(/[\\"]/g, '\\$&').replace(/</g,
  * The end of a printout: a signature (the recipient's by default), room for the company's stamp, and who prepared it.
  *
  * @param preparedLabel "أعدها" for a فاتورة, "أعده" for a سند or a مرتجع
- * @param signedBy      whose signature: "المستلم" unless said otherwise
+ * @param signedBy      whose signature: "المستلم" unless said otherwise; a list for several, one under the other (a
+ *                      transfer's two warehouse keepers)
  */
 export function Signatures({ preparedLabel, preparedBy, signedBy = 'المستلم' }) {
+  const signers = Array.isArray(signedBy) ? signedBy : [signedBy];
   return <div className="signatures">
-    <div className="signature">توقيع {signedBy}: ....................</div>
+    <div className="signature">
+      {signers.map((signer) => <div key={signer}>توقيع {signer}: ....................</div>)}
+    </div>
     <div className="stamp" aria-hidden="true" />
     <div className="signature">{preparedLabel}: {preparedBy}</div>
   </div>;

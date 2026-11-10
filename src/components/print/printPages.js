@@ -3,6 +3,7 @@ import SalesReturnPrint from './SalesReturnPrint';
 import PurchaseInvoicePrint from './PurchaseInvoicePrint';
 import PurchaseReturnPrint from './PurchaseReturnPrint';
 import StockAdjustmentPrint from './StockAdjustmentPrint';
+import StockTransferPrint from './StockTransferPrint';
 import OpeningBalancePrint from './OpeningBalancePrint';
 import JournalEntryPrint from './JournalEntryPrint';
 import { PaymentPrint, ReceiptPrint } from './CashDocumentPrint';
@@ -17,6 +18,7 @@ export const PRINT_PAGES = Object.freeze({
   'purchase-invoice': PurchaseInvoicePrint,
   'purchase-return': PurchaseReturnPrint,
   'stock-adjustment': StockAdjustmentPrint,
+  'stock-transfer': StockTransferPrint,
   'opening-balance': OpeningBalancePrint,
   'journal-entry': JournalEntryPrint,
   payment: PaymentPrint,
