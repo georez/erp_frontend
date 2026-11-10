@@ -73,6 +73,7 @@ const DOCUMENT_PAGE_OF_TYPE = Object.freeze({
   receipt: 'receipt',
   sales_invoice: 'sales-invoice',
   sales_return: 'sales-return',
+  stock_transfer: 'stock-transfer',
 });
 
 /** The page that opens an entry's document, or null (a manual entry, or a document with no page). */

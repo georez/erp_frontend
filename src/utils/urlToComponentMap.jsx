@@ -13,6 +13,7 @@ import PaymentForm from '@/components/forms/PaymentForm';
 import ReceiptForm from '@/components/forms/ReceiptForm';
 import SalesInvoiceForm from '@/components/forms/SalesInvoiceForm';
 import SalesReturnForm from '@/components/forms/SalesReturnForm';
+import StockTransferForm from '@/components/forms/StockTransferForm';
 import SettingsForm from '@/components/forms/SettingsForm';
 
 // Each dashboard URL renders a fixed component. The entries return elements (rather than being the
@@ -35,6 +36,7 @@ const urlToComponentMap = {
   '/dashboard/purchase-return': (props) => <PurchaseReturnForm {...props} />,
   '/dashboard/sales-invoice': (props) => <SalesInvoiceForm {...props} />,
   '/dashboard/sales-return': (props) => <SalesReturnForm {...props} />,
+  '/dashboard/stock-transfer': (props) => <StockTransferForm {...props} />,
   '/dashboard/settings': (props) => <SettingsForm {...props} />,
 };
 

@@ -408,6 +408,7 @@ const DOCUMENT_PAGES = Object.freeze({
   receipt: { idParam: 'receiptId', title: 'سند قبض' },
   'sales-invoice': { idParam: 'invoiceId', title: 'فاتورة مبيعات' },
   'sales-return': { idParam: 'returnId', title: 'مرتجع مبيعات' },
+  'stock-transfer': { idParam: 'transferId', title: 'تحويل مخزني' },
   'journal-entry': { idParam: 'entryId', title: 'قيد يومية' },
 });
 

@@ -193,6 +193,18 @@ export const ERROR_MESSAGES = Object.freeze({
   SALES_RETURN_NOT_ON_INVOICE: 'لم تُسحب التشغيلة "{batchNumber}" من "{productName}" في هذه الفاتورة',
   SALES_RETURN_EXCEEDS_INVOICE: 'المتاح للإرجاع من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
   SALES_RETURN_COST_REQUIRED: 'لا يوجد رصيد من "{productName}" في المخزن لحساب متوسط التكلفة: أدخل خصم التكلفة',
+  // stock transfers (StockTransferService)
+  STOCK_TRANSFER_NOT_FOUND: 'التحويل المخزني رقم {transferId} غير موجود',
+  STOCK_TRANSFER_POSTED: 'التحويل المخزني رقم {transferId} مُرحَّل ولا يمكن تعديله؛ صحّحه بتحويل عكسي',
+  STOCK_TRANSFER_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في التحويل',
+  STOCK_TRANSFER_BATCHES_NOT_STARTED: 'انتقل إلى إدخال التشغيلات في التحويل رقم {transferId} أولاً',
+  STOCK_TRANSFER_BATCH_NOT_FOUND: 'التشغيلة رقم {batchId} غير موجودة في التحويل',
+  STOCK_TRANSFER_HAS_LINES: 'لا يمكن تغيير المخزنين بعد إدخال أصناف التحويل رقم {transferId}؛ احذف الأصناف أولاً',
+  STOCK_TRANSFER_TO_WAREHOUSE_REQUIRED: 'حدّد المخزن المحوَّل إليه',
+  STOCK_TRANSFER_SAME_WAREHOUSE: 'المخزن المحوَّل إليه هو نفسه المحوَّل منه؛ اختر مخزناً آخر',
+  STOCK_TRANSFER_STOCK_INSUFFICIENT: 'رصيد "{productName}" في المخزن المحوَّل منه {available} فقط',
+  STOCK_TRANSFER_BATCH_INSUFFICIENT: 'رصيد التشغيلة "{batchNumber}" للصنف "{productName}" في المخزن المحوَّل منه {available} فقط',
+  STOCK_TRANSFER_BATCHES_OVER_QUANTITY: 'تشغيلات "{productName}" مجموعها {batched}، أكثر من الكمية {quantity}',
 
   // --- settings ---
   LOGO_TOO_LARGE: 'الشعار أكبر من المسموح (الحد الأقصى {maxKilobytes} كيلوبايت)',

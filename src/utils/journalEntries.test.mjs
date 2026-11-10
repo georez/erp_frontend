@@ -8,6 +8,7 @@ test("a payment's or a receipt's entry opens it", () => {
   assert.equal(documentPageOf('receipt'), 'receipt');
   assert.equal(documentPageOf('sales_invoice'), 'sales-invoice');
   assert.equal(documentPageOf('sales_return'), 'sales-return');
+  assert.equal(documentPageOf('stock_transfer'), 'stock-transfer');
 });
 
 test('a line has its amount on one side; the other, left empty, is zero', () => {
