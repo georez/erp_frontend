@@ -14,13 +14,18 @@ const ALL_ROWS = { combinator: 'and', rules: [] };
  * a link from another page opens (the trial balance's account → its statement). A new requestTime, so the same params
  * run again.
  *
+ * A number (a link's id) goes in as text, as the page's form holds it: Run checks the form's values, and an id field
+ * takes text only.
+ *
  * @param {string} page  the page's path under /dashboard (urlToComponentMap)
  * @param {string} formTitle
  * @param {object} params  the report's param values by name
  */
 export function reportPageUrl(page, formTitle, params) {
+  const asFormValues = Object.fromEntries(Object.entries(params)
+    .map(([name, value]) => [name, typeof value === 'number' ? String(value) : value]));
   return `/dashboard/${page}?formTitle=${encodeURIComponent(formTitle)}`
-    + `&params=${encodeURIComponent(JSON.stringify(params))}&execute=true&requestTime=${Date.now()}`;
+    + `&params=${encodeURIComponent(JSON.stringify(asFormValues))}&execute=true&requestTime=${Date.now()}`;
 }
 
 /** The current month up to today, in the browser's time zone: the period a new report page starts with. */
