@@ -38,8 +38,9 @@ import "./ComboBox2.css";
  * of keys stopping (some scanners send neither). The code then selects the option with that code, and Enter or Tab is
  * left alone, so a form can move on to its next field; when several options share it, the list opens with just those
  * to choose from; when none has it, onUnknownCode is called (and Enter or Tab is stopped). A code that starts with a
- * letter works the same when it's followed by Enter, though it isn't shown; letters match in either case. A code
- * pasted (Ctrl+V) ends at once. Without codes, digits are type-ahead like any other key.
+ * letter works the same when it's followed by Enter, though it isn't shown, if an option has it or a scanner typed it;
+ * otherwise it's a label mistyped, and stays type-ahead. Letters match in either case. A code pasted (Ctrl+V) ends at
+ * once. Without codes, digits are type-ahead like any other key.
  *
  * The popup is rendered in a portal with position: fixed, so it is never clipped by overflow: hidden ancestors, and it
  * flips above the field when there's no room below.
@@ -235,6 +236,8 @@ export const Combobox = forwardRef(function Combobox(
   // Everything typed since the last pause, as typed: a code that starts with a letter (typeAheadText keeps only what
   // matched)
   const typedSincePause = useRef("");
+  // When each of its characters was typed: a scanner's burst is a code, even one no option has
+  const typedKeyTimes = useRef([]);
   const typeAheadTimer = useRef(null);
 
   const inputRef = useRef(null);
@@ -494,6 +497,7 @@ export const Combobox = forwardRef(function Combobox(
   function resetTyping() {
     typeAheadText.current = "";
     typedSincePause.current = "";
+    typedKeyTimes.current = [];
     setHint("");
   }
 
@@ -524,6 +528,7 @@ export const Combobox = forwardRef(function Combobox(
       // Includes " "
       prefix += key.toLowerCase();
       typedSincePause.current += key;
+      typedKeyTimes.current = [...typedKeyTimes.current, Date.now()];
     } else {
       return false;
     }
@@ -534,13 +539,17 @@ export const Combobox = forwardRef(function Combobox(
   }
 
   /**
-   * Enter or Tab after type-ahead: what was typed is a code if it isn't the start of a label (a code that starts with
-   * a letter). False when it was plain type-ahead.
+   * Enter or Tab after type-ahead: what was typed is a code (one that starts with a letter) if it isn't the start of a
+   * label, and an option has it or a scanner typed it; a label mistyped by hand stays type-ahead. False when it was
+   * plain type-ahead.
    */
   function endTypedCode(event) {
     const text = typedSincePause.current.trim();
     const typedALabel = typeAheadText.current === typedSincePause.current.toLowerCase();
     if (codes.size === 0 || !text || typedALabel) {
+      return false;
+    }
+    if (!codes.has(lookupCode(text)) && !isScannerBurst(typedKeyTimes.current)) {
       return false;
     }
     clearTimeout(typeAheadTimer.current);
