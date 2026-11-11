@@ -94,6 +94,14 @@ export function ParamsTab({ loading, paramFields, paramValues, setParamValues, p
  * highlights. No query-level validator is passed, so an empty query (all rows) is not marked invalid.
  */
 export function QueryTab({ loading, fields, query, setQuery }) {
+  if (!loading && fields.length === 0) {
+    // A statement or an account tree: its balances are worked out from its rows, so it isn't filtered
+    return <Scrollable>
+      <Typography color="text.secondary">
+        لا يُصفّى هذا التقرير: أرصدته محسوبة من صفوفه، فإخفاء بعضها يجعل الباقي غير متسق.
+      </Typography>
+    </Scrollable>;
+  }
   return <Scrollable>
     {loading ? <Loading />
       : <QueryBuilder fields={fields} query={query} onQueryChange={(next) => setQuery(withAsciiDigits(next, fields))}

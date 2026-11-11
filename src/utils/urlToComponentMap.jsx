@@ -3,7 +3,7 @@ import Report from '@/components/reports/Report';
 import TrialBalance from '@/components/reports/trialBalance/TrialBalance';
 import ChartOfAccounts from '@/components/reports/chartOfAccounts/ChartOfAccounts';
 import StatementPage from '@/components/reports/statement/StatementPage';
-import SupplierBalances from '@/components/reports/supplierBalances/SupplierBalances';
+import PartyBalances from '@/components/reports/partyBalances/PartyBalances';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
 import OpeningBalanceForm from '@/components/forms/OpeningBalanceForm';
 import PurchaseInvoiceForm from '@/components/forms/PurchaseInvoiceForm';
@@ -29,7 +29,8 @@ const urlToComponentMap = {
   '/dashboard/journal-entry': (props) => <JournalEntryForm {...props} />,
   '/dashboard/payment': (props) => <PaymentForm {...props} />,
   '/dashboard/receipt': (props) => <ReceiptForm {...props} />,
-  '/dashboard/supplier-balances': (props) => <SupplierBalances {...props} />,
+  '/dashboard/supplier-balances': (props) => <PartyBalances kind="supplier" {...props} />,
+  '/dashboard/customer-balances': (props) => <PartyBalances kind="customer" {...props} />,
   '/dashboard/stock-adjustment': (props) => <StockAdjustmentForm {...props} />,
   '/dashboard/opening-balance': (props) => <OpeningBalanceForm {...props} />,
   '/dashboard/purchase-invoice': (props) => <PurchaseInvoiceForm {...props} />,

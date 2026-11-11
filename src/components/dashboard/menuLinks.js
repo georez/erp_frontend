@@ -47,6 +47,7 @@ export const MENU_MODULES = [
       reportLink('تقرير شرائح العملاء', 'customerTiersReport'),
       reportLink('تقرير العملاء', 'customersReport'),
       pageLink('كشف حساب عميل', 'customer-statement'),
+      pageLink('أرصدة العملاء', 'customer-balances'),
     ],
   },
   {
