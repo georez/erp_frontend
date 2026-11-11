@@ -34,6 +34,8 @@ export const MENU_MODULES = [
       reportLink('تقرير القيود', 'journalEntriesReport'),
       pageLink('دليل الحسابات', 'chart-of-accounts'),
       pageLink('ميزان المراجعة', 'trial-balance'),
+      pageLink('قائمة الدخل', 'income-statement'),
+      pageLink('الميزانية', 'balance-sheet'),
       pageLink('كشف حساب', 'account-statement'),
     ],
   },

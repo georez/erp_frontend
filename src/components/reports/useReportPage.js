@@ -28,12 +28,27 @@ export function reportPageUrl(page, formTitle, params) {
     + `&params=${encodeURIComponent(JSON.stringify(asFormValues))}&execute=true&requestTime=${Date.now()}`;
 }
 
+/** A day as a date param takes it: "2026-11-05". */
+function isoDay(day) {
+  const twoDigits = (number) => String(number).padStart(2, '0');
+  return `${day.getFullYear()}-${twoDigits(day.getMonth() + 1)}-${twoDigits(day.getDate())}`;
+}
+
 /** The current month up to today, in the browser's time zone: the period a new report page starts with. */
 export function monthToDate() {
   const today = new Date();
-  const twoDigits = (number) => String(number).padStart(2, '0');
-  const yearMonth = `${today.getFullYear()}-${twoDigits(today.getMonth() + 1)}`;
-  return { p_from_date: `${yearMonth}-01`, p_to_date: `${yearMonth}-${twoDigits(today.getDate())}` };
+  return { p_from_date: `${isoDay(today).slice(0, 8)}01`, p_to_date: isoDay(today) };
+}
+
+/** The current year up to today, in the browser's time zone: the period an income statement starts with. */
+export function yearToDate() {
+  const today = new Date();
+  return { p_from_date: `${today.getFullYear()}-01-01`, p_to_date: isoDay(today) };
+}
+
+/** Today, in the browser's time zone: the day a balance sheet starts at. */
+export function today() {
+  return { p_date: isoDay(new Date()) };
 }
 
 /** Loads a report's metadata once: its params' form fields, its totals, its columns' links. */
