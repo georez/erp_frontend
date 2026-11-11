@@ -6,11 +6,14 @@ import {
 import useSWR from 'swr';
 import { useContext, useRef, useState } from 'react';
 import { AuthContext } from '@/components/AuthProvider';
+import { errorMessageFromBody } from '@/utils/errorMessages';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
 import { sendOrShowError } from '@/utils/sendOrShowError';
 
 const SETTINGS_URL = '/api/settings';
 const LOGO_URL = '/api/settings/logo';
+// The backend's TenantSettingsService.MAX_LOGO_BYTES
+const MAX_LOGO_KILOBYTES = 512;
 
 // Which batches a sale's line that names none takes first (the backend's BatchOrder)
 const SALES_BATCH_ORDERS = [
@@ -86,6 +89,14 @@ export default function SettingsForm() {
   };
 
   const uploadLogo = async (file) => {
+    // Checked here too: a file much larger than a logo may be cut off on its way to the backend (a connection
+    // error), before the backend could say why
+    if (file.size > MAX_LOGO_KILOBYTES * 1024) {
+      setErrorMessage(errorMessageFromBody({
+        errorCode: 'LOGO_TOO_LARGE', errorParams: { maxKilobytes: MAX_LOGO_KILOBYTES },
+      }));
+      return;
+    }
     if (await send(LOGO_URL, {
       method: 'PUT',
       headers: { 'Content-Type': file.type || 'application/octet-stream' },
