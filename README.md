@@ -152,37 +152,39 @@ and return share. A table's column titles repeat on every page; a line and its b
 - **Signed out**, the proxy sends `/print/*` to the sign-in page, as it does `/dashboard/*`.
 - **Totals in words** (تفقيط) come from `src/utils/amountInWords.js`: Egyptian pounds and piasters, rounded half up.
 
-## Getting Started
+## Running it
 
-First, run the development server:
+The backend must be running first (`backend/`, on port 4000), and `.env.local` must have `REPORT_SIGNING_SECRET` (see
+above). Then:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000; sign in as admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Next.js 16 runs one `next dev` per folder: to try a second copy while yours runs, build it standalone instead
+(`next build`, then `node .next/standalone/server.js` on another `PORT`, with `.next/static` and `.env.local` copied
+next to it). Deploying is in `deploy/` (Docker Compose: PostgreSQL, the backend, this app and Apache); see its README.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test         # the unit tests in src/utils/*.test.mjs (node --test); add a new file to the "test" script
+npm run lint
+```
 
-## Learn More
+## Where things are
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/`: the routes. `(dashboard)`: the dashboard, whose windows are forms, documents and reports, each also on a
+  page of its own (`/dashboard/{page}`, `src/utils/urlToComponentMap.jsx`). `(login)`, `(print)` (the printed
+  documents), `custom/api/report/` (the signed report route), `csrf`.
+- `src/proxy.js`: the CSRF check, and the session check of `/dashboard` and `/print` pages.
+- `src/components/forms/`: the generic record form (`SchemaCrud`, built from the backend's metadata) and the documents;
+  `forms/document/` has what the documents share (`useDocument`, the request queue, the entry row and grid).
+- `src/components/reports/`: the generic report screen and the report pages of their own (statements, the trial
+  balance, the chart of accounts, supplier and customer balances).
+- `src/components/print/`: the printed documents. `src/components/ui/`: the combobox, the confirmation dialog, the
+  toasts.
+- `src/utils/`: what has no UI (decimals, dates, report queries, error messages), with its tests.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The font is Cairo (`next/font/google`, in the layouts), for Arabic and Latin; the pages are right to left.

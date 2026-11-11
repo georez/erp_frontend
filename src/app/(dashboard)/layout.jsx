@@ -19,7 +19,7 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   return (
-    <html dir="rtl" className={cairo.variable}>
+    <html dir="rtl" lang="ar" className={cairo.variable}>
       <body>
         <MuiProvider><AuthProvider><ConfirmProvider><ToastProvider>
           {children}
