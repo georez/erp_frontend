@@ -196,7 +196,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    doc.addLine(line, products.labelOf(line.productId));
     // The cursor goes back to the product: Enter moves on to its next batch, typing picks another product
     entryRow.clearKeepingProduct();
     productRef.current?.focus();
@@ -229,7 +229,6 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
     </HeaderRow>
 
     <DocumentAlerts loadError={doc.loadError} optionsError={warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={entryRow.errors.header} />
 
     {editable && <EntryRow fieldRefs={[productRef, batchRef, expiryRef, countedRef, discountRef, okRef]}>

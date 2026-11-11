@@ -307,7 +307,7 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
     if (replacesALine) {
       doc.sendToDraft(`/lines/${typed.lineId}`, 'PUT', line);
     } else {
-      doc.addLine(line);
+      doc.addLine(line, accounts.labelOf(line.accountId));
     }
     entryRow.clear();
     accountRef.current?.focus();
@@ -363,7 +363,6 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
     {entry && <EntryOrigin entry={entry} openLink={openLink} onOpenEntry={openEntry} />}
 
     <DocumentAlerts loadError={doc.loadError} optionsError={accounts.error ?? customers.error ?? suppliers.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={entryRow.errors.header} />
 
     {editable && <EntryRow fieldRefs={[accountRef, partyRef, debitRef, creditRef, descriptionRef, okRef]}>

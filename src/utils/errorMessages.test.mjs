@@ -148,7 +148,6 @@ const BACKEND_CODES = {
   SALES_INVOICE_HAS_LINES: ['invoiceId'],
   SALES_TIER_DISCOUNT_MISSING: ['warehouseName', 'tierName'],
   SALES_DISCOUNT_CHANGE_NOT_ALLOWED: [],
-  SALES_DISCOUNT_UNDER_MINIMUM: ['productName', 'minimum'],
   SALES_STOCK_INSUFFICIENT: ['productName', 'available'],
   SALES_BATCH_NOT_FOUND: ['productName', 'batchNumber'],
   SALES_BATCH_INSUFFICIENT: ['productName', 'batchNumber', 'available'],

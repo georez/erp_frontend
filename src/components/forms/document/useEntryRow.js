@@ -12,8 +12,14 @@ export function useEntryRow(emptyEntry) {
   const [entry, setEntry] = useState(emptyEntry);
   const [errors, setErrors] = useState({});
 
-  /** For a field's onChange: sets that field. */
-  const setField = (field) => (value) => setEntry((previous) => ({ ...previous, [field]: value }));
+  /**
+   * For a field's onChange: sets that field. Its error goes as it's typed in again (its hint shows again); OK checks
+   * it anew.
+   */
+  const setField = (field) => (value) => {
+    setEntry((previous) => ({ ...previous, [field]: value }));
+    setErrors((previous) => (previous[field] == null ? previous : { ...previous, [field]: null }));
+  };
 
   /** Empties the row (a new document). */
   const clear = () => {

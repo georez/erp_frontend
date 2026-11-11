@@ -189,7 +189,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     }
     const { invoice: entered, error } = await loadPostedInvoice(text);
     if (error) {
-      doc.setErrorMessage(error);
+      doc.showError(error);
       return;
     }
     // A product not on the invoice, or a batch of another warehouse, is the entry row's no more
@@ -214,7 +214,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    doc.addLine(line, products.labelOf(line.productId));
     // The product stays selected; the cursor goes back to it, where Enter moves on and typing picks another
     entryRow.clearKeepingProduct();
     productRef.current?.focus();
@@ -290,7 +290,6 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     </HeaderRow>
 
     <DocumentAlerts loadError={doc.loadError} optionsError={suppliers.error ?? warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={entryRow.errors.header} />
 
     {editable && <EntryRow fieldRefs={[productRef, batchRef, quantityRef, discountRef, okRef]}>

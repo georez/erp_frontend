@@ -110,7 +110,7 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    doc.addLine(line, products.labelOf(line.productId));
     // The product stays chosen: its next batch often comes next
     entryRow.clearKeepingProduct();
     productRef.current?.focus();
@@ -141,7 +141,6 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
     </HeaderRow>
 
     <DocumentAlerts loadError={doc.loadError} optionsError={warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={entryRow.errors.header} />
 
     {editable && <EntryRow fieldRefs={[productRef, batchRef, expiryRef, quantityRef, discountRef, okRef]}>

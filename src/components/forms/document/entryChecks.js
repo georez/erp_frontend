@@ -1,6 +1,7 @@
 import { Big } from 'bigdecimal.js';
 import { normalizeDecimalText, parsePercent, parseWholeUnits } from '@/utils/decimals';
 import { parseExpiry } from '@/utils/expiryDates';
+import { formatAmount } from './amounts';
 
 /*
  * The checks of what's typed into a document form, before it's sent to the backend (which checks it again). Each
@@ -18,6 +19,9 @@ const INVALID_DATE = 'تاريخ غير صحيح';
 
 const isBlank = (text) => text.trim() === '';
 
+/** Whether a header's description is longer than the backend takes. */
+export const descriptionTooLong = (header) => header.description.length > MAX_DESCRIPTION_LENGTH;
+
 /**
  * What a new document's header lacks for its first line to be sent, or null: the supplier (when the document has one)
  * and the warehouse chosen, and the description short enough.
@@ -29,10 +33,27 @@ export function headerProblem(header, { needsSupplier = false } = {}) {
   if (header.warehouseId == null) {
     return 'حدّد المخزن أولاً';
   }
-  if (header.description.length > MAX_DESCRIPTION_LENGTH) {
+  if (descriptionTooLong(header)) {
     return `البيان أطول من المسموح (الحد الأقصى ${MAX_DESCRIPTION_LENGTH} حرف)`;
   }
   return null;
+}
+
+/**
+ * What to ask before sending a sale's line whose discount is under the product's minimum sales discount, or null:
+ * allowed, but seldom meant. discount: the one the line gets, typed or worked out (null while unknown); minimum: the
+ * product's, from its line pricing (null for none).
+ */
+export function underMinimumQuestion(discount, minimum, productName) {
+  if (discount == null || minimum == null || Big(discount).compareTo(Big(minimum)) >= 0) {
+    return null;
+  }
+  return {
+    title: `خصم ${productName} أقل من الحد الأدنى؟`,
+    message: `الخصم ${formatAmount(discount)}% والحد الأدنى لخصم بيع الصنف ${formatAmount(minimum)}%.`,
+    confirmLabel: 'حفظ السطر',
+    color: 'warning',
+  };
 }
 
 /** The error for a product that must be chosen, or null. */

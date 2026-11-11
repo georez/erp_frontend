@@ -177,7 +177,6 @@ export const ERROR_MESSAGES = Object.freeze({
   SALES_INVOICE_HAS_LINES: 'لا يمكن تغيير العميل أو المخزن بعد إدخال أصناف الفاتورة رقم {invoiceId}؛ احذف الأصناف أولاً',
   SALES_TIER_DISCOUNT_MISSING: 'لا يوجد خصم للشريحة "{tierName}" في "{warehouseName}"',
   SALES_DISCOUNT_CHANGE_NOT_ALLOWED: 'ليس لديك صلاحية تعديل خصم البيع',
-  SALES_DISCOUNT_UNDER_MINIMUM: 'لا يُباع "{productName}" بخصم أقل من {minimum}%',
   SALES_STOCK_INSUFFICIENT: 'المتاح للبيع من "{productName}" {available} فقط (الرصيد مطروحاً منه المحجوز لفواتير أخرى)',
   SALES_BATCH_NOT_FOUND: 'لا توجد تشغيلة "{batchNumber}" للصنف "{productName}"',
   SALES_BATCH_INSUFFICIENT: 'المتاح من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
@@ -192,7 +191,7 @@ export const ERROR_MESSAGES = Object.freeze({
   SALES_RETURN_INVOICE_INVALID: 'فاتورة المبيعات رقم {invoiceId} غير موجودة أو غير مُرحَّلة أو لعميل آخر',
   SALES_RETURN_NOT_ON_INVOICE: 'لم تُسحب التشغيلة "{batchNumber}" من "{productName}" في هذه الفاتورة',
   SALES_RETURN_EXCEEDS_INVOICE: 'المتاح للإرجاع من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
-  SALES_RETURN_COST_REQUIRED: 'لا يوجد رصيد من "{productName}" في المخزن لحساب متوسط التكلفة: أدخل خصم التكلفة',
+  SALES_RETURN_COST_REQUIRED: 'أدخل خصم التكلفة لـ "{productName}"',
   // stock transfers (StockTransferService)
   STOCK_TRANSFER_NOT_FOUND: 'التحويل المخزني رقم {transferId} غير موجود',
   STOCK_TRANSFER_POSTED: 'التحويل المخزني رقم {transferId} مُرحَّل ولا يمكن تعديله؛ صحّحه بتحويل عكسي',

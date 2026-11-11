@@ -4,8 +4,10 @@ import useSWR, { useSWRConfig } from 'swr';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '@/components/AuthProvider';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/Toasts';
 import { fetchJson } from '@/utils/fetchJson';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
+import { descriptionTooLong } from './entryChecks';
 import { useRequestQueue } from './useRequestQueue';
 
 /**
@@ -18,6 +20,9 @@ import { useRequestQueue } from './useRequestQueue';
  *   until every request is answered.
  * - Posted: nothing changes.
  *
+ * Why a request was refused is shown as a toast (the window's title, and what was sent: a line's product), not in the
+ * form: the user has typed on meanwhile, the entry row holding the next line.
+ *
  * @param api         the document's backend path, e.g. "/api/purchase-invoices"
  * @param documentId  the document the window shows; none for a new one
  * @param page        the window's page, e.g. "/dashboard/purchase-invoice"
@@ -25,15 +30,21 @@ import { useRequestQueue } from './useRequestQueue';
  * @param emptyHeader a new document's header
  * @param headerFrom  the header of a document the backend sent
  * @param headerBody  what the backend takes for a header
+ * @param headerTooLong whether a header field is longer than the backend takes (shown in red); the description by
+ *                    default
  */
 export function useDocument({
   api, documentId, formId, formTitle, page, idParam, emptyHeader, headerFrom, headerBody,
+  headerTooLong = descriptionTooLong,
 }) {
   const { csrfFetch } = useContext(AuthContext);
   const confirm = useConfirm();
+  const showToast = useToast();
   const updateOpenFormUrl = useUpdateOpenForms(formId);
   const { mutate: mutateCache } = useSWRConfig();
-  const requests = useRequestQueue(csrfFetch);
+  /** Why something failed, as a toast: about is what was sent (a line's product), named before it. */
+  const showError = (message, about = null) => showToast(formTitle, about ? `${about}: ${message}` : message);
+  const requests = useRequestQueue(csrfFetch, showError);
 
   const urlOf = (id, path = '') => `${api}/${id}${path}`;
   const { data: document, error: loadError } = useSWR(
@@ -72,9 +83,13 @@ export function useDocument({
   /** A field typed: kept, and saved when the field is left (saveHeader). */
   const editHeader = (changes) => shown.setHeader((previous) => ({ ...previous, ...changes }));
 
-  /** Saves the header to the draft if it differs from what the draft has. A new document's first line saves it. */
+  /**
+   * Saves the header to the draft if it differs from what the draft has. A new document's first line saves it. Not
+   * while a field is too long: the backend would refuse it, and the header read again would lose what was typed; the
+   * field stays red until shortened, and leaving it then saves the rest too (a choice made meanwhile).
+   */
   const saveHeader = (next = shown.header) => {
-    if (!isDraft || sameBody(headerBody(next), headerBody(headerFrom(document)))) {
+    if (!isDraft || headerTooLong(next) || sameBody(headerBody(next), headerBody(headerFrom(document)))) {
       return;
     }
     requests.enqueue(async () => {
@@ -94,8 +109,11 @@ export function useDocument({
 
   // --- lines and actions ---
 
-  /** Sends a line. A new document's first line creates the draft with the header first, and the window opens it. */
-  const addLine = (line) => requests.enqueue(async () => {
+  /**
+   * Sends a line; about: what it's for (its product), named if it's refused. A new document's first line creates the
+   * draft with the header first, and the window opens it.
+   */
+  const addLine = (line, about) => requests.enqueue(async () => {
     const createsTheDraft = draftIdRef.current == null;
     if (createsTheDraft) {
       const created = await requests.send(api, 'POST', headerBody(shown.header));
@@ -109,7 +127,7 @@ export function useDocument({
       openInWindow(draftIdRef.current);
     }
     return saved;
-  });
+  }, about);
 
   /** Creates the draft from the header, for a document without lines; the window opens it. True if it was created. */
   const createFromHeader = () => requests.enqueue(async () => {
@@ -152,17 +170,13 @@ export function useDocument({
   });
 
   /** Another document in the window (e.g. one whose number was typed). */
-  const openDocument = (id) => {
-    requests.setErrorMessage(null);
-    openInWindow(id);
-  };
+  const openDocument = (id) => openInWindow(id);
 
   /** A new document in the window, its header empty. */
   const openNew = () => {
     draftIdRef.current = null;
     shown.setHeader(emptyHeader);
     openInWindow(null);
-    requests.setErrorMessage(null);
   };
 
   return {
@@ -187,8 +201,8 @@ export function useDocument({
     openDocument,
     openNew,
     pending: requests.pending,
-    errorMessage: requests.errorMessage,
-    setErrorMessage: requests.setErrorMessage,
+    // Shows why something failed (a toast)
+    showError,
   };
 }
 

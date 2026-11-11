@@ -14,7 +14,8 @@ import {
 import { DocumentAlerts, DocumentWindow, NEW_DOCUMENT_HINT } from './document/DocumentLayout';
 import { EntryField, EntryRow, ExpiryField, OkButton, ProductField } from './document/EntryFields';
 import {
-  checkBatchNumber, checkExpiry, checkQuantity, checkRequiredDiscount, hasErrors, headerProblem, missingProduct,
+  checkBatchNumber, checkExpiry, checkQuantity, checkRequiredDiscount, descriptionTooLong, hasErrors, headerProblem,
+  missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
@@ -140,6 +141,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   const doc = useDocument({
     api: '/api/purchase-invoices', documentId: invoiceId, formId, formTitle, page: '/dashboard/purchase-invoice',
     idParam: 'invoiceId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
+    headerTooLong: (typed) => descriptionTooLong(typed) || supplierNumberTooLong(typed),
   });
   const { document: invoice, header, editable, isDraft, isPosted } = doc;
   const lineRow = useEntryRow(EMPTY_LINE);
@@ -176,7 +178,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    doc.addLine(line, products.labelOf(line.productId));
     lineRow.clearKeepingProduct();
     productRef.current?.focus();
   };
@@ -301,7 +303,6 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     </HeaderRow>
 
     <DocumentAlerts loadError={doc.loadError} optionsError={suppliers.error ?? warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={lineRow.errors.header} />
 
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}

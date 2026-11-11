@@ -16,7 +16,7 @@ import {
 import { DocumentAlerts, DocumentWindow, NEW_DOCUMENT_HINT } from './document/DocumentLayout';
 import { BatchPicker, EntryField, EntryRow, OkButton, ProductField } from './document/EntryFields';
 import {
-  checkOptionalDiscount, checkQuantity, hasErrors, headerProblem, missingProduct,
+  checkOptionalDiscount, checkQuantity, hasErrors, headerProblem, missingProduct, underMinimumQuestion,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
@@ -31,8 +31,9 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
  *    OK creates the draft; once it has lines, the customer and the warehouse stay (its lines were priced and reserved
  *    for them).
  * 2. Its products: the entry row sends a product and its quantity. The discount is worked out by the backend (the
- *    product's average discount less the customer's tier's, never under the product's minimum) and recorded; a user
- *    who may change discounts may type another. A draft reserves its lines: the quantity shows what's free to sell.
+ *    product's average discount less the customer's tier's) and recorded; a user who may change discounts may type
+ *    another. A discount under the product's minimum is asked about first. A draft reserves its lines: the quantity
+ *    shows what's free to sell.
  * 3. Optionally, their batches (إدخال التشغيلات): batches named for some or all of a product's units, from the
  *    warehouse's, each with what's free of it. Posting chooses the batches of the other units itself (FEFO or LIFO, in
  *    الإعدادات), and says which products those are first.
@@ -228,17 +229,23 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     && unitPriceAt(productOption.detail, discountShown).compareTo(Big(pricing.unitCost)) < 0;
   const discountHelp = pricing && `المتوسط ${formatAmount(pricing.averageDiscountPercent ?? '0')} − الشريحة `
     + `${formatAmount(pricing.tierDiscountPercent)}`
-    + (pricing.minimumDiscountPercent ? ` · لا يقل عن ${formatAmount(pricing.minimumDiscountPercent)}` : '');
+    + (pricing.minimumDiscountPercent ? ` · الحد الأدنى ${formatAmount(pricing.minimumDiscountPercent)}` : '');
 
-  /** Sends the line; the product stays chosen, the rest is cleared at once. */
-  const saveLine = () => {
+  /** Sends the line, asking first about a discount under the minimum; the product stays, the rest is cleared. */
+  const saveLine = async () => {
     const headerWarning = doc.isNew ? salesHeaderProblem(header) : null;
     const { errors, line } = checkLineEntry(lineRow.entry, pricing?.available ?? null);
     lineRow.setErrors({ ...errors, header: headerWarning });
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    const question = underMinimumQuestion(line.discountPercent ?? discountItGets,
+      pricing?.minimumDiscountPercent ?? null, products.labelOf(line.productId));
+    if (question && !await confirm(question)) {
+      discountRef.current?.focus();
+      return;
+    }
+    doc.addLine(line, products.labelOf(line.productId));
     lineRow.clearKeepingProduct();
     productRef.current?.focus();
   };
@@ -393,7 +400,6 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     </Typography>}
 
     <DocumentAlerts loadError={doc.loadError} optionsError={customers.error ?? warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={lineRow.errors.header} />
     {isDraft && overCreditLimit && <Alert severity="warning">
       {`رصيد العميل مع هذه الفاتورة (${formatAmount(balanceAfter)}) يتجاوز حد الائتمان `

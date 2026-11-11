@@ -15,12 +15,14 @@ import {
 import { DocumentAlerts, DocumentWindow, NEW_DOCUMENT_HINT } from './document/DocumentLayout';
 import { BatchPicker, EntryField, EntryRow, ExpiryField, OkButton, ProductField } from './document/EntryFields';
 import {
-  checkBatchNumber, checkExpiry, checkOptionalDiscount, checkQuantity, hasErrors, headerProblem, missingProduct,
+  checkBatchNumber, checkExpiry, checkOptionalDiscount, checkQuantity, checkRequiredDiscount, hasErrors, headerProblem,
+  missingProduct, underMinimumQuestion,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The sales return document: stock a customer sends back.
@@ -29,8 +31,9 @@ import { openPrintout } from '@/components/print/printPages';
  * sold on: when its number is left, the customer and warehouse become the invoice's, the products and batches to
  * choose from are those the invoice took (with what's left to bring back), and each unit is credited at the invoice's
  * amounts and comes back at its cost on the invoice. Without one, a line names its batch (number and expiry date) and
- * is credited at the discount a sale would get (another only for a user who may change discounts); its goods come back
- * at the cost entered as a discount off the public price, or at the warehouse's average.
+ * is credited at the discount a sale would get (another only for a user who may change discounts; either is asked
+ * about first when it's under the product's minimum); its goods come back at the cost entered as a discount off the
+ * public price, which every line must have (the warehouse's average is shown as a hint).
  *
  * Once the return has lines, its customer, warehouse and invoice stay. Posting puts the goods back into their batches
  * and credits the customer with the total (rounded to 2 decimals).
@@ -119,7 +122,7 @@ function checkEntry(entry, againstInvoice) {
   const number = checkBatchNumber(entry.batchNumber);
   const expiry = checkExpiry(entry.expiryDate);
   const discount = checkOptionalDiscount(entry.discountPercent);
-  const costDiscount = checkOptionalDiscount(entry.costDiscountPercent);
+  const costDiscount = checkRequiredDiscount(entry.costDiscountPercent);
   Object.assign(errors, {
     batchNumber: number.error, expiryDate: expiry.error, discountPercent: discount.error,
     costDiscountPercent: costDiscount.error,
@@ -136,7 +139,7 @@ function checkEntry(entry, againstInvoice) {
   };
 }
 
-/** What the goods cost; unknown (posting refuses it) while there's no average and no cost entered. */
+/** What the goods cost; unknown (posting refuses it) for a line saved without its cost, before it was required. */
 const stockValueColumn = {
   ...amountColumn('stockValue', 'التكلفة', 95),
   valueFormatter: ({ value }) => (value == null ? 'غير معروفة' : formatAmount(value)),
@@ -163,6 +166,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
   const { data: permissions } = useSWR('/api/sales-invoices/permissions', fetchJson);
+  const confirm = useConfirm();
   const doc = useDocument({
     api: '/api/sales-returns', documentId: returnId, formId, formTitle, page: '/dashboard/sales-return',
     idParam: 'returnId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
@@ -213,7 +217,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     }
     const { invoice: entered, error } = await loadPostedInvoice(text);
     if (error) {
-      doc.setErrorMessage(error);
+      doc.showError(error);
       return;
     }
     setEntry(EMPTY_ENTRY);
@@ -231,15 +235,24 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     && formatExpiry(line.expiryDate) === (againstInvoice ? formatExpiry(entry.batch?.expiryDate) : entry.expiryDate));
   const discountItGets = existingLine?.discountPercent ?? pricing?.discountPercent ?? null;
 
-  /** Sends the line; the row is cleared at once, but for the product, so the next one can be typed. */
-  const saveEntry = () => {
+  /**
+   * Sends the line, asking first about a discount under the minimum; the row is cleared at once, but for the
+   * product, so the next one can be typed.
+   */
+  const saveEntry = async () => {
     const headerWarning = doc.isNew ? returnHeaderProblem(header) : null;
     const { errors, line } = checkEntry(entry, againstInvoice);
     entryRow.setErrors({ ...errors, header: headerWarning });
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    const question = underMinimumQuestion(line.discountPercent ?? discountItGets,
+      pricing?.minimumDiscountPercent ?? null, products.labelOf(line.productId));
+    if (question && !await confirm(question)) {
+      discountRef.current?.focus();
+      return;
+    }
+    doc.addLine(line, products.labelOf(line.productId));
     entryRow.clearKeepingProduct();
     productRef.current?.focus();
   };
@@ -308,7 +321,6 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     </HeaderRow>
 
     <DocumentAlerts loadError={doc.loadError} optionsError={customers.error ?? warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={entryRow.errors.header} />
 
     {editable && <EntryRow fieldRefs={fieldRefs}>
@@ -333,8 +345,8 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
           placeholder={discountItGets == null ? undefined : formatAmount(discountItGets)} />
         <EntryField label="خصم التكلفة %" kind="decimal" value={entry.costDiscountPercent}
           onChange={setField('costDiscountPercent')} inputRef={costDiscountRef}
-          error={entryRow.errors.costDiscountPercent} placeholder="المتوسط" minWidth={110}
-          helperText={pricing ? (pricing.unitCost == null ? 'لا رصيد: أدخله'
+          error={entryRow.errors.costDiscountPercent} minWidth={110}
+          helperText={pricing ? (pricing.unitCost == null ? 'لا رصيد'
             : `المتوسط ${formatAmount(pricing.averageDiscountPercent ?? '0')}%`) : undefined} />
       </>}
       <OkButton okRef={okRef} onClick={saveEntry} updating={existingLine != null} />

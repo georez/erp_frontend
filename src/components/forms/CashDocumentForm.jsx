@@ -225,7 +225,7 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
 
     <DocumentAlerts loadError={doc.loadError}
       optionsError={cashAccounts.error ?? accounts.error ?? customers.error ?? suppliers.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)} headerWarning={balanceWarning} />
+      headerWarning={balanceWarning} />
 
     <Box onKeyDown={(event) => moveOnEnter(event, fieldRefs)} sx={{
       display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 1.5, flexShrink: 0,

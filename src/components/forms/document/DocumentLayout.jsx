@@ -10,14 +10,13 @@ export function DocumentWindow({ children }) {
 }
 
 /**
- * The form's messages: why the document or the comboboxes' options couldn't be loaded, why the last request failed
- * (closable), and what a new document's header lacks for its first line.
+ * The form's messages: why the document or the comboboxes' options couldn't be loaded, and what a new document's
+ * header lacks for its first line. Why a request failed is a toast (useDocument).
  */
-export function DocumentAlerts({ loadError, optionsError, errorMessage, onCloseError, headerWarning }) {
+export function DocumentAlerts({ loadError, optionsError, headerWarning }) {
   return <>
     {loadError && <Alert severity="error">{loadError.message}</Alert>}
     {optionsError && <Alert severity="error">{optionsError.message}</Alert>}
-    {errorMessage && <Alert severity="error" onClose={onCloseError}>{errorMessage}</Alert>}
     {headerWarning && <Alert severity="warning">{headerWarning}</Alert>}
   </>;
 }

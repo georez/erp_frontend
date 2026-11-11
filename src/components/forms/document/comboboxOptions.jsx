@@ -17,11 +17,16 @@ export const COMBOBOX_PROPS = { fullWidth: true, messages: COMBOBOX_MESSAGES };
 /** The accounts a manual entry's lines or a payment may go on, as ComboBox2 options with their subledgers. */
 export function useAccountOptions() {
   const { data = [], error } = useSWR('/api/journal-entries/accounts', fetchJson);
-  return { options: data, error };
+  return { options: data, error, labelOf: (value) => labelOf(data, value) };
 }
 
-/** All of a link entity's records (e.g. "products") as ComboBox2 options ({ value, label, code?, detail? }). */
+/**
+ * All of a link entity's records (e.g. "products") as ComboBox2 options ({ value, label, code?, detail? }); labelOf:
+ * a record's label by its id (null for none).
+ */
 export function useOptions(linkEntity) {
   const { data = [], error } = useSWR(`/api/schemacrud/options/entity/${linkEntity}`, fetchJson);
-  return { options: data, error };
+  return { options: data, error, labelOf: (value) => labelOf(data, value) };
 }
+
+const labelOf = (options, value) => options.find((option) => option.value === value)?.label ?? null;

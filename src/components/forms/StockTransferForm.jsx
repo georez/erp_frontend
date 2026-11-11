@@ -210,7 +210,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     if (headerWarning || !line) {
       return;
     }
-    doc.addLine(line);
+    doc.addLine(line, products.labelOf(line.productId));
     lineRow.clearKeepingProduct();
     productRef.current?.focus();
   };
@@ -338,7 +338,6 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     </HeaderRow>
 
     <DocumentAlerts loadError={doc.loadError} optionsError={warehouses.error ?? products.error}
-      errorMessage={doc.errorMessage} onCloseError={() => doc.setErrorMessage(null)}
       headerWarning={lineRow.errors.header} />
     {isDraft && shortLines.length > 0 && <Alert severity="warning">
       {`الكمية أكبر من رصيد المخزن المحوَّل منه: ${shortLines.map((line) => line.productName).join('، ')}. `
