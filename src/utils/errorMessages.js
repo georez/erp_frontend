@@ -27,6 +27,8 @@ export const ERROR_MESSAGES = Object.freeze({
   // --- accounts ---
   CONTRA_ACCOUNT_NOT_FOUND: 'الحساب المعكوس ضده رقم {accountId} غير موجود',
   CONTRA_ACCOUNT_SIDE_NOT_ALLOWED: 'الحساب المعاكس يكون عكس طبيعة الحساب المعكوس ضده، فلا يمكن أن يكون "{debitOrCredit}"',
+  CONTRA_ACCOUNT_TO_CONTRA_ACCOUNT: 'الحساب رقم {accountId} حساب معاكس، فلا يُعكس ضده حساب آخر',
+  CONTRA_ACCOUNT_TO_ITSELF: 'لا يكون الحساب معاكساً لنفسه',
   PARENT_ACCOUNT_REQUIRED: 'اختر الحساب الأم (الحساب المعاكس وحده يوضع تحت الحساب الأم للحساب المعكوس ضده)',
   PARENT_ACCOUNT_NOT_FOUND: 'الحساب الأم رقم {accountId} غير موجود أو لا يمكن اختياره كحساب أم',
   ACCOUNT_SIDE_DIFFERS_FROM_PARENT: 'طبيعة الحساب تكون مثل طبيعة الحساب الأم، فلا يمكن أن تكون "{debitOrCredit}"',

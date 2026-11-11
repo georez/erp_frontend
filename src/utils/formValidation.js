@@ -61,8 +61,8 @@ const VALUE_CHECKS = {
   link: (value) => isText(value) && WHOLE_NUMBER.test(value),
   // validation: "precision,scale"
   number: (value, validation, signed) => isText(value) && numberPattern(validation, signed).test(value),
-  // validation: the maximum length
-  string: (value, validation) => isText(value) && new RegExp(`^.{1,${validation}}$`).test(value),
+  // validation: the maximum length; any characters, line breaks too (an address, notes)
+  string: (value, validation) => isText(value) && value.length <= Number(validation),
   date: (value) => isText(value) && dayjs(value, getDateTimeFormat('date'), true).isValid(),
   time: (value) => isText(value) && dayjs(value, getDateTimeFormat('time'), true).isValid(),
   datetime: (value) => isText(value) && dayjs(value, getDateTimeFormat('datetime'), true).isValid(),

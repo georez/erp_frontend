@@ -70,12 +70,7 @@ export function useUpdateOpenForms(formId) {
 
   if (!openForms) {
     // A form's own page: go to the URL
-    return (url, refresh) => {
-      router.push(url);
-      if (refresh) {
-        window.location.reload();
-      }
-    };
+    return (url) => router.push(url);
   }
   return (url) => {
     const updated = openForms.map((openForm) => (openForm.formId === formId ? { ...openForm, url } : openForm));

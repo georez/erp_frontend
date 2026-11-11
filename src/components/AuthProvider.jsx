@@ -49,6 +49,10 @@ async function refreshTokenIfNeeded(csrfFetch, router, setAccessToken) {
     } else {
       setAccessToken(null);
     }
+  } else if (refreshResponse.status !== 401) {
+    // Not a refused session but a server that couldn't answer (restarting, down behind the proxy: 5xx): the check
+    // runs again a minute later, and the user keeps their open windows and unsaved work
+    throw new Error(`Session refresh failed (${refreshResponse.status})`);
   }
 
   router.push('/login');

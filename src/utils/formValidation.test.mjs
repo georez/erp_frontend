@@ -14,3 +14,8 @@ test('a text is trimmed: one of spaces is no value', () => {
   assert.ok(validateFormField('string', false, '50', '   '), 'an optional barcode of spaces is none');
   assert.ok(validateFormField('string', true, '3', ' abc '), 'the spaces around it don\'t count');
 });
+
+test('a text may have several lines, up to its length', () => {
+  assert.ok(validateFormField('string', false, '200', 'شارع النيل\nالدور الثاني'), 'an address on two lines');
+  assert.ok(!validateFormField('string', true, '5', 'abcdef'), 'longer than the column');
+});

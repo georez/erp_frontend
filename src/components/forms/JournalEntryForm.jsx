@@ -165,10 +165,13 @@ const gridColumns = ({ entry, period, readOnly, openLink, onDelete }) => {
 
 // --- the header's parts ---
 
-/** The status chip: new, draft, or posted. */
+/** The status chip: new, draft, posted, or reversed (another entry reverses it), as cash documents show it. */
 function entryStatus(entry) {
   if (!entry) {
     return { label: 'جديد', color: 'default' };
+  }
+  if (entry.reversedByEntryId) {
+    return { label: 'معكوس', color: 'error' };
   }
   return entry.status === 'POSTED' ? { label: 'مُرحَّل', color: 'success' } : { label: 'مسودة', color: 'warning' };
 }

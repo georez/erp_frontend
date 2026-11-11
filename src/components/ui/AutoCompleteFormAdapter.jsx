@@ -26,6 +26,11 @@ function useSearchText() {
 /** The record the field's value (an id) points to, loaded for its label; null for none. */
 function useLinkedRecord(linkEntity, value) {
   const [record, setRecord] = useState(null);
+  // No value (a new record, a link left empty): none, not the record shown before. Set during render, so the old one
+  // is never shown: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (!value && record != null) {
+    setRecord(null);
+  }
   useEffect(() => {
     if (!value) {
       return;
