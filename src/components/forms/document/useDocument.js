@@ -3,6 +3,7 @@
 import useSWR, { useSWRConfig } from 'swr';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '@/components/AuthProvider';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { fetchJson } from '@/utils/fetchJson';
 import { useUpdateOpenForms } from '@/utils/useUpdateSearchParams';
 import { useRequestQueue } from './useRequestQueue';
@@ -29,6 +30,7 @@ export function useDocument({
   api, documentId, formId, formTitle, page, idParam, emptyHeader, headerFrom, headerBody,
 }) {
   const { csrfFetch } = useContext(AuthContext);
+  const confirm = useConfirm();
   const updateOpenFormUrl = useUpdateOpenForms(formId);
   const { mutate: mutateCache } = useSWRConfig();
   const requests = useRequestQueue(csrfFetch);
@@ -125,9 +127,9 @@ export function useDocument({
   const sendToDraft = (path, method, body) =>
     requests.enqueue(() => sendAndShow(draftIdRef.current, path, method, body));
 
-  /** Deletes the draft once the user confirms the question; true if it was deleted. */
+  /** Deletes the draft once the user confirms the question ("حذف مسودة ... رقم 4؟"); true if it was deleted. */
   const deleteDraft = async (question) => {
-    if (!window.confirm(question)) {
+    if (!await confirm({ title: question, confirmLabel: 'حذف', color: 'error' })) {
       return false;
     }
     return requests.enqueue(async () => (await requests.send(urlOf(draftIdRef.current), 'DELETE')) != null);

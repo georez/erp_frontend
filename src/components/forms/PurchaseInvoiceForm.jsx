@@ -20,6 +20,7 @@ import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from 
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The purchase invoice document: stock bought from a supplier, on credit.
@@ -135,6 +136,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   const suppliers = useOptions('suppliers');
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
+  const confirm = useConfirm();
   const doc = useDocument({
     api: '/api/purchase-invoices', documentId: invoiceId, formId, formTitle, page: '/dashboard/purchase-invoice',
     idParam: 'invoiceId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
@@ -185,8 +187,10 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   }, quantityRef);
 
   /** Deletes a product's line, with its batches: asked first when it has some. */
-  const deleteLine = (line) => {
-    if (line.batches.length > 0 && !window.confirm(`حذف ${line.productName} وتشغيلاته من الفاتورة؟`)) {
+  const deleteLine = async (line) => {
+    if (line.batches.length > 0 && !await confirm({
+      title: `حذف ${line.productName} وتشغيلاته من الفاتورة؟`, confirmLabel: 'حذف', color: 'error',
+    })) {
       return;
     }
     doc.sendToDraft(`/lines/${line.id}`, 'DELETE');

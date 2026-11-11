@@ -22,6 +22,7 @@ import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from 
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The sales invoice document: stock sold to a customer, on credit.
@@ -182,6 +183,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const products = useOptions('products');
   const { data: permissions } = useSWR('/api/sales-invoices/permissions', fetchJson);
   const { data: settings } = useSWR('/api/settings', fetchJson);
+  const confirm = useConfirm();
   const doc = useDocument({
     api: '/api/sales-invoices', documentId: invoiceId, formId, formTitle, page: '/dashboard/sales-invoice',
     idParam: 'invoiceId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
@@ -246,8 +248,10 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     quantityRef);
 
   /** Deletes a product's line, with its named batches: asked first when it has some. */
-  const deleteLine = (line) => {
-    if (line.batches.length > 0 && !window.confirm(`حذف ${line.productName} وتشغيلاته من الفاتورة؟`)) {
+  const deleteLine = async (line) => {
+    if (line.batches.length > 0 && !await confirm({
+      title: `حذف ${line.productName} وتشغيلاته من الفاتورة؟`, confirmLabel: 'حذف', color: 'error',
+    })) {
       return;
     }
     doc.sendToDraft(`/lines/${line.id}`, 'DELETE');
@@ -312,7 +316,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
    * Posts once the user confirms what posting would do that they may not expect: in the batches phase, the units
    * without a batch get theirs chosen; and lines sold under their cost.
    */
-  const post = () => {
+  const post = async () => {
     const warnings = [];
     const unbatched = batchesPhase ? lines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
     if (unbatched.length > 0) {
@@ -323,7 +327,9 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
       warnings.push('أصناف تُباع بأقل من تكلفتها:\n'
         + listed(belowCostLines, (line) => `سعر الوحدة ${formatAmount(line.unitPrice)}، التكلفة ${formatAmount(line.unitCost)}`));
     }
-    if (warnings.length > 0 && !window.confirm(`${warnings.join('\n\n')}\n\nترحيل الفاتورة؟`)) {
+    if (warnings.length > 0 && !await confirm({
+      title: 'ترحيل الفاتورة؟', message: warnings.join('\n\n'), confirmLabel: 'ترحيل', color: 'success',
+    })) {
       return;
     }
     doc.sendToDraft('/post', 'POST');

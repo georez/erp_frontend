@@ -19,6 +19,7 @@ import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from 
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The stock transfer document: stock moved from one warehouse to another, in one step, at what it costs in the first.
@@ -161,6 +162,7 @@ const totalQuantity = (lines) => lines.reduce((total, line) => total.add(Big(lin
 export default function StockTransferForm({ formId, formTitle, transferId }) {
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
+  const confirm = useConfirm();
   const doc = useDocument({
     api: '/api/stock-transfers', documentId: transferId, formId, formTitle, page: '/dashboard/stock-transfer',
     idParam: 'transferId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
@@ -217,8 +219,10 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
   const editLine = (line) => lineRow.fill({ productId: line.productId, quantity: line.quantity }, quantityRef);
 
   /** Deletes a product's line, with its named batches: asked first when it has some. */
-  const deleteLine = (line) => {
-    if (line.batches.length > 0 && !window.confirm(`حذف ${line.productName} وتشغيلاته من التحويل؟`)) {
+  const deleteLine = async (line) => {
+    if (line.batches.length > 0 && !await confirm({
+      title: `حذف ${line.productName} وتشغيلاته من التحويل؟`, confirmLabel: 'حذف', color: 'error',
+    })) {
       return;
     }
     doc.sendToDraft(`/lines/${line.id}`, 'DELETE');
@@ -273,11 +277,14 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
   const shortLines = lines.filter(isShort);
 
   /** Posts; in the batches phase, once the user confirms that the units without a batch get theirs chosen. */
-  const post = () => {
+  const post = async () => {
     const unbatched = batchesPhase ? lines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
-    if (unbatched.length > 0 && !window.confirm(
-      `لم تُحدَّد تشغيلات لكل الكميات؛ ستُختار تشغيلات الباقي تلقائياً (${AUTOMATIC_BATCHES}):\n`
-      + `${listed(unbatched, (line) => formatAmount(line.unbatchedQuantity))}\n\nترحيل التحويل؟`)) {
+    if (unbatched.length > 0 && !await confirm({
+      title: 'ترحيل التحويل؟',
+      message: `لم تُحدَّد تشغيلات لكل الكميات؛ ستُختار تشغيلات الباقي تلقائياً (${AUTOMATIC_BATCHES}):\n`
+        + listed(unbatched, (line) => formatAmount(line.unbatchedQuantity)),
+      confirmLabel: 'ترحيل', color: 'success',
+    })) {
       return;
     }
     doc.sendToDraft('/post', 'POST');

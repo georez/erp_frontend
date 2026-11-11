@@ -22,6 +22,7 @@ import { hasErrors } from './document/entryChecks';
 import { useDocument } from './document/useDocument';
 import { WindowLink } from './document/WindowLink';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The form of a payment or a receipt (PaymentForm, ReceiptForm): money moving between a cash box or bank account and any
@@ -120,6 +121,7 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
   const accounts = useAccountOptions();
   const customers = useOptions('customers');
   const suppliers = useOptions('suppliers');
+  const confirm = useConfirm();
   const doc = useDocument({
     api: documentKind.api, documentId, formId, formTitle, page: documentKind.page,
     idParam: documentKind.idParam, emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
@@ -203,9 +205,12 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
     await cashAccounts.reload();
   };
 
-  const reverse = () => {
-    const question = `عكس ${documentKind.theName} رقم ${cashDocument.id}؟ يُرحَّل قيد يلغي أثره، ويسري الآن.`;
-    if (window.confirm(question)) {
+  const reverse = async () => {
+    const confirmed = await confirm({
+      title: `عكس ${documentKind.theName} رقم ${cashDocument.id}؟`, message: 'يُرحَّل قيد يلغي أثره، ويسري الآن.',
+      confirmLabel: 'عكس', color: 'error',
+    });
+    if (confirmed) {
       sendAndReloadBalances('/reverse');
     }
   };

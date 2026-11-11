@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { useContext, useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { AuthContext } from '@/components/AuthProvider';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { fetchJson, readErrorMessage } from '@/utils/fetchJson';
 import { validateFormField } from '@/utils/formValidation';
 import { sendOrShowError } from '@/utils/sendOrShowError';
@@ -39,6 +40,7 @@ function validateAll(fields, values) {
 export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) {
   const updateOpenFormUrl = useUpdateOpenForms(formId);
   const { csrfFetch } = useContext(AuthContext);
+  const confirm = useConfirm();
   const isNew = !entityId;
 
   // Not again when the window regains focus: newly loaded values replace the form's, and so what's being typed
@@ -104,7 +106,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
 
   const deleteRecord = useDebouncedCallback(async () => {
     // What's typed doesn't matter: the record as saved is deleted
-    if (!window.confirm(`حذف السجل رقم ${entityId}؟`)) {
+    if (!await confirm({ title: `حذف السجل رقم ${entityId}؟`, confirmLabel: 'حذف', color: 'error' })) {
       return;
     }
     setErrorMessage(null);
