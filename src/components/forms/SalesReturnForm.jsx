@@ -226,9 +226,12 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
 
   // --- the entry row ---
 
-  const { data: batchOptions = NO_BATCHES, isLoading: batchesLoading, mutate: reloadBatches } = useSWR(
-    editable && againstInvoice ? batchOptionsUrl(invoiceId, entry.productId) : null, fetchJson);
-  const { data: pricing } = useSWR(editable && !againstInvoice ? linePricingUrl(header, entry.productId) : null,
+  const {
+    data: batchOptions = NO_BATCHES, error: batchOptionsError, isLoading: batchesLoading, mutate: reloadBatches,
+  } = useSWR(editable && againstInvoice ? batchOptionsUrl(invoiceId, entry.productId) : null, fetchJson);
+  // Its error (e.g. the warehouse gives the customer's tier no discount) is shown under the product, before OK
+  const { data: pricing, error: pricingError } = useSWR(
+    editable && !againstInvoice ? linePricingUrl(header, entry.productId) : null,
     fetchJson);
   const entryBatchNumber = (againstInvoice ? entry.batch?.batchNumber : entry.batchNumber.trim().toUpperCase()) ?? '';
   const existingLine = lines.find((line) => line.productId === entry.productId && line.batchNumber === entryBatchNumber
@@ -326,10 +329,11 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     {editable && <EntryRow fieldRefs={fieldRefs}>
       <ProductField productRef={productRef} options={productOptions} value={entry.productId}
         onChange={(productId) => setEntry((previous) => ({ ...previous, productId, batch: null }))}
-        placeholder={againstInvoice ? 'صنف من الفاتورة…' : undefined} error={entryRow.errors.productId} />
+        placeholder={againstInvoice ? 'صنف من الفاتورة…' : undefined}
+        error={entryRow.errors.productId ?? pricingError?.message} />
       {againstInvoice
         ? <BatchPicker options={batchOptions} value={entry.batch} inputRef={batchRef} error={entryRow.errors.batch}
-          loading={batchesLoading} availableLabel="متاح للإرجاع" onChange={chooseBatch}
+          loading={batchesLoading} loadError={batchOptionsError} availableLabel="متاح للإرجاع" onChange={chooseBatch}
           noOptionsText={entry.productId == null ? 'اختر الصنف أولاً' : 'لا يوجد ما يُرجع من هذا الصنف في الفاتورة'} />
         : <>
           <EntryField label="التشغيلة" kind="batch" value={entry.batchNumber} onChange={setField('batchNumber')}

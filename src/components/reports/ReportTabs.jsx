@@ -17,7 +17,7 @@ import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { AgGridProvider, AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule } from 'ag-grid-community';
 import FormFields from '@/components/forms/FormFields';
-import { arabicOperators, SORT_DIRECTIONS } from '@/utils/reportutils';
+import { arabicOperators, SORT_DIRECTIONS, withAsciiDigits } from '@/utils/reportutils';
 import {
   AUTO_SIZE_STRATEGY, autoSizeColumns, DEFAULT_COLUMN_DEF, pinnedTotalRows, totalRowStyle,
 } from './reportGrid';
@@ -96,7 +96,8 @@ export function ParamsTab({ loading, paramFields, paramValues, setParamValues, p
 export function QueryTab({ loading, fields, query, setQuery }) {
   return <Scrollable>
     {loading ? <Loading />
-      : <QueryBuilder fields={fields} query={query} onQueryChange={setQuery} operators={arabicOperators} showNotToggle />}
+      : <QueryBuilder fields={fields} query={query} onQueryChange={(next) => setQuery(withAsciiDigits(next, fields))}
+        operators={arabicOperators} showNotToggle />}
   </Scrollable>;
 }
 

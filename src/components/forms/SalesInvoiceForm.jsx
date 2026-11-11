@@ -218,7 +218,9 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
 
   // --- phase 1: the products ---
 
-  const { data: pricing } = useSWR(editable ? linePricingUrl(header, lineRow.entry.productId, invoice?.id) : null,
+  // Its error (e.g. the warehouse gives the customer's tier no discount) is shown under the product, before OK
+  const { data: pricing, error: pricingError } = useSWR(
+    editable ? linePricingUrl(header, lineRow.entry.productId, invoice?.id) : null,
     fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
   // What the line gets without a discount typed: its own, or the one worked out for a new line
@@ -267,8 +269,10 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
 
   // --- phase 2: the batches ---
 
-  const { data: batchOptions = NO_BATCHES, isLoading: batchesLoading, mutate: reloadBatches } = useSWR(
-    batchesPhase ? batchOptionsUrl(batchRow.entry.productId, header.warehouseId, invoice.id) : null, fetchJson);
+  const {
+    data: batchOptions = NO_BATCHES, error: batchOptionsError, isLoading: batchesLoading, mutate: reloadBatches,
+  } = useSWR(batchesPhase ? batchOptionsUrl(batchRow.entry.productId, header.warehouseId, invoice.id) : null,
+    fetchJson);
 
   /** The batch row's product: its units without a batch as the quantity, unless one is typed. */
   const chooseBatchProduct = (productId) => batchRow.setEntry((previous) => {
@@ -416,7 +420,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}
     {editable && <EntryRow fieldRefs={[productRef, quantityRef, discountRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={lineRow.entry.productId}
-        onChange={lineRow.setField('productId')} error={lineRow.errors.productId} />
+        onChange={lineRow.setField('productId')} error={lineRow.errors.productId ?? pricingError?.message} />
       <EntryField label="الكمية" kind="numeric" value={lineRow.entry.quantity} onChange={lineRow.setField('quantity')}
         inputRef={quantityRef} error={lineRow.errors.quantity}
         helperText={pricing ? `المتاح ${formatAmount(pricing.available)}` : undefined} />
@@ -439,7 +443,8 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
         <ProductField productRef={batchProductRef} options={batchProductOptions} value={batchRow.entry.productId}
           onChange={chooseBatchProduct} placeholder="صنف من الفاتورة…" error={batchRow.errors.productId} />
         <BatchPicker options={batchOptions} value={batchRow.entry.batch} inputRef={batchRef}
-          error={batchRow.errors.batch} loading={batchesLoading} availableLabel="متاح" onChange={chooseBatch}
+          error={batchRow.errors.batch} loading={batchesLoading} loadError={batchOptionsError} availableLabel="متاح"
+          onChange={chooseBatch}
           noOptionsText={batchRow.entry.productId == null ? 'اختر الصنف أولاً' : 'لا توجد تشغيلات متاحة لهذا الصنف'} />
         <EntryField label="الكمية" kind="numeric" value={batchRow.entry.quantity}
           onChange={(quantity) => batchRow.setEntry((previous) => ({ ...previous, quantity, quantityFilled: false }))}

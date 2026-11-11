@@ -196,8 +196,9 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
 
   // --- phase 1: the products ---
 
-  const { data: stock } = useSWR(editable ? productStockUrl(lineRow.entry.productId, header.fromWarehouseId) : null,
-    fetchJson);
+  // Its error is shown under the product, before OK
+  const { data: stock, error: stockError } = useSWR(
+    editable ? productStockUrl(lineRow.entry.productId, header.fromWarehouseId) : null, fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
   const stockHelp = stock && `الرصيد ${formatAmount(stock.available)}`
     + (stock.discountPercent ? ` · الخصم المرجح ${formatAmount(stock.discountPercent)}%` : '');
@@ -231,7 +232,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
 
   // --- phase 2: the batches ---
 
-  const { data: batchOptions = NO_BATCHES, isLoading: batchesLoading } = useSWR(
+  const { data: batchOptions = NO_BATCHES, error: batchOptionsError, isLoading: batchesLoading } = useSWR(
     batchesPhase ? batchOptionsUrl(batchRow.entry.productId, header.fromWarehouseId) : null, fetchJson);
 
   /** The batch row's product: its units without a batch as the quantity, unless one is typed. */
@@ -347,7 +348,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}
     {editable && <EntryRow fieldRefs={[productRef, quantityRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={lineRow.entry.productId}
-        onChange={lineRow.setField('productId')} error={lineRow.errors.productId} />
+        onChange={lineRow.setField('productId')} error={lineRow.errors.productId ?? stockError?.message} />
       <EntryField label="الكمية" kind="numeric" value={lineRow.entry.quantity} onChange={lineRow.setField('quantity')}
         inputRef={quantityRef} error={lineRow.errors.quantity} helperText={stockHelp || undefined} minWidth={150} />
       <OkButton okRef={okRef} onClick={saveLine} updating={existingLine != null} />
@@ -364,7 +365,8 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
         <ProductField productRef={batchProductRef} options={batchProductOptions} value={batchRow.entry.productId}
           onChange={chooseBatchProduct} placeholder="صنف من التحويل…" error={batchRow.errors.productId} />
         <BatchPicker options={batchOptions} value={batchRow.entry.batch} inputRef={batchRef}
-          error={batchRow.errors.batch} loading={batchesLoading} availableLabel="الرصيد" onChange={chooseBatch}
+          error={batchRow.errors.batch} loading={batchesLoading} loadError={batchOptionsError} availableLabel="الرصيد"
+          onChange={chooseBatch}
           noOptionsText={batchRow.entry.productId == null ? 'اختر الصنف أولاً' : 'لا توجد تشغيلات لهذا الصنف في المخزن'} />
         <EntryField label="الكمية" kind="numeric" value={batchRow.entry.quantity}
           onChange={(quantity) => batchRow.setEntry((previous) => ({ ...previous, quantity, quantityFilled: false }))}

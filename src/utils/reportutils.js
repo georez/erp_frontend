@@ -1,5 +1,6 @@
 import { defaultOperators, toFullOption } from "react-querybuilder";
 import { Big } from "bigdecimal.js";
+import { toAsciiDigits } from "./decimals.js";
 import { validateFormField } from "./formValidation.js";
 import { errorMessageFromBody } from "./errorMessages.js";
 
@@ -153,6 +154,29 @@ export function transformFields(fields) {
     operators: operatorsFor(field),
     validator: makeFieldValidator(field),
   }));
+}
+
+/**
+ * The query with its number rules' values in ASCII digits (toAsciiDigits): an Arabic keyboard types ٠-٩, which the
+ * backend doesn't read as a number. For the query builder's onQueryChange.
+ *
+ * @param {object} query  react-querybuilder query
+ * @param {Array<{name: string, inputType?: string}>} fields  query-builder fields
+ */
+export function withAsciiDigits(query, fields) {
+  const numberFields = new Set(fields.filter((field) => field.inputType === 'number').map((field) => field.name));
+  const convert = (group) => ({
+    ...group,
+    rules: group.rules.map((rule) => {
+      if (rule.rules) {
+        return convert(rule);
+      }
+      return numberFields.has(rule.field) && typeof rule.value === 'string'
+        ? { ...rule, value: toAsciiDigits(rule.value) }
+        : rule;
+    }),
+  });
+  return convert(query);
 }
 
 const COMBINATORS = new Set(['and', 'or']);

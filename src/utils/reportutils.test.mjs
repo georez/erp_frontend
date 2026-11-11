@@ -14,6 +14,7 @@ import {
   paramOrderProblem,
   validateReportParams,
   validateReportQuery,
+  withAsciiDigits,
 } from './reportutils.js';
 
 // Shaped like the backend's report columns (the columns of GET /api/report/{name}/metadata)
@@ -29,6 +30,19 @@ const fields = transformFields([
 const query = (...rules) => ({ combinator: 'and', rules });
 const problemsFor = (q) => validateReportQuery(q, fields);
 const isValid = (q) => problemsFor(q).length === 0;
+
+test("a number rule's Arabic digits become ASCII, in nested groups too; other rules stay as typed", () => {
+  const typed = query(
+    { field: 'id', operator: '=', value: '١٢' },
+    { field: 'name', operator: '=', value: 'صيدلية ٣' },
+    { combinator: 'or', rules: [{ field: 'id', operator: 'between', value: '١,٢٫٥' }] },
+  );
+  assert.deepEqual(withAsciiDigits(typed, fields), query(
+    { field: 'id', operator: '=', value: '12' },
+    { field: 'name', operator: '=', value: 'صيدلية ٣' },
+    { combinator: 'or', rules: [{ field: 'id', operator: 'between', value: '1,2.5' }] },
+  ));
+});
 
 test('valid queries pass', () => {
   assert.ok(isValid(query()));

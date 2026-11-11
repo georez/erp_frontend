@@ -5,26 +5,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createCsrfFetch } from "@/utils/csrfClientUtils";
 import { sendOrShowError } from "@/utils/sendOrShowError";
 import { readErrorMessage } from "@/utils/fetchJson";
+import { afterLoginPath } from "@/utils/loginRedirect";
 import { Box, Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
 
 export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawCallbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-  const callbackUrl = rawCallbackUrl.startsWith('/') && !rawCallbackUrl.startsWith('//')
-    ? rawCallbackUrl
-    : '/dashboard';
 
   // The login page is outside AuthProvider, so it has its own (see createCsrfFetch)
   const [csrfFetch] = useState(() => createCsrfFetch());
   const [error, setError] = useState(null);
+  // While signing in: the button waits, so a second click doesn't send the password again
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    const formData = new FormData(e.target);
-    const username = formData.get("username");
-    const password = formData.get("password");
+  const signIn = async (username, password) => {
     const response = await sendOrShowError(() => csrfFetch("/api/login/signIn", {
       method: "POST",
       headers: {
@@ -39,14 +33,29 @@ export default function LoginClient() {
     if (response.ok) {
       // Refresh Server Component cache so RootLayout sees the new cookie
       router.refresh();
-      router.push(callbackUrl);
+      router.push(afterLoginPath(searchParams.get('callbackUrl'), window.location.origin));
+    } else if (response.status === 401 || response.status === 400) {
+      setError("بيانات دخول غير صحيحة.");
     } else if (response.status === 429) {
       // Too many failed attempts for this username; the backend blocks it for a few minutes and says how many
       setError(await readErrorMessage(response));
     } else {
-      setError("بيانات دخول غير صحيحة.");
+      // Not the credentials: the server couldn't sign anyone in (down, restarting, an error)
+      setError(`تعذر تسجيل الدخول الآن بسبب خطأ في الخادم (${response.status}). حاول مرة أخرى بعد قليل.`);
     }
-  }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.target);
+    setSubmitting(true);
+    try {
+      await signIn(formData.get("username"), formData.get("password"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Box
@@ -97,9 +106,10 @@ export default function LoginClient() {
               variant="contained"
               size="large"
               fullWidth
+              disabled={submitting}
               sx={{ py: 1.2, borderRadius: 2 }}
             >
-              تسجيل دخول
+              {submitting ? 'جارٍ تسجيل الدخول…' : 'تسجيل دخول'}
             </Button>
           </Stack>
         </CardContent>

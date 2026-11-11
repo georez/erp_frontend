@@ -3,6 +3,7 @@
 import { Big } from 'bigdecimal.js';
 import { formatExpiry } from '@/utils/expiryDates';
 import { amountInWords } from '@/utils/amountInWords';
+import { printedRounding } from '@/utils/decimals';
 import { Amount, Balance, Num } from './PrintDocument';
 
 /** Whether any of the lines has a VAT rate: without, the VAT column and the VAT total aren't printed. */
@@ -58,13 +59,15 @@ export function ProductLines({ lines, batchesOf, hasVat }) {
 }
 
 /**
- * What comes after a document's products: its total in words beside its net, VAT (when it has any) and total, then the
- * customer's balance before and after it.
+ * What comes after a document's products: its total in words beside its net, VAT (when it has any), the rounding
+ * (when the printed net and VAT don't add up to the total) and total, then the customer's balance before and after
+ * it.
  *
  * @param document   { netTotal, vatTotal, total }
  * @param balances   { previous, after, afterLabel }: e.g. "الرصيد بعد الفاتورة"
  */
 export function DocumentTotals({ document, hasVat, balances }) {
+  const rounding = printedRounding(document);
   return <>
     <div className="totals-row">
       <div className="words">{amountInWords(document.total)}</div>
@@ -73,6 +76,8 @@ export function DocumentTotals({ document, hasVat, balances }) {
           <tr><th>الصافي</th><td className="number"><Amount value={document.netTotal} /></td></tr>
           {hasVat &&
             <tr><th>ضريبة القيمة المضافة</th><td className="number"><Amount value={document.vatTotal} /></td></tr>}
+          {rounding.signum() !== 0 &&
+            <tr><th>فرق التقريب</th><td className="number"><Amount value={rounding.toPlainString()} /></td></tr>}
           <tr className="grand"><th>الإجمالي</th><td className="number"><Amount value={document.total} /></td></tr>
         </tbody>
       </table>

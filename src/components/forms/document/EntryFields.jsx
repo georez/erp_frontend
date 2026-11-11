@@ -150,8 +150,11 @@ function batchesMatching(batches, typed) {
  * text typed). A batch the list doesn't have (a line's, being edited) is shown too.
  *
  * @param availableLabel what each batch's available quantity is called in the list
+ * @param loadError      why the list couldn't be loaded (SWR's error), shown in the list instead of noOptionsText
  */
-export function BatchPicker({ options, value, onChange, inputRef, error, availableLabel, noOptionsText, loading }) {
+export function BatchPicker({
+  options, value, onChange, inputRef, error, availableLabel, noOptionsText, loading, loadError,
+}) {
   const [inputValue, setInputValue] = useState('');
   const valueIsListed = value && options.some((option) => sameBatch(option, value));
   const allOptions = value && !valueIsListed ? [value, ...options] : options;
@@ -188,7 +191,8 @@ export function BatchPicker({ options, value, onChange, inputRef, error, availab
     onKeyDown={handleKeyDown}
     filterOptions={(batches, state) => batchesMatching(batches, state.inputValue)}
     renderOption={renderOption}
-    autoHighlight openOnFocus loading={loading} noOptionsText={noOptionsText} loadingText="جارٍ التحميل…"
+    autoHighlight openOnFocus loading={loading} noOptionsText={loadError?.message ?? noOptionsText}
+    loadingText="جارٍ التحميل…"
     renderInput={(params) => <TextField {...params} label="التشغيلة والصلاحية"
       placeholder="جزء من التشغيلة أو الصلاحية" inputRef={inputRef} error={!!error} helperText={error} />} />;
 }

@@ -13,15 +13,31 @@ const DECIMAL_TEXT = /^-?\d+(\.\d+)?$/;
 const ARABIC_DIGITS = /[٠-٩۰-۹]/g;
 
 /**
- * The text as the backend accepts it: trimmed, Arabic digits and the Arabic decimal separator (٫) turned into
- * ASCII. Doesn't check that it's a number. Thousands separators aren't removed: "1,5" may mean 1.5, so it's
- * refused rather than read as 15.
+ * What a printed document's total has beyond its net and VAT as printed (each to piasters, as formatAmount prints
+ * them), so its totals column adds up: e.g. 10.005 + 1.005 print as 10.01 + 1.01 beside a total of 11.01, -0.01.
+ * Zero when the rounding doesn't show at piasters (26,893.356 + 598.50 printed as 27,491.86).
+ *
+ * @param {{ netTotal: string, vatTotal: string, total: string }} document
+ * @returns {Big}
  */
-export function normalizeDecimalText(text) {
+export function printedRounding(document) {
+  const printed = (value) => Big(value ?? '0').setScale(2, RoundingMode.HALF_UP);
+  return printed(document.total).subtract(printed(document.netTotal)).subtract(printed(document.vatTotal));
+}
+
+/** The text with Arabic digits and the Arabic decimal separator (٫) in ASCII, as the backend reads numbers. */
+export function toAsciiDigits(text) {
   return String(text ?? '')
-    .trim()
     .replace(ARABIC_DIGITS, (digit) => String(digit.charCodeAt(0) & 0xf))
     .replace(/٫/g, '.');
+}
+
+/**
+ * The text as the backend accepts it: trimmed, its digits in ASCII (toAsciiDigits). Doesn't check that it's a
+ * number. Thousands separators aren't removed: "1,5" may mean 1.5, so it's refused rather than read as 15.
+ */
+export function normalizeDecimalText(text) {
+  return toAsciiDigits(String(text ?? '').trim());
 }
 
 /** The number written in the text (see normalizeDecimalText), or null if it isn't one. "1e5" and "" aren't. */

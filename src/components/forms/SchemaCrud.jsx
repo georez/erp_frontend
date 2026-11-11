@@ -4,7 +4,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Alert, Container, SpeedDial, SpeedDialAction, SpeedDialIcon, Stack, Typography } from '@mui/material';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useContext, useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { AuthContext } from '@/components/AuthProvider';
@@ -17,6 +17,18 @@ import FormFields from './FormFields';
 
 // A click on an action runs it once, even if clicked twice quickly
 const CLICK_DEBOUNCE_MS = 300;
+
+// Accounts also feed the journal entries' and cash documents' account lists
+const ACCOUNT_LISTS = ['/api/journal-entries/accounts', '/api/payments/cash-accounts', '/api/receipts/cash-accounts'];
+
+/**
+ * Whether an SWR key is a list of the table's records that open windows load: a document's combobox options, a link
+ * field's search, or one of ACCOUNT_LISTS for accounts.
+ */
+const isListOf = (schemaName) => (key) => typeof key === 'string'
+  && (key === `/api/schemacrud/options/entity/${schemaName}`
+    || key.startsWith(`/api/schemacrud/search/entity/${schemaName}?`)
+    || (schemaName === 'accounts' && ACCOUNT_LISTS.includes(key)));
 
 /** The window's URL for a record of the table: a new one (no id), or the one with that id. */
 const formUrl = (schemaName, formTitle, entityId) => {
@@ -41,6 +53,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
   const updateOpenFormUrl = useUpdateOpenForms(formId);
   const { csrfFetch } = useContext(AuthContext);
   const confirm = useConfirm();
+  const { mutate: mutateCache } = useSWRConfig();
   const isNew = !entityId;
 
   // Not again when the window regains focus: newly loaded values replace the form's, and so what's being typed
@@ -70,6 +83,17 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     return Object.values(validity).every(Boolean);
   };
 
+  /**
+   * After a record is saved or deleted: the lists other windows show of the table's records load again (a new customer
+   * in an open invoice's combobox), and the record's own values, so opening it again shows what was saved. Not the
+   * other records' forms: what's typed in them would be replaced.
+   */
+  const reloadAfterChange = (savedId) => {
+    const isList = isListOf(schemaName);
+    const recordKey = savedId == null ? null : `/api/schemacrud/${schemaName}/${savedId}`;
+    return mutateCache((key) => isList(key) || key === recordKey);
+  };
+
   /** Sends a request; returns its response if it succeeded, else null after showing why. */
   const send = async (method, url, body) => {
     const response = await sendOrShowError(() => csrfFetch(url, {
@@ -96,6 +120,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
       : await send('PUT', `/api/schemacrud/${schemaName}/${entityId}`, formValues);
     if (response) {
       const { id: savedId } = await response.json();
+      reloadAfterChange(savedId);
       updateOpenFormUrl(formUrl(schemaName, formTitle, savedId));
     }
   }, CLICK_DEBOUNCE_MS);
@@ -111,6 +136,7 @@ export default function SchemaCrud({ schemaName, entityId, formTitle, formId }) 
     }
     setErrorMessage(null);
     if (await send('DELETE', `/api/schemacrud/${schemaName}/${entityId}`)) {
+      reloadAfterChange(null);
       updateOpenFormUrl(formUrl(schemaName, formTitle, null));
     }
   }, CLICK_DEBOUNCE_MS);

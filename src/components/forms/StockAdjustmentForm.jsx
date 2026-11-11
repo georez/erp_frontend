@@ -153,6 +153,13 @@ const gridColumns = (isPosted, onDelete) => [
   ...deleteColumn(isPosted, onDelete),
 ];
 
+/**
+ * Whether posting would be refused: no lines, a line without a value yet (أدخل الخصم), or no difference to post (every
+ * count equals the stock).
+ */
+const cantPost = (lines) => lines.length === 0 || lines.some((line) => line.value == null)
+  || lines.every((line) => Big(line.difference).signum() === 0);
+
 /** The grid's total row: the lines' value added up, exactly (bigdecimal.js); none while a line has no value yet. */
 function totalRow(lines) {
   if (lines.length === 0) {
@@ -258,7 +265,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية الفعلية ثم OK'} />
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
-      nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}
+      nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: cantPost(lines) }}
       onDeleteDraft={deleteThisDraft} onNew={newAdjustment}
       onPrint={adjustment ? () => openPrintout('stock-adjustment', adjustment.id) : undefined} />
   </DocumentWindow>;

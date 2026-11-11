@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import { Big } from 'bigdecimal.js';
 import {
   formatDecimal, normalizeDecimalText, parseDecimal, parsePercent, parseWholeUnits,
-  formatAmount, formatExactAmount,
+  formatAmount, formatExactAmount, printedRounding,
 } from './decimals.js';
+
+test('a printout shows the rounding its printed net and VAT need to add up to its total', () => {
+  const rounding = (netTotal, vatTotal, total) => printedRounding({ netTotal, vatTotal, total }).toPlainString();
+  assert.equal(rounding('10.0050000', '1.0050000', '11.01'), '-0.01', '10.01 + 1.01 printed beside 11.01');
+  assert.equal(rounding('26893.3560000', '598.5000000', '27491.86'), '0.00', 'adds up as printed');
+  assert.equal(rounding('2683.9890000', '0.0000000', '2683.99'), '0.00');
+});
 
 test('exact amounts: every decimal they have, at least two', () => {
   assert.equal(formatExactAmount('1652.9135000'), '1,652.9135');

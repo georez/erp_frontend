@@ -203,8 +203,9 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
 
   // --- the entry row ---
 
-  const { data: batchOptions = NO_BATCHES, isLoading: batchesLoading, mutate: reloadBatches } = useSWR(
-    batchOptionsUrl(entry.productId, header.warehouseId, invoiceId), fetchJson);
+  const {
+    data: batchOptions = NO_BATCHES, error: batchOptionsError, isLoading: batchesLoading, mutate: reloadBatches,
+  } = useSWR(batchOptionsUrl(entry.productId, header.warehouseId, invoiceId), fetchJson);
 
   /** Sends the line; the row is cleared at once, so the next one can be typed while it's sent. */
   const saveEntry = () => {
@@ -297,7 +298,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
         onChange={(productId) => setEntry((previous) => ({ ...previous, productId, batch: null }))}
         error={entryRow.errors.productId} />
       <BatchPicker options={batchOptions} value={entry.batch} inputRef={batchRef} error={entryRow.errors.batch}
-        loading={batchesLoading} availableLabel={againstInvoice ? 'متاح للإرجاع' : 'في المخزن'}
+        loading={batchesLoading} loadError={batchOptionsError}
+        availableLabel={againstInvoice ? 'متاح للإرجاع' : 'في المخزن'}
         noOptionsText={noBatchesText()} onChange={chooseBatch} />
       <EntryField label="الكمية" kind="numeric" value={entry.quantity} onChange={setField('quantity')}
         inputRef={quantityRef} error={entryRow.errors.quantity} />
@@ -311,7 +313,8 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والصلاحية والكمية ثم OK'} />
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
-      nextStep={{ onClick: postReturn, disabled: lines.length === 0 }}
+      // Not while the goods' cost isn't known: a line's stock isn't enough to return (posting would refuse it)
+      nextStep={{ onClick: postReturn, disabled: lines.length === 0 || purchaseReturn?.stockValue == null }}
       onDeleteDraft={deleteThisDraft} onNew={newReturn}
       onPrint={purchaseReturn ? () => openPrintout('purchase-return', purchaseReturn.id) : undefined}>
       <Total label="تكلفة البضاعة" value={purchaseReturn ? purchaseReturn.stockValue : '0'} />

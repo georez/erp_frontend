@@ -4,7 +4,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import UndoIcon from '@mui/icons-material/Undo';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { useRef, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { Combobox } from '@/components/ui/ComboBox2';
 import { normalizeDecimalText } from '@/utils/decimals';
 import { fetchJson } from '@/utils/fetchJson';
@@ -60,11 +60,19 @@ const headerBody = (header) => ({
 
 const PARTY_LABELS = { customer: 'العميل', supplier: 'المورد' };
 
-/** The cash boxes and bank accounts as combobox options, each with its balance beside it. */
+// Both kinds of document list the cash accounts with their balances
+const CASH_ACCOUNT_LISTS = ['/api/payments/cash-accounts', '/api/receipts/cash-accounts'];
+
+/**
+ * The cash boxes and bank accounts as combobox options, each with its balance beside it. reload() loads the balances
+ * again in every open window, payments' and receipts' alike.
+ */
 function useCashAccounts(api) {
-  const { data = [], error, mutate } = useSWR(`${api}/cash-accounts`, fetchJson);
+  const { data = [], error } = useSWR(`${api}/cash-accounts`, fetchJson);
+  const { mutate: mutateCache } = useSWRConfig();
   const options = data.map((account) => ({ ...account, detail: formatAmount(account.balance) }));
-  return { options, error, reload: mutate };
+  const reload = () => Promise.all(CASH_ACCOUNT_LISTS.map((key) => mutateCache(key)));
+  return { options, error, reload };
 }
 
 /** The status chip: new, draft, posted, or reversed. */

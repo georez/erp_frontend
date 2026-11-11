@@ -9,6 +9,10 @@ import AutoCompleteFormAdapter from "../ui/AutoCompleteFormAdapter";
 import {
   invalidText, setFieldValue, showsError, useFieldValidity, useKeepInFormValues,
 } from "./fieldState";
+import { toAsciiDigits } from "@/utils/decimals";
+
+// The text fields whose value is a number
+const NUMERIC_TYPES = new Set(['id', 'number']);
 
 /*
  * The fields of a generic form (SchemaCrud) or a report's params, built from the backend's field metadata: a text
@@ -31,7 +35,9 @@ function TextFieldAdapter({ field, value, setFormValues, isValid, setIsValid, tr
     error={hasError}
     helperText={hasError ? invalidText(displayName) : null}
     onChange={(event) => {
-      setFieldValue(setFormValues, fieldName, event.target.value);
+      // A number's Arabic digits (an Arabic keyboard's) as ASCII, as the backend reads it
+      const typed = NUMERIC_TYPES.has(field.validationType) ? toAsciiDigits(event.target.value) : event.target.value;
+      setFieldValue(setFormValues, fieldName, typed);
       setChanged(true);
     }}
   />;
