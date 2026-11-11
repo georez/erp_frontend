@@ -86,6 +86,14 @@ export const ERROR_MESSAGES = Object.freeze({
   ENTRY_DRAFT_CANT_BE_REVERSED: 'القيد رقم {entryId} مسودة؛ عدّله أو احذفه بدلاً من عكسه',
   ENTRY_ALREADY_REVERSED: 'القيد رقم {entryId} تم عكسه من قبل',
   REVERSAL_BEFORE_ORIGINAL: 'لا يمكن أن يكون تاريخ القيد العكسي قبل تاريخ القيد رقم {entryId}',
+  ENTRY_IN_CLOSED_YEAR: 'سنة {year} مقفلة: لا يُرحَّل قيد بتاريخ فيها. أعد فتحها من إقفال السنة لتصحيحها',
+
+  // year closing (YearClosingService)
+  YEAR_NOT_ENDED: 'سنة {year} لم تنتهِ بعد: تُقفل السنة بعد انتهائها',
+  YEAR_ALREADY_CLOSED: 'سنة {year} مقفلة بالفعل',
+  YEAR_EARLIER_NOT_CLOSED: 'أقفل سنة {earlierYear} أولاً: تُقفل السنوات بالترتيب قبل سنة {year}',
+  YEAR_NOT_CLOSED: 'سنة {year} غير مقفلة',
+  YEAR_NOT_LAST_CLOSED: 'تُعاد فتح آخر سنة مقفلة فقط ({lastClosedYear})، لا سنة {year}',
   ENTRY_INVENTORY_NOT_MATCHING_STOCK: 'مبالغ حساب المخزون في القيد رقم {entryId} لا تساوي قيمة حركات المخزون',
   ENTRY_MOVES_STOCK: 'القيد رقم {entryId} به حركات مخزون، فلا يُعكَس؛ صحّحه بمستند مخزون آخر',
   ENTRY_LINE_NOT_FOUND: 'السطر غير موجود في القيد رقم {entryId}؛ ربما حُذف',

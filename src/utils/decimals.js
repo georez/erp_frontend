@@ -25,6 +25,15 @@ export function printedRounding(document) {
   return printed(document.total).subtract(printed(document.netTotal)).subtract(printed(document.vatTotal));
 }
 
+/** An amount as financial statements show it: a negative one in parentheses, "(1,250.00)"; none for none. */
+export function formatStatementAmount(value) {
+  if (value == null) {
+    return '';
+  }
+  const amount = Big(String(value));
+  return amount.signum() < 0 ? `(${formatAmount(amount.negate().toPlainString())})` : formatAmount(value);
+}
+
 /** The text with Arabic digits and the Arabic decimal separator (٫) in ASCII, as the backend reads numbers. */
 export function toAsciiDigits(text) {
   return String(text ?? '')

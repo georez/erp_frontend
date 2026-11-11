@@ -74,6 +74,8 @@ const DOCUMENT_PAGE_OF_TYPE = Object.freeze({
   sales_invoice: 'sales-invoice',
   sales_return: 'sales-return',
   stock_transfer: 'stock-transfer',
+  // A year's closing entry: its id is the year
+  year_closing: 'year-closing',
 });
 
 /** The page that opens an entry's document, or null (a manual entry, or a document with no page). */

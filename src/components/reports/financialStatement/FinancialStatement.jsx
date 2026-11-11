@@ -2,7 +2,7 @@
 
 import { Alert, Box, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import { Big } from 'bigdecimal.js';
-import { formatAmount } from '@/utils/decimals';
+import { formatAmount, formatStatementAmount } from '@/utils/decimals';
 import { openLinkOnPlainClick, useOpenLink } from '@/utils/useOpenLink';
 import { parseJsonObject } from '@/utils/reportutils';
 import ReportPageFrame from '../ReportPageFrame';
@@ -39,15 +39,6 @@ const LINE_STYLES = {
   result: { fontWeight: 'bold', fontSize: '1rem', borderTop: 1, borderTopColor: 'text.primary', borderBottom: 3,
     borderBottomStyle: 'double', borderBottomColor: 'text.primary' },
 };
-
-/** An amount as statements show it: a negative one in parentheses, "(1,250.00)"; none for a heading. */
-function statementAmount(value) {
-  if (value == null) {
-    return '';
-  }
-  const amount = Big(String(value));
-  return amount.signum() < 0 ? `(${formatAmount(amount.negate().toPlainString())})` : formatAmount(value);
-}
 
 /** The balance sheet's two totals when they differ (they never should: every posted entry balances), else null. */
 function imbalance(rows) {
@@ -120,7 +111,7 @@ export default function FinancialStatement({ kind, formId, formTitle, execute, r
                   : row.label}
               </TableCell>
               <TableCell sx={{ ...lineStyle, ...weight, ...AMOUNT_CELL }}>
-                <Amount>{statementAmount(row.amount)}</Amount>
+                <Amount>{formatStatementAmount(row.amount)}</Amount>
               </TableCell>
             </TableRow>;
           })}

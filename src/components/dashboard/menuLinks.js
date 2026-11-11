@@ -36,6 +36,7 @@ export const MENU_MODULES = [
       pageLink('ميزان المراجعة', 'trial-balance'),
       pageLink('قائمة الدخل', 'income-statement'),
       pageLink('الميزانية', 'balance-sheet'),
+      pageLink('إقفال السنة', 'year-closing'),
       pageLink('كشف حساب', 'account-statement'),
     ],
   },
