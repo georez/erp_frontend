@@ -40,6 +40,8 @@ const BACKEND_CODES = {
   TOO_MANY_LOGIN_ATTEMPTS: ['minutes'],
   SESSION_ENDED: [],
 
+  SERVER_BUSY: [],
+
   REPORT_NOT_FOUND: ['report'],
   REPORT_PARAM_UNKNOWN: ['param'],
   REPORT_PARAM_REQUIRED: ['param'],

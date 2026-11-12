@@ -45,6 +45,9 @@ export const ERROR_MESSAGES = Object.freeze({
   TOO_MANY_LOGIN_ATTEMPTS: 'محاولات دخول فاشلة كثيرة. حاول مرة أخرى بعد {minutes} دقيقة.',
   SESSION_ENDED: 'انتهت الجلسة. سجّل الدخول مرة أخرى.',
 
+  // --- any change ---
+  SERVER_BUSY: 'الخادم مشغول بتعديلات مستخدمين آخرين، فلم يُحفظ هذا التعديل. حاول مرة أخرى.',
+
   // --- report params ---
   REPORT_NOT_FOUND: 'التقرير "{report}" غير موجود',
   REPORT_PARAM_UNKNOWN: 'معيار غير معروف في التقرير: {param}',
