@@ -288,15 +288,16 @@ export const SORT_DIRECTIONS = Object.freeze([
 /**
  * The total row of a report (its metadata's totals): each total column added up exactly over the rows given (those the
  * grid shows after its filters), leaving out the rows whose skipRowsWhere column is true, and the label in the label
- * column. Totals are plain decimal text, like the backend's numbers.
+ * column, with the number of rows counted when countRows. Totals are plain decimal text, like the backend's numbers.
  *
  * @param {Array<object>} rows
- * @param {{label: string, labelColumn: string, columns: string[], skipRowsWhere?: string}} totals
+ * @param {{label: string, labelColumn: string, columns: string[], skipRowsWhere?: string, countRows?: boolean}} totals
  * @returns {object}
  */
 export function totalsRow(rows, totals) {
   const countedRows = rows.filter((row) => !(totals.skipRowsWhere && row[totals.skipRowsWhere] === true));
-  const total = { [totals.labelColumn]: totals.label };
+  const label = totals.countRows ? `${totals.label} (عدد الصفوف: ${countedRows.length})` : totals.label;
+  const total = { [totals.labelColumn]: label };
   for (const column of totals.columns) {
     let sum = Big(0);
     for (const row of countedRows) {

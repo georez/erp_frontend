@@ -314,6 +314,17 @@ test('the total row counts every row without skipRowsWhere, and empty cells as n
   assert.deepEqual(totalsRow([], totals), { name: 'T', value: '0' });
 });
 
+test('with countRows the label gives the number of rows counted', () => {
+  const rows = [
+    { account_name: 'Assets', is_parent: true, debit: '1', credit: '0' },
+    { account_name: 'Cash', is_parent: false, debit: '1', credit: '0' },
+    { account_name: 'Bank', is_parent: false, debit: '2', credit: '0' },
+  ];
+  assert.equal(totalsRow(rows, { ...ledgerTotals, countRows: true }).account_name, 'الإجمالي (عدد الصفوف: 2)',
+    'the skipped parent is not counted');
+  assert.equal(totalsRow(rows, ledgerTotals).account_name, 'الإجمالي');
+});
+
 // --- the sort tab ---
 
 const sortColumns = [
