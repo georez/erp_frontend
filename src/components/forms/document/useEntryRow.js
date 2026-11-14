@@ -15,10 +15,17 @@ export function useEntryRow(emptyEntry) {
   /**
    * For a field's onChange: sets that field. Its error goes as it's typed in again (its hint shows again); OK checks
    * it anew.
+   *
+   * @param dependentFields fields whose errors were about this field's value and go with it too, e.g. a quantity over
+   *                        what the product had available, when another product is chosen
    */
-  const setField = (field) => (value) => {
+  const setField = (field, dependentFields = []) => (value) => {
     setEntry((previous) => ({ ...previous, [field]: value }));
-    setErrors((previous) => (previous[field] == null ? previous : { ...previous, [field]: null }));
+    setErrors((previous) => {
+      const cleared = [field, ...dependentFields].filter((name) => previous[name] != null);
+      return cleared.length === 0 ? previous
+        : { ...previous, ...Object.fromEntries(cleared.map((name) => [name, null])) };
+    });
   };
 
   /** Empties the row (a new document). */

@@ -420,7 +420,8 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}
     {editable && <EntryRow fieldRefs={[productRef, quantityRef, discountRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={lineRow.entry.productId}
-        onChange={lineRow.setField('productId')} error={lineRow.errors.productId ?? pricingError?.message} />
+        onChange={lineRow.setField('productId', ['quantity'])}
+        error={lineRow.errors.productId ?? pricingError?.message} />
       <EntryField label="الكمية" kind="numeric" value={lineRow.entry.quantity} onChange={lineRow.setField('quantity')}
         inputRef={quantityRef} error={lineRow.errors.quantity}
         helperText={pricing ? `المتاح ${formatAmount(pricing.available)}` : undefined} />

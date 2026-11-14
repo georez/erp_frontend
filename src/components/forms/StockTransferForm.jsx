@@ -348,7 +348,8 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}
     {editable && <EntryRow fieldRefs={[productRef, quantityRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={lineRow.entry.productId}
-        onChange={lineRow.setField('productId')} error={lineRow.errors.productId ?? stockError?.message} />
+        onChange={lineRow.setField('productId', ['quantity'])}
+        error={lineRow.errors.productId ?? stockError?.message} />
       <EntryField label="الكمية" kind="numeric" value={lineRow.entry.quantity} onChange={lineRow.setField('quantity')}
         inputRef={quantityRef} error={lineRow.errors.quantity} helperText={stockHelp || undefined} minWidth={150} />
       <OkButton okRef={okRef} onClick={saveLine} updating={existingLine != null} />
