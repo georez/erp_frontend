@@ -2,9 +2,8 @@ import { createDateTime, formatDateTime } from "@/utils/formValidation";
 import {
   Checkbox, FormControl, FormControlLabel, FormHelperText, InputLabel, MenuItem, Select, TextField,
 } from "@mui/material";
-import { DatePicker, DateTimePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
-import { LtrPickerDialog, LtrPickerPopper } from "@/components/ui/LtrPickerPopup";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker, DateTimePicker, TimePicker } from "@mui/x-date-pickers";
+import { DATE_SHOWN, DATE_TIME_SHOWN, PICKER_SLOTS, PickerProvider } from "@/components/ui/DateTimeFields";
 import AutoCompleteFormAdapter from "../ui/AutoCompleteFormAdapter";
 import {
   invalidText, setFieldValue, showsError, useFieldValidity, useKeepInFormValues,
@@ -82,6 +81,9 @@ function CheckBoxAdapter({ field, value, setFormValues }) {
   />;
 }
 
+// How each type's picker shows its value: dates day first, as everywhere in the app; a time as the picker does
+const SHOWN_FORMATS = { date: DATE_SHOWN, datetime: DATE_TIME_SHOWN };
+
 /**
  * The MUI picker for the field's type. A component (rather than a function returning one) so React sees a fixed
  * component per type instead of one chosen anew on every render.
@@ -106,20 +108,20 @@ function DateTimePickerAdapter({ field, value, setFormValues, isValid, setIsVali
   const hasError = showsError({ changed, tryToSubmit, isValid });
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <PickerProvider>
       <DateTimeFieldPicker
         fieldType={fieldType}
         name={fieldName}
         label={displayName}
         value={value ? createDateTime(fieldType, value) : null}
+        format={SHOWN_FORMATS[fieldType]}
         disabled={disabled}
         onChange={(picked) => {
           const formatted = picked ? formatDateTime(fieldType, picked) : null;
           setFormValues((previous) => ({ ...previous, [fieldName]: formatted }));
           setChanged(true);
         }}
-        // The calendar (or clock) left to right, like a printed calendar; the field stays right to left
-        slots={{ popper: LtrPickerPopper, dialog: LtrPickerDialog }}
+        slots={PICKER_SLOTS}
         slotProps={{
           field: { clearable: !required },
           textField: {
@@ -130,7 +132,7 @@ function DateTimePickerAdapter({ field, value, setFormValues, isValid, setIsVali
           },
         }}
       />
-    </LocalizationProvider>
+    </PickerProvider>
   );
 }
 

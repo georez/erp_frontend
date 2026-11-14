@@ -19,6 +19,7 @@
     "@mui/material": "^9.2.0",
     "@mui/material-nextjs": "^9.1.1",
     "@mui/stylis-plugin-rtl": "^9.1.1",
+    "@mui/system": "^9.2.0",
     "@mui/x-date-pickers": "^9.13.0",
     "ag-grid-react": "^36.2.0",
     "bigdecimal.js": "^1.7.2",

@@ -22,6 +22,7 @@ import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { TextDateTimeField } from '@/components/ui/DateTimeFields';
 
 /*
  * The purchase invoice document: stock bought from a supplier, on credit.
@@ -293,10 +294,10 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
         slotProps={{ htmlInput: { dir: 'ltr' } }}
         onChange={(event) => doc.editHeader({ supplierInvoiceNumber: event.target.value })}
         onBlur={() => doc.saveHeader()} />
-      <TextField size="small" label="تاريخ فاتورة المورد" type="date" value={header.supplierInvoiceDate}
-        disabled={!editable} sx={{ flex: '0 0 150px' }}
-        slotProps={{ inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } }}
-        onChange={(event) => doc.editHeader({ supplierInvoiceDate: event.target.value })}
+      <TextDateTimeField kind="date" label="تاريخ فاتورة المورد" value={header.supplierInvoiceDate}
+        disabled={!editable} sx={{ flex: '0 0 210px' }}
+        onChange={(supplierInvoiceDate) => doc.editHeader({ supplierInvoiceDate })}
+        onAccept={(supplierInvoiceDate) => doc.changeHeader({ supplierInvoiceDate })}
         onBlur={() => doc.saveHeader()} />
       <DescriptionField value={header.description} disabled={!editable}
         onChange={(description) => doc.editHeader({ description })} onBlur={() => doc.saveHeader()} />

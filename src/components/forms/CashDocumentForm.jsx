@@ -23,6 +23,7 @@ import { useDocument } from './document/useDocument';
 import { WindowLink } from './document/WindowLink';
 import { openPrintout } from '@/components/print/printPages';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { TextDateTimeField } from '@/components/ui/DateTimeFields';
 
 /*
  * The form of a payment or a receipt (PaymentForm, ReceiptForm): money moving between a cash box or bank account and any
@@ -36,7 +37,7 @@ const EMPTY_HEADER = {
   reference: '', description: '',
 };
 
-// "2026-10-31T23:59:00" → "2026-10-31T23:59", as a datetime-local field holds it
+// "2026-10-31T23:59:00" → "2026-10-31T23:59", as TextDateTimeField holds it
 const headerFrom = (loaded) => ({
   cashAccountId: loaded.cashAccountId,
   accountId: loaded.accountId,
@@ -259,11 +260,11 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
           slotProps={{ htmlInput: { inputMode: 'decimal', dir: 'ltr', 'aria-labelledby': `${formId}-amount` } }} />
       </Field>
       <Field id={`${formId}-datetime`} label={documentKind.dateLabel}>
-        <TextField size="small" type="datetime-local" fullWidth value={header.documentDatetime} disabled={!editable}
-          inputRef={datetimeRef} helperText={editable && !header.documentDatetime ? 'فارغ: عند الترحيل' : undefined}
-          onChange={(event) => doc.editHeader({ documentDatetime: event.target.value })}
-          onBlur={() => saveIfComplete()}
-          slotProps={{ htmlInput: { dir: 'ltr', 'aria-labelledby': `${formId}-datetime` } }} />
+        <TextDateTimeField kind="datetime" fullWidth value={header.documentDatetime} disabled={!editable}
+          fieldRef={datetimeRef} labelledBy={`${formId}-datetime`}
+          helperText={editable && !header.documentDatetime ? 'فارغ: عند الترحيل' : undefined}
+          onChange={(documentDatetime) => doc.editHeader({ documentDatetime })}
+          onAccept={(documentDatetime) => choose({ documentDatetime })} onBlur={() => saveIfComplete()} />
       </Field>
       <Field id={`${formId}-reference`} label="رقم المرجع" error={shownErrors.reference}>
         <TextField size="small" fullWidth value={header.reference} disabled={!editable} inputRef={referenceRef}

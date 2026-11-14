@@ -26,13 +26,15 @@ export function EntryRow({ fieldRefs, children }) {
 /**
  * For an entry row's onKeyDown: Enter moves to the next of the fields (refs, in order; the last is the OK button,
  * where Enter is a click, which sends the line), skipping disabled ones. Not when ComboBox2 used it to pick from its
- * open list (it prevents the default then), nor in a field not in the list.
+ * open list (it prevents the default then), nor in a field not in the list. A field whose key presses come from parts
+ * inside it (a date picker's day, month and year: TextDateTimeField) is found by what it contains.
  */
 export function moveOnEnter(event, fieldRefs) {
   if (event.key !== 'Enter' || event.defaultPrevented) {
     return;
   }
-  const index = fieldRefs.findIndex((ref) => ref.current === event.target);
+  const index = fieldRefs.findIndex((ref) => ref.current === event.target
+    || ref.current?.contains?.(event.target) === true);
   if (index < 0) {
     return;
   }

@@ -24,6 +24,7 @@ import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { WindowLink } from './document/WindowLink';
 import { openPrintout } from '@/components/print/printPages';
+import { TextDateTimeField } from '@/components/ui/DateTimeFields';
 
 /*
  * The journal entry form: any journal entry with its lines, and manual entries made here.
@@ -42,7 +43,7 @@ const EMPTY_HEADER = { description: '', entryDatetime: '' };
 // lineId: the line being changed, or null for a new one
 const EMPTY_ENTRY = { lineId: null, accountId: null, partyId: null, debit: '', credit: '', description: '' };
 
-// "2026-10-31T23:59:00" → "2026-10-31T23:59", as a datetime-local field holds it
+// "2026-10-31T23:59:00" → "2026-10-31T23:59", as TextDateTimeField holds it
 const headerFrom = (loaded) => ({
   description: loaded.description ?? '',
   entryDatetime: loaded.entryDatetime ? loaded.entryDatetime.slice(0, 16) : '',
@@ -245,9 +246,8 @@ function ReverseDialog({ open, entryId, onClose, onReverse }) {
         <Typography variant="body2" color="text.secondary">
           يُرحَّل قيد بنفس السطور مع تبديل المدين والدائن، فيلغي أثر هذا القيد.
         </Typography>
-        <TextField size="small" type="datetime-local" label="يسري في" value={entryDatetime}
-          helperText="فارغ: الآن. لا يسبق تاريخ القيد نفسه" onChange={(event) => setEntryDatetime(event.target.value)}
-          slotProps={{ inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } }} />
+        <TextDateTimeField kind="datetime" label="يسري في" value={entryDatetime} onChange={setEntryDatetime}
+          helperText="فارغ: الآن. لا يسبق تاريخ القيد نفسه" />
         <TextField size="small" label="البيان" value={description} placeholder={`عكس القيد رقم ${entryId}`}
           error={description.length > MAX_DESCRIPTION_LENGTH} onChange={(event) => setDescription(event.target.value)}
           slotProps={{ inputLabel: { shrink: true } }} />
@@ -354,10 +354,11 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
     <HeaderRow wrap>
       <DocumentTitle title={entry ? `قيد يومية رقم ${entry.id}` : 'قيد يومية جديد'} status={entryStatus(entry)} />
       <Labelled id={`${formId}-datetime`} label="يسري في" basis={200}>
-        <TextField size="small" type="datetime-local" fullWidth value={header.entryDatetime} disabled={!editable}
+        <TextDateTimeField kind="datetime" fullWidth value={header.entryDatetime} disabled={!editable}
+          labelledBy={`${formId}-datetime`}
           helperText={editable && !header.entryDatetime ? 'فارغ: عند الترحيل' : undefined}
-          onChange={(event) => doc.editHeader({ entryDatetime: event.target.value })} onBlur={() => doc.saveHeader()}
-          slotProps={{ htmlInput: { dir: 'ltr', 'aria-labelledby': `${formId}-datetime` } }} />
+          onChange={(entryDatetime) => doc.editHeader({ entryDatetime })}
+          onAccept={(entryDatetime) => doc.changeHeader({ entryDatetime })} onBlur={() => doc.saveHeader()} />
       </Labelled>
       <DescriptionField value={header.description} disabled={!editable}
         onChange={(description) => doc.editHeader({ description })} onBlur={() => doc.saveHeader()} />

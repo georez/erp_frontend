@@ -25,7 +25,7 @@ import {
 const modules = [AllCommunityModule];
 
 // react-querybuilder touches the DOM on load, so it is only rendered in the browser
-const QueryBuilder = dynamic(() => import('react-querybuilder').then((module) => module.QueryBuilder), { ssr: false });
+const QueryBuilder = dynamic(() => import('./ReportQueryBuilder'), { ssr: false });
 
 /** The tabs of the report screen, in order. */
 export const TABS = {
