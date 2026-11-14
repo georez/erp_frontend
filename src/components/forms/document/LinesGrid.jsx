@@ -26,13 +26,13 @@ export const expiryColumn = (field = 'expiryDate') => ({
 });
 
 /**
- * The column of each row's delete button (none on a pinned total row); no column on a posted document. A delete is
- * queued like a line's OK, so the button stays on.
+ * The column of each row's delete button (none on a pinned total row); no column when the rows can't change (a posted
+ * document's). A delete is queued like a line's OK, so the button stays on.
  *
  * @param nameOf what the button deletes, for its label: the row's product by default
  */
-export const deleteColumn = (isPosted, onDelete, nameOf = (row) => row.productName) => {
-  if (isPosted) {
+export const deleteColumn = (readOnly, onDelete, nameOf = (row) => row.productName) => {
+  if (readOnly) {
     return [];
   }
   return [{
@@ -49,15 +49,15 @@ export const deleteColumn = (isPosted, onDelete, nameOf = (row) => row.productNa
 };
 
 /**
- * A grid of the document's rows; a click on a row (not on its buttons or links) edits it, unless the document is
- * posted.
+ * A grid of the document's rows; a click on a row (not on its buttons or links) edits it, unless they're read only (a
+ * posted document's).
  */
 export function LinesGrid({
-  rows, columnDefs, pinnedBottomRowData, isPosted, onEdit, emptyText, minHeight = 160, flex = 1,
+  rows, columnDefs, pinnedBottomRowData, readOnly, onEdit, emptyText, minHeight = 160, flex = 1,
 }) {
   const handleRowClicked = ({ data, node, event }) => {
     const clickedAControl = event?.target?.closest?.('button, a');
-    if (!isPosted && !node.rowPinned && !clickedAControl) {
+    if (!readOnly && !node.rowPinned && !clickedAControl) {
       onEdit(data);
     }
   };
@@ -69,7 +69,7 @@ export function LinesGrid({
         pinnedBottomRowData={pinnedBottomRowData}
         getRowId={({ data }) => String(data.id)}
         onRowClicked={handleRowClicked}
-        rowStyle={isPosted ? undefined : { cursor: 'pointer' }}
+        rowStyle={readOnly ? undefined : { cursor: 'pointer' }}
         defaultColDef={{ sortable: false, resizable: true, wrapHeaderText: true, autoHeaderHeight: true }}
         enableRtl
         enableCellTextSelection

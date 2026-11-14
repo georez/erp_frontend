@@ -157,7 +157,7 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
       <OkButton okRef={okRef} onClick={saveEntry} updating={isOneOfTheLines(entry, lines)} />
     </EntryRow>}
 
-    <LinesGrid rows={lines} columnDefs={columnDefs} isPosted={isPosted}
+    <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted}
       onEdit={(line) => entryRow.fill(entryFromLine(line), quantityRef)}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية والخصم ثم OK'} />

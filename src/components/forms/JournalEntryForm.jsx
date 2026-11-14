@@ -390,7 +390,7 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
         updating={typed.lineId != null && lines.some((line) => line.id === typed.lineId)} />
     </EntryRow>}
 
-    <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={total} isPosted={!editable}
+    <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={total} readOnly={!editable}
       onEdit={(line) => entryRow.fill(entryFromLine(line), debitRef)} emptyText={emptyText} />
 
     <DocumentActions isNew={doc.isNew} isDraft={isManualDraft} pending={doc.pending}

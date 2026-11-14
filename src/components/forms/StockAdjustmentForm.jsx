@@ -259,7 +259,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
       onChoose={(batch) => entryRow.fill(entryFromBatch(entry.productId, batch), countedRef)}
       onHide={() => setBatchesPanelShown(false)} />}
 
-    <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={totals} isPosted={isPosted}
+    <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={totals} readOnly={isPosted}
       onEdit={(line) => entryRow.fill(entryFromLine(line), countedRef)}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية الفعلية ثم OK'} />

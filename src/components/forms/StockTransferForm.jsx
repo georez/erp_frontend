@@ -354,7 +354,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
         inputRef={quantityRef} error={lineRow.errors.quantity} helperText={stockHelp || undefined} minWidth={150} />
       <OkButton okRef={okRef} onClick={saveLine} updating={existingLine != null} />
     </EntryRow>}
-    <LinesGrid rows={lines} columnDefs={lineColumnDefs} isPosted={isPosted} onEdit={editLine} minHeight={120}
+    <LinesGrid rows={lines} columnDefs={lineColumnDefs} readOnly={isPosted} onEdit={editLine} minHeight={120}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل أصناف التحويل: الصنف والكمية ثم OK'} />
 
     {/* Phase 2, optional: batches named for the products' units */}
@@ -374,7 +374,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
           inputRef={batchQuantityRef} error={batchRow.errors.quantity} />
         <OkButton okRef={batchOkRef} onClick={saveBatch} updating={editingExistingBatch} />
       </EntryRow>}
-      <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} isPosted={isPosted} onEdit={editBatch} minHeight={100}
+      <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={100}
         emptyText={`حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${AUTOMATIC_BATCHES})`} />
     </>}
 

@@ -356,7 +356,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
       <OkButton okRef={okRef} onClick={saveEntry} updating={existingLine != null} />
     </EntryRow>}
 
-    <LinesGrid rows={lines} columnDefs={columnDefs} isPosted={isPosted} onEdit={editLine}
+    <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والكمية ثم OK'} />
 
     <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}

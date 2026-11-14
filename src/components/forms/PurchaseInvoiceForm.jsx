@@ -315,7 +315,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
         onChange={lineRow.setField('discountPercent')} inputRef={discountRef} error={lineRow.errors.discountPercent} />
       <OkButton okRef={okRef} onClick={saveLine} updating={editingExistingLine} />
     </EntryRow>}
-    <LinesGrid rows={lines} columnDefs={lineColumnDefs} isPosted={isPosted} onEdit={editLine} minHeight={120}
+    <LinesGrid rows={lines} columnDefs={lineColumnDefs} readOnly={isPosted} onEdit={editLine} minHeight={120}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل أصناف الفاتورة: الصنف والكمية والخصم ثم OK؛ ثم انتقل إلى إدخال التشغيلات'} />
 
@@ -334,7 +334,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
           inputRef={batchQuantityRef} error={batchRow.errors.quantity} />
         <OkButton okRef={batchOkRef} onClick={saveBatch} updating={editingExistingBatch} />
       </EntryRow>}
-      <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} isPosted={isPosted} onEdit={editBatch} minHeight={120}
+      <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={120}
         emptyText="أدخل تشغيلات كل صنف: الصنف والتشغيلة والصلاحية والكمية ثم OK" />
     </>}
 

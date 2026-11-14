@@ -186,6 +186,7 @@ export const ERROR_MESSAGES = Object.freeze({
   SALES_INVOICE_POSTED: 'فاتورة المبيعات رقم {invoiceId} مُرحَّلة ولا يمكن تعديلها؛ صحّحها بمرتجع مبيعات',
   SALES_INVOICE_LINE_NOT_FOUND: 'السطر رقم {lineId} غير موجود في الفاتورة',
   SALES_INVOICE_BATCHES_NOT_STARTED: 'انتقل إلى إدخال التشغيلات في الفاتورة رقم {invoiceId} أولاً',
+  SALES_INVOICE_BATCHES_STARTED: 'لا تتغير أصناف الفاتورة رقم {invoiceId} بعد بدء إدخال التشغيلات',
   SALES_INVOICE_BATCH_NOT_FOUND: 'التشغيلة رقم {batchId} غير موجودة في الفاتورة',
   SALES_INVOICE_HAS_LINES: 'لا يمكن تغيير العميل أو المخزن بعد إدخال أصناف الفاتورة رقم {invoiceId}؛ احذف الأصناف أولاً',
   SALES_TIER_DISCOUNT_MISSING: 'لا يوجد خصم للشريحة "{tierName}" في "{warehouseName}"',

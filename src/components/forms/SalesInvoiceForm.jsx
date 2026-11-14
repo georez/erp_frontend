@@ -1,6 +1,7 @@
 'use client';
 
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import UndoIcon from '@mui/icons-material/Undo';
 import { Alert, Typography } from '@mui/material';
 import { Big } from 'bigdecimal.js';
 import useSWR from 'swr';
@@ -93,15 +94,22 @@ function batchOptionsUrl(productId, warehouseId, invoiceId) {
 const unitPriceAt = (publicPrice, discountPercent) =>
   Big(publicPrice).multiply(Big(100).subtract(Big(discountPercent))).divide(Big(100));
 
-/** The product entry row's errors by field, and the line to send when it has none. */
-function checkLineEntry(entry, available) {
+/**
+ * The product entry row's errors by field, and the line to send when it has none.
+ *
+ * @param batched the units of the line named in batches before the draft went back to its products phase; null for none
+ */
+function checkLineEntry(entry, available, batched) {
   const quantity = checkQuantity(entry.quantity);
   const discount = checkOptionalDiscount(entry.discountPercent);
   const overAvailable = quantity.quantity != null && available != null
     && Big(quantity.quantity).compareTo(Big(available)) > 0;
+  const underBatched = quantity.quantity != null && batched != null
+    && Big(quantity.quantity).compareTo(Big(batched)) < 0;
   const errors = {
     productId: missingProduct(entry.productId),
-    quantity: quantity.error ?? (overAvailable ? `المتاح ${formatAmount(available)} فقط` : null),
+    quantity: quantity.error ?? (overAvailable ? `المتاح ${formatAmount(available)} فقط` : null)
+      ?? (underBatched ? `حُدّدت تشغيلات لـ ${formatAmount(batched)}` : null),
     discountPercent: discount.error,
   };
   if (hasErrors(errors)) {
@@ -152,11 +160,12 @@ const batchedColumn = {
   cellStyle: ({ data }) => ({ ...NUMBER_CELL, color: isNonZero(data.unbatchedQuantity) ? LOSS_COLOR : GAIN_COLOR }),
 };
 
-const lineColumns = ({ batchesPhase, isPosted, onDelete }) => [
+// showsUnbatched: in the batches phase, or back in the products phase with batches named before
+const lineColumns = ({ showsUnbatched, isPosted, readOnly, onDelete }) => [
   textColumn('productName', 'الصنف', { flex: 2, minWidth: 140 }),
   amountColumn('quantity', 'الكمية', 80),
   ...(isPosted ? [] : [availableColumn]),
-  ...(batchesPhase && !isPosted ? [batchedColumn] : []),
+  ...(showsUnbatched && !isPosted ? [batchedColumn] : []),
   amountColumn('publicPrice', 'سعر الجمهور', 85),
   amountColumn('discountPercent', 'الخصم %', 80),
   unitPriceColumn,
@@ -164,7 +173,7 @@ const lineColumns = ({ batchesPhase, isPosted, onDelete }) => [
   amountColumn('netAmount', 'الصافي', 95),
   amountColumn('vatPercent', 'الضريبة %', 80),
   amountColumn('vatAmount', 'الضريبة', 85),
-  ...deleteColumn(isPosted, onDelete),
+  ...deleteColumn(readOnly, onDelete),
 ];
 
 const batchColumns = ({ isPosted, onDelete }) => [
@@ -205,6 +214,10 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const lines = useMemo(() => invoice?.lines ?? [], [invoice]);
   const hasLines = lines.length > 0;
   const batchesPhase = invoice != null && invoice.status === 'BATCHES';
+  // The products are entered, changed and deleted only in the products phase: fixed in the batches phase, until the
+  // draft goes back (with the batches named so far)
+  const entersProducts = editable && !batchesPhase;
+  const hasNamedBatches = lines.some((line) => line.batches.length > 0);
   // A posted invoice's batches are those its goods were taken from
   const showsBatches = batchesPhase || isPosted;
   const batchRows = useMemo(() => lines.flatMap((line) => line.batches.map((batch) => ({
@@ -220,7 +233,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
 
   // Its error (e.g. the warehouse gives the customer's tier no discount) is shown under the product, before OK
   const { data: pricing, error: pricingError } = useSWR(
-    editable ? linePricingUrl(header, lineRow.entry.productId, invoice?.id) : null,
+    entersProducts ? linePricingUrl(header, lineRow.entry.productId, invoice?.id) : null,
     fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
   // What the line gets without a discount typed: its own, or the one worked out for a new line
@@ -236,7 +249,8 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   /** Sends the line, asking first about a discount under the minimum; the product stays, the rest is cleared. */
   const saveLine = async () => {
     const headerWarning = doc.isNew ? salesHeaderProblem(header) : null;
-    const { errors, line } = checkLineEntry(lineRow.entry, pricing?.available ?? null);
+    const { errors, line } = checkLineEntry(lineRow.entry, pricing?.available ?? null,
+      existingLine?.batchedQuantity ?? null);
     lineRow.setErrors({ ...errors, header: headerWarning });
     if (headerWarning || !line) {
       return;
@@ -256,7 +270,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const editLine = (line) => lineRow.fill({ productId: line.productId, quantity: line.quantity, discountPercent: '' },
     quantityRef);
 
-  /** Deletes a product's line, with its named batches: asked first when it has some. */
+  /** Deletes a product's line, with the batches named for it before going back to the products: asked first then. */
   const deleteLine = async (line) => {
     if (line.batches.length > 0 && !await confirm({
       title: `حذف ${line.productName} وتشغيلاته من الفاتورة؟`, confirmLabel: 'حذف', color: 'error',
@@ -375,13 +389,18 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
       label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: !hasLines,
       onClick: () => doc.sendToDraft('/batches-phase', 'POST'),
     };
-  const otherSteps = !batchesPhase && permissions?.mayPostWithoutBatches
-    ? [{ key: 'post', label: 'ترحيل مباشر', onClick: post, disabled: postDisabled }]
-    : [];
+  const backToProducts = {
+    key: 'products', label: 'رجوع إلى الأصناف', icon: <UndoIcon />,
+    onClick: () => doc.sendToDraft('/products-phase', 'POST'),
+  };
+  const postDirectly = { key: 'post', label: 'ترحيل مباشر', onClick: post, disabled: postDisabled };
+  const otherSteps = batchesPhase ? [backToProducts] : (permissions?.mayPostWithoutBatches ? [postDirectly] : []);
 
   const balanceAfter = invoice && Big(invoice.customerBalance).add(Big(invoice.total)).toPlainString();
 
-  const lineColumnDefs = lineColumns({ batchesPhase, isPosted, onDelete: deleteLine });
+  const lineColumnDefs = lineColumns({
+    showsUnbatched: batchesPhase || hasNamedBatches, isPosted, readOnly: !entersProducts, onDelete: deleteLine,
+  });
   const batchColumnDefs = batchColumns({ isPosted, onDelete: deleteBatch });
 
   return <DocumentWindow>
@@ -411,14 +430,15 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     </Alert>}
     {isDraft && shortLines.length > 0 && <Alert severity="warning">
       {`الكمية أكبر من المتاح للبيع: ${shortLines.map((line) => line.productName).join('، ')}. `
-        + 'قلّل الكمية أو احذف الصنف قبل الترحيل'}
+        + (batchesPhase ? 'ارجع إلى الأصناف وقلّل الكمية أو احذف الصنف قبل الترحيل'
+          : 'قلّل الكمية أو احذف الصنف قبل الترحيل')}
     </Alert>}
     {isDraft && belowCostLines.length > 0 && <Alert severity="info">
       {`تُباع بأقل من تكلفتها: ${belowCostLines.map((line) => line.productName).join('، ')}`}
     </Alert>}
 
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}
-    {editable && <EntryRow fieldRefs={[productRef, quantityRef, discountRef, okRef]}>
+    {entersProducts && <EntryRow fieldRefs={[productRef, quantityRef, discountRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={lineRow.entry.productId}
         onChange={lineRow.setField('productId', ['quantity'])}
         error={lineRow.errors.productId ?? pricingError?.message} />
@@ -432,7 +452,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
         helperText={discountHelp || undefined} />
       <OkButton okRef={okRef} onClick={saveLine} updating={existingLine != null} />
     </EntryRow>}
-    <LinesGrid rows={lines} columnDefs={lineColumnDefs} isPosted={isPosted} onEdit={editLine} minHeight={120}
+    <LinesGrid rows={lines} columnDefs={lineColumnDefs} readOnly={!entersProducts} onEdit={editLine} minHeight={120}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل أصناف الفاتورة: الصنف والكمية ثم OK'} />
 
     {/* Phase 2, optional: batches named for the products' units */}
@@ -452,7 +472,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
           inputRef={batchQuantityRef} error={batchRow.errors.quantity} />
         <OkButton okRef={batchOkRef} onClick={saveBatch} updating={editingExistingBatch} />
       </EntryRow>}
-      <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} isPosted={isPosted} onEdit={editBatch} minHeight={100}
+      <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={100}
         emptyText={`حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${batchOrderLabel})`} />
     </>}
 
