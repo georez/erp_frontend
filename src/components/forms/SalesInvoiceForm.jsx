@@ -338,12 +338,13 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const overCreditLimit = invoice?.overCreditLimit === true;
 
   /**
-   * Posts once the user confirms what posting would do that they may not expect: in the batches phase, the units
-   * without a batch get theirs chosen; and lines sold under their cost.
+   * Posts once the user confirms what posting would do that they may not expect: once batches were named (in the
+   * batches phase, or before going back to the products), the units without a batch get theirs chosen; and lines sold
+   * under their cost.
    */
   const post = async () => {
     const warnings = [];
-    const unbatched = batchesPhase ? lines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
+    const unbatched = batchesPhase || hasNamedBatches ? lines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
     if (unbatched.length > 0) {
       warnings.push(`لم تُحدَّد تشغيلات لكل الكميات؛ ستُختار تشغيلات الباقي تلقائياً (${batchOrderLabel}):\n`
         + listed(unbatched, (line) => formatAmount(line.unbatchedQuantity)));
