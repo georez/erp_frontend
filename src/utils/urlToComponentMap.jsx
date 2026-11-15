@@ -5,6 +5,7 @@ import FinancialStatement from '@/components/reports/financialStatement/Financia
 import ChartOfAccounts from '@/components/reports/chartOfAccounts/ChartOfAccounts';
 import StatementPage from '@/components/reports/statement/StatementPage';
 import PartyBalances from '@/components/reports/partyBalances/PartyBalances';
+import ProductMovements from '@/components/reports/productMovements/ProductMovements';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
 import OpeningBalanceForm from '@/components/forms/OpeningBalanceForm';
 import PurchaseInvoiceForm from '@/components/forms/PurchaseInvoiceForm';
@@ -35,6 +36,7 @@ const urlToComponentMap = {
   '/dashboard/receipt': (props) => <ReceiptForm {...props} />,
   '/dashboard/supplier-balances': (props) => <PartyBalances kind="supplier" {...props} />,
   '/dashboard/customer-balances': (props) => <PartyBalances kind="customer" {...props} />,
+  '/dashboard/product-movements': (props) => <ProductMovements {...props} />,
   '/dashboard/stock-adjustment': (props) => <StockAdjustmentForm {...props} />,
   '/dashboard/opening-balance': (props) => <OpeningBalanceForm {...props} />,
   '/dashboard/purchase-invoice': (props) => <PurchaseInvoiceForm {...props} />,

@@ -106,6 +106,7 @@ export const MENU_MODULES = [
       documentLink('تحويل مخزني', 'stock-transfer'),
       reportLink('تقرير أرصدة المخزون', 'stockBalancesReport'),
       reportLink('المخزون في لحظة', 'stockAsOfReport'),
+      pageLink('حركة صنف', 'product-movements'),
       reportLink('تقرير تسويات المخزون', 'stockAdjustmentsReport'),
       reportLink('تقرير التحويلات المخزنية', 'stockTransfersReport'),
       reportLink('تقرير التشغيلات والصلاحية', 'stockBatchesReport'),

@@ -410,13 +410,17 @@ export function paramOrderProblem(paramFields, values) {
   }, '');
 }
 
-/** The date params before their notBefore; a missing or invalid date isn't compared (its own check says so). */
+/**
+ * The date and datetime params before their notBefore (a param of the same type); a missing or invalid one isn't
+ * compared (its own check says so).
+ */
 function datesBeforeTheirEarliest(paramFields, selected) {
-  const isDate = (value) => validateFormField('date', true, null, value);
-  return paramFields.filter(({ fieldName, notBefore }) => notBefore
-    && isDate(selected[fieldName]) && isDate(selected[notBefore])
-    // YYYY-MM-DD: as text, in date order
-    && selected[fieldName] < selected[notBefore]);
+  return paramFields.filter(({ fieldName, validationType, notBefore }) => {
+    const isValid = (value) => validateFormField(validationType, true, null, value);
+    return notBefore && isValid(selected[fieldName]) && isValid(selected[notBefore])
+      // YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss: as text, in time order
+      && selected[fieldName] < selected[notBefore];
+  });
 }
 
 /**

@@ -94,7 +94,6 @@ function useReportMetadata(reportName) {
  */
 export function useReportPage({ reportName, page, formId, formTitle, params, execute, requestTime, initialParams }) {
   const updateOpenFormsUrl = useUpdateOpenForms(formId);
-  const { csrfFetch } = useContext(AuthContext);
   const { metadata, loadError } = useReportMetadata(reportName);
   const paramFields = useMemo(() => metadata?.params ?? [], [metadata]);
 
@@ -109,17 +108,66 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
   }
   const [paramValidity, setParamValidity] = useState({});
   const [showParamErrors, setShowParamErrors] = useState(false);
+  const [paramsError, setParamsError] = useState('');
 
+  const { rows, hasRun, loading, runError, clearRunError } = useReportRun({
+    reportName, reportParams: parseJsonObject(params, {}), execute, requestTime, ready: metadata != null,
+  });
+
+  /** Run: checks the params (the fields show what's wrong), then writes them into the URL, which runs them. */
+  const handleRun = () => {
+    const validity = validateReportParams(paramFields, paramValues);
+    setParamValidity(validity);
+    if (!Object.values(validity).every(Boolean)) {
+      setShowParamErrors(true);
+      setParamsError(paramOrderProblem(paramFields, paramValues) ?? '');
+      clearRunError();
+      return;
+    }
+    setParamsError('');
+    updateOpenFormsUrl(reportPageUrl(page, formTitle, selectReportParams(paramFields, paramValues)));
+  };
+
+  return {
+    metadata,
+    loadError,
+    paramForm: { paramFields, paramValues, setParamValues, paramValidity, setParamValidity, showParamErrors },
+    rows,
+    hasRun,
+    loading,
+    runError: paramsError || runError,
+    clearRunError: () => {
+      setParamsError('');
+      clearRunError();
+    },
+    handleRun,
+  };
+}
+
+/**
+ * Runs a report when the page's URL asks for it (execute "true"), and again on every Run (requestTime changes), once
+ * it's ready (e.g. its page's metadata is in). A newer run discards the result of an older one still in flight. A page
+ * that shows more than one report runs each with this, from the same URL.
+ *
+ * @param {object} options
+ * @param {string} options.reportName
+ * @param {object} options.reportParams  the report's param values by name
+ * @param {string} [options.execute]  from the URL
+ * @param {string} [options.requestTime]  from the URL
+ * @param {boolean} [options.ready]  false to wait
+ */
+export function useReportRun({ reportName, reportParams, execute, requestTime, ready = true }) {
+  const { csrfFetch } = useContext(AuthContext);
   const [rows, setRows] = useState([]);
   const [hasRun, setHasRun] = useState(false);
   const [loading, setLoading] = useState(false);
   const [runError, setRunError] = useState('');
 
-  // Runs when the URL asks for it, and again on every Run (requestTime changes), once the metadata is in. A newer run
-  // discards the result of an older one still in flight.
+  // The params as text, so a new object with the same values doesn't run the report again
+  const paramsText = JSON.stringify(reportParams);
   const shouldExecute = execute === 'true';
   useEffect(() => {
-    if (!shouldExecute || !metadata) {
+    if (!shouldExecute || !ready) {
       return undefined;
     }
     let cancelled = false;
@@ -128,7 +176,7 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
       setRunError('');
       try {
         const result = await executeReport({
-          csrfFetch, reportName, query: ALL_ROWS, reportParams: parseJsonObject(params, {}), columns: [], sort: [],
+          csrfFetch, reportName, query: ALL_ROWS, reportParams: JSON.parse(paramsText), columns: [], sort: [],
         });
         if (cancelled) {
           return;
@@ -152,30 +200,7 @@ export function useReportPage({ reportName, page, formId, formTitle, params, exe
       cancelled = true;
       setLoading(false);
     };
-  }, [shouldExecute, requestTime, reportName, params, metadata, csrfFetch]);
+  }, [shouldExecute, ready, requestTime, reportName, paramsText, csrfFetch]);
 
-  /** Run: checks the params (the fields show what's wrong), then writes them into the URL, which runs them. */
-  const handleRun = () => {
-    const validity = validateReportParams(paramFields, paramValues);
-    setParamValidity(validity);
-    if (!Object.values(validity).every(Boolean)) {
-      setShowParamErrors(true);
-      setRunError(paramOrderProblem(paramFields, paramValues) ?? '');
-      return;
-    }
-    setRunError('');
-    updateOpenFormsUrl(reportPageUrl(page, formTitle, selectReportParams(paramFields, paramValues)));
-  };
-
-  return {
-    metadata,
-    loadError,
-    paramForm: { paramFields, paramValues, setParamValues, paramValidity, setParamValidity, showParamErrors },
-    rows,
-    hasRun,
-    loading,
-    runError,
-    clearRunError: () => setRunError(''),
-    handleRun,
-  };
+  return { rows, hasRun, loading, runError, clearRunError: () => setRunError('') };
 }

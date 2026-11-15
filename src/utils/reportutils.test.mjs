@@ -208,6 +208,20 @@ test('a period may not end before it starts', () => {
     "an invalid date is its own field's problem");
 });
 
+test('a period of moments may not end before it starts', () => {
+  const periodFields = [
+    { fieldName: 'p_from', displayName: 'من', validationType: 'datetime' },
+    { fieldName: 'p_to', displayName: 'حتى', validationType: 'datetime', notBefore: 'p_from' },
+  ];
+  const period = (from, to) => ({ p_from: from, p_to: to });
+
+  assert.equal(paramOrderProblem(periodFields, period('2026-10-01T10:00:00', '2026-10-01T10:00:00')), null,
+    'one minute is a period');
+  assert.deepEqual(validateReportParams(periodFields, period('2026-10-01T10:00:00', '2026-10-01T09:59:00')),
+    { p_from: true, p_to: false });
+  assert.equal(paramOrderProblem(periodFields, period('2026-10-01T10:00:00', null)), null, 'no end: up to now');
+});
+
 // --- linked cells ---
 
 const categoryLink = { schemaName: 'customer_categories', idColumn: 'id', formTitle: 'ادخال تصنيف العملاء' };

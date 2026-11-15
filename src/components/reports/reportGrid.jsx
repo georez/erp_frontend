@@ -128,7 +128,7 @@ export function mergeFrozenColumns(previous, columns) {
  *
  * @param {object} props  AG Grid cell renderer props, plus cellRendererParams `link` and `openLink`
  */
-function LinkCell({ value, data, link, openLink }) {
+export function LinkCell({ value, data, link, openLink }) {
   const text = value === null || value === undefined ? '' : String(value);
   const target = linkTarget(link, data);
   if (!target) {
