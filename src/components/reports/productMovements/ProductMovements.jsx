@@ -21,17 +21,23 @@ function startOfMonth() {
   return `${today.getFullYear()}-${month}-01T00:00:00`;
 }
 
-/** The tab's columns, with the report's labels, types and links where the tab doesn't name them itself. */
-function gridColumns(tab, byBatch, metadataColumns) {
+/**
+ * The tab's columns, with the report's labels, types and links where the tab doesn't name them itself. In one
+ * warehouse, the balance in its own warehouse is the balance: shown once.
+ */
+function gridColumns(tab, byBatch, oneWarehouse, metadataColumns) {
   const byName = new Map(metadataColumns.map((column) => [column.name, column]));
-  return tabColumns(tab, byBatch).map(({ field, header }) => {
+  const columns = tabColumns(tab, byBatch)
+    .filter(({ field }) => !(oneWarehouse && field === 'warehouse_balance_after'));
+  return columns.map(({ field, header }) => {
     const column = byName.get(field) ?? { name: field };
     return header ? { ...column, label: header } : column;
   });
 }
 
 /**
- * A product's movements (حركة صنف): choose a product and a period, then
+ * A product's movements (حركة صنف): choose a product, a period and optionally a warehouse (the movements and balances
+ * are then that warehouse's), then
  * - the summary: its public price, its balance before the period, what each operation brought in and took out, its
  *   balance at the end, and its stock in every warehouse now, with what's reserved and free;
  * - every movement in order, each with the balance after it, in all warehouses and in its own;
@@ -54,13 +60,14 @@ export default function ProductMovements({ formId, formTitle = 'حركة صنف'
     params,
     execute,
     requestTime,
-    initialParams: { p_product_id: null, p_from: startOfMonth(), p_to: null, p_by_batch: false },
+    initialParams: { p_product_id: null, p_warehouse_id: null, p_from: startOfMonth(), p_to: null, p_by_batch: false },
   });
   // What the rows are of: the params they were run with (the URL's), not the ones being edited
   const runParams = parseJsonObject(params, {});
   const productId = runParams.p_product_id ?? null;
+  const warehouseId = runParams.p_warehouse_id ?? null;
   const byBatch = runParams.p_by_batch === true || runParams.p_by_batch === 'true';
-  // The stock now: of the product only, whatever the period
+  // The stock now: of the product only, in every warehouse, whatever the period and the warehouse chosen
   const stockRun = useReportRun({
     reportName: 'productStockReport', reportParams: { p_product_id: productId }, execute, requestTime,
     ready: productId !== null,
@@ -73,8 +80,8 @@ export default function ProductMovements({ formId, formTitle = 'حركة صنف'
   const tabs = useMemo(() => MOVEMENT_TABS.map((tab) => ({
     ...tab,
     rows: tabRows(rows, tab),
-    columns: gridColumns(tab, byBatch, metadata?.columns ?? []),
-  })), [rows, byBatch, metadata]);
+    columns: gridColumns(tab, byBatch, warehouseId !== null, metadata?.columns ?? []),
+  })), [rows, byBatch, warehouseId, metadata]);
   const shownTab = tabs.find((tab) => tab.key === tabKey);
 
   // Both reports run together: the page shows either's error, and waits for both
@@ -102,7 +109,8 @@ export default function ProductMovements({ formId, formTitle = 'حركة صنف'
             totalRow={(shown) => totalsRow(shown, {
               label: 'الإجمالي', labelColumn: 'entry_datetime', columns: shownTab.totals, countRows: true,
             })} />
-          : <MovementSummary summary={summary} stock={stock} byBatch={byBatch} openLink={openLink} />}
+          : <MovementSummary summary={summary} stock={stock} byBatch={byBatch} warehouseId={warehouseId}
+            openLink={openLink} />}
       </Box>
     </Box>
   </ReportPageFrame>;

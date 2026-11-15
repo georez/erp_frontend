@@ -96,13 +96,21 @@ function OperationsTable({ title, operations, total }) {
  * @param {object} props.summary  movementSummary of the report's rows
  * @param {{warehouses: Array<object>, batches: Array<object>}} props.stock  the stock now (splitStockRows)
  * @param {boolean} props.byBatch
+ * @param {string|number|null} props.warehouseId  the warehouse the movements are of; null for all of them (the stock
+ *   now is always every warehouse's)
  */
-export default function MovementSummary({ summary, stock, byBatch, openLink }) {
+export default function MovementSummary({ summary, stock, byBatch, warehouseId, openLink }) {
   const { publicPrice, opening, operations, totalIn, totalOut, closing } = summary;
   const figure = ({ quantity, value }) => ({ quantity: quantityText(quantity), value: formatAmount(value) });
+  const chosenWarehouse = warehouseId === null ? null
+    : stock.warehouses.find((row) => String(row.warehouse_id) === String(warehouseId));
 
   return <Box sx={{ width: '100%', height: '100%', overflow: 'auto', p: 1, boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', gap: 2 }}>
+    {warehouseId !== null && <Typography variant="body2" color="text.secondary">
+      {`الحركة والأرصدة أدناه في ${chosenWarehouse ? `المخزن "${chosenWarehouse.warehouse_name}"` : 'المخزن المختار'}`
+        + ' فقط؛ الرصيد الآن لكل المخازن.'}
+    </Typography>}
     <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
       <Figure label="سعر الجمهور" quantity={formatAmount(publicPrice)} />
       <Figure label="رصيد أول المدة" {...figure(opening)} />
