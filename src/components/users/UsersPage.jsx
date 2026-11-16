@@ -283,6 +283,7 @@ function Sessions({ userId }) {
           <TableCell>IP الدخول</TableCell>
           <TableCell>آخر نشاط</TableCell>
           <TableCell>IP آخر نشاط</TableCell>
+          <TableCell>تنتهي</TableCell>
           <TableCell>المتصفح</TableCell>
           <TableCell />
         </TableRow>
@@ -297,6 +298,8 @@ function Sessions({ userId }) {
           <TableCell sx={{ fontWeight: session.lastIp !== session.ip ? 'bold' : undefined }}>
             <bdi dir="ltr">{session.lastIp}</bdi>
           </TableCell>
+          {/* However active it is: then its user signs in again (a session also ends after a day unused) */}
+          <TableCell><bdi dir="ltr">{shownDateTime(session.endsAt)}</bdi></TableCell>
           <TableCell sx={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             title={session.userAgent ?? ''}>
             <bdi dir="ltr">{session.userAgent}</bdi>
