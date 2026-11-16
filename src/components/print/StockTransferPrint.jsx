@@ -42,7 +42,7 @@ function BatchesRow({ line, isPosted }) {
  * Both warehouse keepers sign: the one who sends the goods and the one who receives them.
  */
 export default function StockTransferPrint({ id }) {
-  const { data: transfer, error } = useSWR(`/api/stock-transfers/${id}`, fetchJson, { revalidateOnFocus: false });
+  const { data: transfer, error } = useSWR(`/api/stock-transfers/${id}/print`, fetchJson, { revalidateOnFocus: false });
   const isPosted = transfer?.status === 'POSTED';
 
   return <PrintDocument title="تحويل مخزني" number={transfer?.id ?? null} error={error}

@@ -180,6 +180,8 @@ export function useDocument({
   };
 
   return {
+    // Where the document's endpoints are, e.g. '/api/sales-invoices' (DocumentActions offers what the user may)
+    api,
     // The document as the backend has it (undefined for a new one), and why it couldn't be loaded
     document,
     loadError,

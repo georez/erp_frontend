@@ -162,7 +162,7 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية والخصم ثم OK'} />
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}
       onDeleteDraft={deleteThisDraft} onNew={newOpeningBalance}
       onPrint={openingBalance ? () => openPrintout('opening-balance', openingBalance.id) : undefined}>

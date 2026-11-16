@@ -312,7 +312,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والصلاحية والكمية ثم OK'} />
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       // Not while the goods' cost isn't known: a line's stock isn't enough to return (posting would refuse it)
       nextStep={{ onClick: postReturn, disabled: lines.length === 0 || purchaseReturn?.stockValue == null }}
       onDeleteDraft={deleteThisDraft} onNew={newReturn}

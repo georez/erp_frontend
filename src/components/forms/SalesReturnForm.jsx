@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from 'react';
 import { parseWholeUnits } from '@/utils/decimals';
 import { formatExpiry } from '@/utils/expiryDates';
 import { fetchJson } from '@/utils/fetchJson';
+import { SALES_CHANGE_DISCOUNTS, usePermissions } from '@/utils/usePermissions';
 import { formatAmount, isNonZero, LOSS_COLOR, NUMBER_CELL } from './document/amounts';
 import { useOptions } from './document/comboboxOptions';
 import { DocumentActions, Total } from './document/DocumentActions';
@@ -165,7 +166,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
   const customers = useOptions('customers');
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
-  const { data: permissions } = useSWR('/api/sales-invoices/permissions', fetchJson);
+  const permissions = usePermissions();
   const confirm = useConfirm();
   const doc = useDocument({
     api: '/api/sales-returns', documentId: returnId, formId, formTitle, page: '/dashboard/sales-return',
@@ -185,7 +186,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
 
   const lines = salesReturn?.lines ?? [];
   const hasLines = lines.length > 0;
-  const mayChangeDiscounts = permissions?.mayChangeDiscounts === true;
+  const mayChangeDiscounts = permissions.has(SALES_CHANGE_DISCOUNTS);
 
   // --- the invoice the goods were sold on ---
 
@@ -359,7 +360,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والكمية ثم OK'} />
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: postReturn, disabled: !hasLines || salesReturn?.stockValue == null }}
       onDeleteDraft={deleteThisDraft} onNew={newReturn}
       onPrint={salesReturn ? () => openPrintout('sales-return', salesReturn.id) : undefined}>

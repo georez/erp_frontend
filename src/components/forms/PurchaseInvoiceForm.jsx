@@ -272,7 +272,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   const nextStep = batchesPhase
     ? { onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 || batchesIncomplete }
     : {
-      label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: lines.length === 0,
+      label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: lines.length === 0, endpoint: '/batches-phase',
       onClick: () => doc.sendToDraft('/batches-phase', 'POST'),
     };
 
@@ -339,7 +339,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
         emptyText="أدخل تشغيلات كل صنف: الصنف والتشغيلة والصلاحية والكمية ثم OK" />
     </>}
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
       onDeleteDraft={deleteThisDraft} onNew={newInvoice}
       onPrint={invoice ? () => openPrintout('purchase-invoice', invoice.id) : undefined}>
       <Total label="الصافي" value={invoice?.netTotal ?? '0'} />

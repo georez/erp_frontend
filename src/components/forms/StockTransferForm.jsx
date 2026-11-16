@@ -317,10 +317,11 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
   const nextStep = batchesPhase
     ? { onClick: post, disabled: postDisabled }
     : {
-      label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: !hasLines,
+      label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: !hasLines, endpoint: '/batches-phase',
       onClick: () => doc.sendToDraft('/batches-phase', 'POST'),
     };
-  const otherSteps = batchesPhase ? [] : [{ key: 'post', label: 'ترحيل مباشر', onClick: post, disabled: postDisabled }];
+  const otherSteps = batchesPhase ? []
+    : [{ key: 'post', label: 'ترحيل مباشر', onClick: post, disabled: postDisabled, endpoint: '/post' }];
 
   const lineColumnDefs = lineColumns({ batchesPhase, isPosted, onDelete: deleteLine });
   const batchColumnDefs = batchColumns({ isPosted, onDelete: deleteBatch });
@@ -378,7 +379,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
         emptyText={`حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${AUTOMATIC_BATCHES})`} />
     </>}
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
       otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newTransfer}
       onPrint={transfer ? () => openPrintout('stock-transfer', transfer.id) : undefined}>
       <Total label="إجمالي الكمية" value={totalQuantity(lines)} />

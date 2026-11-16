@@ -39,6 +39,15 @@ const BACKEND_CODES = {
 
   TOO_MANY_LOGIN_ATTEMPTS: ['minutes'],
   SESSION_ENDED: [],
+  PERMISSION_DENIED: ['permission'],
+  USER_DISABLED: [],
+  USER_NOT_FOUND: ['userId'],
+  ROLE_NOT_FOUND: ['roleId'],
+  ROLE_IN_USE: ['role', 'users'],
+  PERMISSION_UNKNOWN: ['permission'],
+  ADMIN_USER_FIXED: [],
+  PASSWORD_TOO_SHORT: ['minLength'],
+  CURRENT_PASSWORD_WRONG: [],
 
   SERVER_BUSY: [],
 

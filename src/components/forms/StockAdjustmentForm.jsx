@@ -264,7 +264,7 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية الفعلية ثم OK'} />
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: cantPost(lines) }}
       onDeleteDraft={deleteThisDraft} onNew={newAdjustment}
       onPrint={adjustment ? () => openPrintout('stock-adjustment', adjustment.id) : undefined} />

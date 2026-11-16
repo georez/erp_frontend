@@ -8,6 +8,7 @@ import {
 import { useContext, useState } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import PasswordIcon from '@mui/icons-material/Password';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { jwtDecode } from "jwt-decode";
@@ -15,7 +16,9 @@ import { AuthContext } from "../AuthProvider";
 import { deleteJwtCookiesAction } from "@/actions/deleteJwtCookieAction";
 import { useRouter } from "next/navigation";
 import { openLinkOnPlainClick, useOpenLink } from "@/utils/useOpenLink";
-import { MENU_MODULES } from "./menuLinks";
+import { usePermissions } from "@/utils/usePermissions";
+import ChangePasswordDialog from "@/components/users/ChangePasswordDialog";
+import { permittedModules } from "./menuLinks";
 
 const drawerWidth = 240;
 
@@ -52,8 +55,12 @@ export default function DrawerForm({ children, backgroundColor }) {
   const username = useUsername();
   const logout = useLogout();
   const openLink = useOpenLink();
+  const permissions = usePermissions();
+  // Only what the user may open; nothing until their permissions have loaded
+  const modules = permittedModules(permissions.has);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   // The modules shown open, by title: all closed at first; the drawer stays mounted, so they stay as the user left them
   const [openModules, setOpenModules] = useState(() => new Set());
@@ -97,13 +104,17 @@ export default function DrawerForm({ children, backgroundColor }) {
         >
           <LogoutIcon />
         </IconButton>
-        <Typography variant="h6" noWrap component="div">
+        <Typography variant="h6" noWrap component="div" sx={{ flex: 1 }}>
           {username}
         </Typography>
+        <IconButton color="inherit" aria-label="تغيير كلمة المرور" title="تغيير كلمة المرور"
+          onClick={() => setChangingPassword(true)}>
+          <PasswordIcon />
+        </IconButton>
       </Toolbar>
       <Divider />
       <List>
-        {MENU_MODULES.map(({ title, links }) => {
+        {modules.map(({ title, links }) => {
           const isOpen = openModules.has(title);
           return <Box key={title}>
             <ListItemButton onClick={() => toggleModule(title)} aria-expanded={isOpen}>
@@ -184,6 +195,7 @@ export default function DrawerForm({ children, backgroundColor }) {
           {drawer}
         </Drawer>
       </Box>
+      <ChangePasswordDialog open={changingPassword} onClose={() => setChangingPassword(false)} />
       <Box
         component="main"
         sx={{ flexGrow: 1, height: '100vh', overflow: 'auto', bgcolor: backgroundColor ?? null }}

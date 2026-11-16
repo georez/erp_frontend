@@ -12,9 +12,10 @@ import { parseWholeUnits } from '@/utils/decimals';
 import { checkLineAmounts, documentPageOf, partyKind, statementPeriod } from '@/utils/journalEntries';
 import { linkTarget } from '@/utils/reportutils';
 import { useOpenLink } from '@/utils/useOpenLink';
+import { usePermissions } from '@/utils/usePermissions';
 import { formatAmount, isNonZero } from './document/amounts';
 import { COMBOBOX_PROPS, useAccountOptions, useOptions } from './document/comboboxOptions';
-import { DocumentActions, Total } from './document/DocumentActions';
+import { DocumentActions, Permitted, Total } from './document/DocumentActions';
 import { DescriptionField, DocumentTitle, HeaderRow, Labelled } from './document/DocumentHeader';
 import { DocumentAlerts, DocumentWindow, NEW_DOCUMENT_HINT } from './document/DocumentLayout';
 import { EntryField, EntryRow, OkButton } from './document/EntryFields';
@@ -266,10 +267,12 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
   const accounts = useAccountOptions();
   const customers = useOptions('customers');
   const suppliers = useOptions('suppliers');
+  const permissions = usePermissions();
   const doc = useDocument({
     api: '/api/journal-entries', documentId: entryId, formId, formTitle, page: '/dashboard/journal-entry',
     idParam: 'entryId', emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
   });
+  const mayReverse = permissions.has(`POST ${doc.api}/{id}/reverse`);
   const { document: entry, header } = doc;
   // A document's entry is read-only here; a manual one while it's a draft (or new, or still loading) is not
   const editable = doc.editable && (entry == null || entry.manual);
@@ -394,12 +397,14 @@ export default function JournalEntryForm({ formId, formTitle, entryId }) {
     <LinesGrid rows={lines} columnDefs={columnDefs} pinnedBottomRowData={total} readOnly={!editable}
       onEdit={(line) => entryRow.fill(entryFromLine(line), debitRef)} emptyText={emptyText} />
 
-    <DocumentActions isNew={doc.isNew} isDraft={isManualDraft} pending={doc.pending}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isManualDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: !balanced }}
       onDeleteDraft={deleteThisDraft} onNew={newEntry}
       onPrint={entry ? () => openPrintout('journal-entry', entry.id) : undefined}>
-      {entry?.canBeReversed && <Button color="error" startIcon={<UndoIcon />} disabled={doc.pending > 0}
-        onClick={() => setReversing(true)}>عكس القيد</Button>}
+      {entry?.canBeReversed && <Permitted allowed={mayReverse}>
+        <Button color="error" startIcon={<UndoIcon />} disabled={doc.pending > 0 || !mayReverse}
+          onClick={() => setReversing(true)}>عكس القيد</Button>
+      </Permitted>}
       <OpenEntryField onOpenEntry={openEntry} />
       {/* The debits and credits are the grid's total row; what keeps the entry from posting shows here */}
       {isNonZero(difference) && <Total label="الفرق" value={difference} strong />}

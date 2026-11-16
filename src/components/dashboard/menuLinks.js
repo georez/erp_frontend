@@ -1,23 +1,34 @@
 /*
  * The dashboard menu's links (DrawerForm), grouped into modules, in the order they're shown. Each opens a window: a
- * table's generic form, a report, or a document's page, with the link's text as the window's title.
+ * table's generic form, a report, or a document's page, with the link's text as the window's title. Each names the
+ * permissions that open it (backend permissions.json): the menu shows it to a user with any of them.
  */
+
+/** The permission to open a report (backend resources/reports/{reportName}). */
+const reportPermission = (reportName) => `GET /api/report/${reportName}/metadata`;
 
 /** A table's generic form (SchemaCrud), e.g. "customers". */
 const formLink = (text, schemaName) => ({
   text, url: `/dashboard/form?schemaName=${schemaName}&formTitle=${encodeURIComponent(text)}`,
+  permissions: [`GET /api/schemacrud/${schemaName}`],
 });
 
-/** A report (backend resources/reports/{reportName}). */
+/** A report shown in the generic report screen. */
 const reportLink = (text, reportName) => ({
   text, url: `/dashboard/report?reportName=${reportName}&formTitle=${encodeURIComponent(text)}`,
+  permissions: [reportPermission(reportName)],
 });
 
-/** A document's page, e.g. "purchase-invoice", or a report with a page of its own (urlToComponentMap). */
-const pageLink = (text, page) => ({
-  text, url: `/dashboard/${page}?formTitle=${encodeURIComponent(text)}`,
+/** A page of its own (urlToComponentMap), e.g. "settings", opened by the permissions. */
+const pageLink = (text, page, permissions) => ({
+  text, url: `/dashboard/${page}?formTitle=${encodeURIComponent(text)}`, permissions,
 });
-const documentLink = pageLink;
+
+/** A report with a page of its own, e.g. "trial-balance". */
+const reportPageLink = (text, page, reportName) => pageLink(text, page, [reportPermission(reportName)]);
+
+/** A document's page, e.g. "purchase-invoice": for a user who may open a document, or start one. */
+const documentLink = (text, page, api) => pageLink(text, page, [`GET ${api}/{id}`, `POST ${api}`]);
 
 export const MENU_MODULES = [
   {
@@ -25,19 +36,19 @@ export const MENU_MODULES = [
     links: [
       formLink('ادخال الحسابات', 'accounts'),
       reportLink('تقرير الحسابات', 'accountsReport'),
-      documentLink('قيد يومية', 'journal-entry'),
-      documentLink('سند صرف', 'payment'),
+      documentLink('قيد يومية', 'journal-entry', '/api/journal-entries'),
+      documentLink('سند صرف', 'payment', '/api/payments'),
       reportLink('تقرير سندات الصرف', 'paymentsReport'),
-      documentLink('سند قبض', 'receipt'),
+      documentLink('سند قبض', 'receipt', '/api/receipts'),
       reportLink('تقرير سندات القبض', 'receiptsReport'),
       reportLink('دفتر اليومية', 'generalJournalReport'),
       reportLink('تقرير القيود', 'journalEntriesReport'),
-      pageLink('دليل الحسابات', 'chart-of-accounts'),
-      pageLink('ميزان المراجعة', 'trial-balance'),
-      pageLink('قائمة الدخل', 'income-statement'),
-      pageLink('الميزانية', 'balance-sheet'),
-      pageLink('إقفال السنة', 'year-closing'),
-      pageLink('كشف حساب', 'account-statement'),
+      reportPageLink('دليل الحسابات', 'chart-of-accounts', 'chartOfAccountsReport'),
+      reportPageLink('ميزان المراجعة', 'trial-balance', 'trialBalanceReport'),
+      reportPageLink('قائمة الدخل', 'income-statement', 'incomeStatementReport'),
+      reportPageLink('الميزانية', 'balance-sheet', 'balanceSheetReport'),
+      pageLink('إقفال السنة', 'year-closing', ['GET /api/year-closings']),
+      reportPageLink('كشف حساب', 'account-statement', 'accountStatementReport'),
     ],
   },
   {
@@ -49,8 +60,8 @@ export const MENU_MODULES = [
       formLink('ادخال شرائح العملاء', 'customer_tiers'),
       reportLink('تقرير شرائح العملاء', 'customerTiersReport'),
       reportLink('تقرير العملاء', 'customersReport'),
-      pageLink('كشف حساب عميل', 'customer-statement'),
-      pageLink('أرصدة العملاء', 'customer-balances'),
+      reportPageLink('كشف حساب عميل', 'customer-statement', 'customerStatementReport'),
+      reportPageLink('أرصدة العملاء', 'customer-balances', 'customerBalancesReport'),
     ],
   },
   {
@@ -60,8 +71,8 @@ export const MENU_MODULES = [
       formLink('ادخال تصنيف الموردين', 'supplier_categories'),
       reportLink('تقرير تصنيف الموردين', 'supplierCategoriesReport'),
       reportLink('تقرير الموردين', 'suppliersReport'),
-      pageLink('كشف حساب مورد', 'supplier-statement'),
-      pageLink('أرصدة الموردين', 'supplier-balances'),
+      reportPageLink('كشف حساب مورد', 'supplier-statement', 'supplierStatementReport'),
+      reportPageLink('أرصدة الموردين', 'supplier-balances', 'supplierBalancesReport'),
     ],
   },
   {
@@ -80,19 +91,19 @@ export const MENU_MODULES = [
   {
     title: 'المشتريات',
     links: [
-      documentLink('فاتورة مشتريات', 'purchase-invoice'),
+      documentLink('فاتورة مشتريات', 'purchase-invoice', '/api/purchase-invoices'),
       reportLink('تقرير فواتير المشتريات', 'purchaseInvoicesReport'),
-      documentLink('مرتجع مشتريات', 'purchase-return'),
+      documentLink('مرتجع مشتريات', 'purchase-return', '/api/purchase-returns'),
       reportLink('تقرير مرتجعات المشتريات', 'purchaseReturnsReport'),
     ],
   },
   {
     title: 'المبيعات',
     links: [
-      documentLink('فاتورة مبيعات', 'sales-invoice'),
+      documentLink('فاتورة مبيعات', 'sales-invoice', '/api/sales-invoices'),
       reportLink('تقرير فواتير المبيعات', 'salesInvoicesReport'),
       reportLink('تقرير الكميات المحجوزة', 'salesReservationsReport'),
-      documentLink('مرتجع مبيعات', 'sales-return'),
+      documentLink('مرتجع مبيعات', 'sales-return', '/api/sales-returns'),
       reportLink('تقرير مرتجعات المبيعات', 'salesReturnsReport'),
       reportLink('ربحية فواتير المبيعات بعد مرتجعاتها', 'salesInvoiceProfitReport'),
     ],
@@ -100,13 +111,13 @@ export const MENU_MODULES = [
   {
     title: 'المخزون',
     links: [
-      documentLink('رصيد افتتاحي للمخزون', 'opening-balance'),
+      documentLink('رصيد افتتاحي للمخزون', 'opening-balance', '/api/opening-balances'),
       reportLink('تقرير الأرصدة الافتتاحية', 'openingBalancesReport'),
-      documentLink('تسوية مخزون', 'stock-adjustment'),
-      documentLink('تحويل مخزني', 'stock-transfer'),
+      documentLink('تسوية مخزون', 'stock-adjustment', '/api/stock-adjustments'),
+      documentLink('تحويل مخزني', 'stock-transfer', '/api/stock-transfers'),
       reportLink('تقرير أرصدة المخزون', 'stockBalancesReport'),
       reportLink('المخزون في لحظة', 'stockAsOfReport'),
-      pageLink('حركة صنف', 'product-movements'),
+      reportPageLink('حركة صنف', 'product-movements', 'productMovementsReport'),
       reportLink('تقرير تسويات المخزون', 'stockAdjustmentsReport'),
       reportLink('تقرير التحويلات المخزنية', 'stockTransfersReport'),
       reportLink('تقرير التشغيلات والصلاحية', 'stockBatchesReport'),
@@ -116,7 +127,17 @@ export const MENU_MODULES = [
   {
     title: 'الإعدادات',
     links: [
-      pageLink('الإعدادات', 'settings'),
+      pageLink('الإعدادات', 'settings', ['GET /api/settings']),
+      pageLink('المستخدمون', 'users', ['GET /api/users']),
+      pageLink('الأدوار', 'roles', ['GET /api/roles']),
+      reportLink('سجل الدخول', 'loginEventsReport'),
     ],
   },
 ];
+
+/** The modules and links the user may open (usePermissions' has); a module with none is left out. */
+export function permittedModules(has) {
+  return MENU_MODULES
+    .map((module) => ({ ...module, links: module.links.filter((link) => link.permissions.some(has)) }))
+    .filter((module) => module.links.length > 0);
+}

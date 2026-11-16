@@ -43,7 +43,7 @@ function totalsOf(lines) {
  * draft's balances and values are as posting would work them out now. The warehouse keeper signs for the count.
  */
 export default function StockAdjustmentPrint({ id }) {
-  const { data: adjustment, error } = useSWR(`/api/stock-adjustments/${id}`, fetchJson, { revalidateOnFocus: false });
+  const { data: adjustment, error } = useSWR(`/api/stock-adjustments/${id}/print`, fetchJson, { revalidateOnFocus: false });
   const totals = adjustment ? totalsOf(adjustment.lines) : null;
 
   return <PrintDocument title="تسوية مخزون" number={adjustment?.id ?? null} error={error}

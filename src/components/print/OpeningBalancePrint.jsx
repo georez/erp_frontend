@@ -11,7 +11,7 @@ import { ProductLines } from './ProductLines';
  * price less the discount it's valued at, and the stock's total value.
  */
 export default function OpeningBalancePrint({ id }) {
-  const { data: openingBalance, error } = useSWR(`/api/opening-balances/${id}`, fetchJson,
+  const { data: openingBalance, error } = useSWR(`/api/opening-balances/${id}/print`, fetchJson,
     { revalidateOnFocus: false });
 
   return <PrintDocument title="رصيد افتتاحي للمخزون" number={openingBalance?.id ?? null} error={error}

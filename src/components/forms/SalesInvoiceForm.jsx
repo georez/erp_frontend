@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { useMemo, useRef } from 'react';
 import { parsePercent } from '@/utils/decimals';
 import { fetchJson } from '@/utils/fetchJson';
+import { SALES_CHANGE_DISCOUNTS, SALES_POST_WITHOUT_BATCHES, usePermissions } from '@/utils/usePermissions';
 import { formatAmount, GAIN_COLOR, isNonZero, LOSS_COLOR, NUMBER_CELL } from './document/amounts';
 import { useOptions } from './document/comboboxOptions';
 import { DocumentActions, Total } from './document/DocumentActions';
@@ -191,7 +192,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const customers = useOptions('customers');
   const warehouses = useOptions('warehouses');
   const products = useOptions('products');
-  const { data: permissions } = useSWR('/api/sales-invoices/permissions', fetchJson);
+  const permissions = usePermissions();
   const { data: settings } = useSWR('/api/settings', fetchJson);
   const confirm = useConfirm();
   const doc = useDocument({
@@ -226,7 +227,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const batchProductOptions = useMemo(() => products.options.filter(
     (option) => lines.some((line) => line.productId === option.value)), [products.options, lines]);
   const lineOfProduct = (productId) => lines.find((line) => line.productId === productId);
-  const mayChangeDiscounts = permissions?.mayChangeDiscounts === true;
+  const mayChangeDiscounts = permissions.has(SALES_CHANGE_DISCOUNTS);
   const batchOrderLabel = BATCH_ORDER_LABELS[settings?.salesBatchOrder] ?? BATCH_ORDER_LABELS.FEFO;
 
   // --- phase 1: the products ---
@@ -387,15 +388,19 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const nextStep = batchesPhase
     ? { onClick: post, disabled: postDisabled }
     : {
-      label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: !hasLines,
+      label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: !hasLines, endpoint: '/batches-phase',
       onClick: () => doc.sendToDraft('/batches-phase', 'POST'),
     };
   const backToProducts = {
-    key: 'products', label: 'رجوع إلى الأصناف', icon: <UndoIcon />,
+    key: 'products', label: 'رجوع إلى الأصناف', icon: <UndoIcon />, endpoint: '/products-phase',
     onClick: () => doc.sendToDraft('/products-phase', 'POST'),
   };
-  const postDirectly = { key: 'post', label: 'ترحيل مباشر', onClick: post, disabled: postDisabled };
-  const otherSteps = batchesPhase ? [backToProducts] : (permissions?.mayPostWithoutBatches ? [postDirectly] : []);
+  // Shown to everyone, greyed out for a user who may not post without the batches phase
+  const postDirectly = {
+    key: 'post', label: 'ترحيل مباشر', onClick: post, disabled: postDisabled, endpoint: '/post',
+    allowed: permissions.has(SALES_POST_WITHOUT_BATCHES),
+  };
+  const otherSteps = batchesPhase ? [backToProducts] : [postDirectly];
 
   const balanceAfter = invoice && Big(invoice.customerBalance).add(Big(invoice.total)).toPlainString();
 
@@ -477,7 +482,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
         emptyText={`حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${batchOrderLabel})`} />
     </>}
 
-    <DocumentActions isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
       otherSteps={otherSteps} onDeleteDraft={deleteThisDraft} onNew={newInvoice}
       onPrint={invoice ? () => openPrintout('sales-invoice', invoice.id) : undefined}>
       <Total label="التكلفة" value={invoice?.costTotal ?? null} />

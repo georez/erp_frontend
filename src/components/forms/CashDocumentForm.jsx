@@ -8,13 +8,14 @@ import useSWR, { useSWRConfig } from 'swr';
 import { Combobox } from '@/components/ui/ComboBox2';
 import { normalizeDecimalText } from '@/utils/decimals';
 import { fetchJson } from '@/utils/fetchJson';
+import { usePermissions } from '@/utils/usePermissions';
 import { partyKind } from '@/utils/journalEntries';
 import { checkCashDocument, isOverBalance } from '@/utils/cashDocuments';
 import { linkTarget } from '@/utils/reportutils';
 import { useOpenLink } from '@/utils/useOpenLink';
 import { formatAmount } from './document/amounts';
 import { COMBOBOX_PROPS, useAccountOptions, useOptions } from './document/comboboxOptions';
-import { DocumentActions } from './document/DocumentActions';
+import { DocumentActions, Permitted } from './document/DocumentActions';
 import { DocumentTitle, HeaderRow, Labelled } from './document/DocumentHeader';
 import { DocumentAlerts, DocumentWindow } from './document/DocumentLayout';
 import { moveOnEnter } from './document/EntryFields';
@@ -131,10 +132,12 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
   const customers = useOptions('customers');
   const suppliers = useOptions('suppliers');
   const confirm = useConfirm();
+  const permissions = usePermissions();
   const doc = useDocument({
     api: documentKind.api, documentId, formId, formTitle, page: documentKind.page,
     idParam: documentKind.idParam, emptyHeader: EMPTY_HEADER, headerFrom, headerBody,
   });
+  const mayReverse = permissions.has(`POST ${doc.api}/{id}/reverse`);
   const { document: cashDocument, header, editable } = doc;
   const [triedToSave, setTriedToSave] = useState(false);
 
@@ -282,13 +285,15 @@ export function CashDocumentForm({ kind: documentKind, formId, formTitle, docume
 
     <Box sx={{ flex: 1 }} />
 
-    <DocumentActions isNew={doc.isNew} isDraft={doc.isDraft} pending={doc.pending}
+    <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={doc.isDraft} pending={doc.pending}
       newStep={{ onClick: saveNew, label: 'حفظ', icon: <SaveIcon /> }} newStepRef={saveRef}
       nextStep={{ onClick: () => sendAndReloadBalances('/post'), disabled: hasErrors(errors) }}
       onDeleteDraft={deleteThisDraft} onNew={newDocument}
       onPrint={cashDocument ? () => openPrintout(documentKind.printout, cashDocument.id) : undefined}>
-      {cashDocument?.canBeReversed && <Button color="error" startIcon={<UndoIcon />} disabled={doc.pending > 0}
-        onClick={reverse}>عكس السند</Button>}
+      {cashDocument?.canBeReversed && <Permitted allowed={mayReverse}>
+        <Button color="error" startIcon={<UndoIcon />} disabled={doc.pending > 0 || !mayReverse}
+          onClick={reverse}>عكس السند</Button>
+      </Permitted>}
     </DocumentActions>
   </DocumentWindow>;
 }

@@ -120,6 +120,22 @@ does), never `errorMessage` directly.
 checks that every code has a message and that each message's placeholders are exactly its code's params. When a code
 is added or its params change in the backend, update the copy and the message together.
 
+## Permissions
+
+The backend checks every request against the user's permissions, one per endpoint (see "Users and permissions" in
+`backend/README.md`); the frontend only offers what the user may do. `usePermissions()` (`src/utils/usePermissions.js`)
+reads them once (`GET /api/me/permissions`) and answers `has("POST /api/sales-invoices/{id}/post")`.
+
+- **The menu** (`components/dashboard/menuLinks.js`) shows a link to a user with any of its permissions: a form's
+  metadata, a report's metadata, a document's `GET {api}/{id}` or `POST {api}`, a page's own. A module without a link
+  left is left out.
+- **Document actions** (`DocumentActions`, given `api={doc.api}`): posting, a step (`endpoint: '/batches-phase'`),
+  deleting a draft, saving a new cash document, reversing, printing (`GET {api}/{id}/print`) are disabled without their
+  permission (`Permitted`); ترحيل مباشر also without `sales:post-without-batches`.
+- **Users and roles** (`components/users/`): the users page (role, own permissions, password, disabling, sessions),
+  the roles page, the permission checkbox tree (module, screen, endpoint) and the "change my password" dialog, opened
+  from the menu's header. The login history is the report `loginEventsReport`.
+
 ## Printed documents
 
 A document's printout is a page of its own, `/print/<document>/<id>` (`src/app/(print)/`), opened in a new tab by the
@@ -183,6 +199,7 @@ npm run lint
   `forms/document/` has what the documents share (`useDocument`, the request queue, the entry row and grid).
 - `src/components/reports/`: the generic report screen and the report pages of their own (statements, the trial
   balance, the chart of accounts, supplier and customer balances).
+- `src/components/users/`: the users and roles pages and the permission tree (see "Permissions").
 - `src/components/print/`: the printed documents. `src/components/ui/`: the combobox, the confirmation dialog, the
   toasts.
 - `src/utils/`: what has no UI (decimals, dates, report queries, error messages), with its tests.

@@ -37,7 +37,7 @@ function originOf(entry) {
  * that was reversed معكوس, with the entry that reversed it.
  */
 export default function JournalEntryPrint({ id }) {
-  const { data: entry, error } = useSWR(`/api/journal-entries/${id}`, fetchJson, { revalidateOnFocus: false });
+  const { data: entry, error } = useSWR(`/api/journal-entries/${id}/print`, fetchJson, { revalidateOnFocus: false });
 
   let mark = null;
   if (entry?.status === 'DRAFT') {

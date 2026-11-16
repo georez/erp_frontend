@@ -36,8 +36,9 @@ export default function LoginClient() {
       router.push(afterLoginPath(searchParams.get('callbackUrl'), window.location.origin));
     } else if (response.status === 401 || response.status === 400) {
       setError("بيانات دخول غير صحيحة.");
-    } else if (response.status === 429) {
-      // Too many failed attempts for this username; the backend blocks it for a few minutes and says how many
+    } else if (response.status === 429 || response.status === 403) {
+      // Too many failed attempts for this username (the backend blocks it for a few minutes and says how many), or
+      // a disabled user: the backend's message says which
       setError(await readErrorMessage(response));
     } else {
       // Not the credentials: the server couldn't sign anyone in (down, restarting, an error)

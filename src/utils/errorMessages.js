@@ -45,6 +45,19 @@ export const ERROR_MESSAGES = Object.freeze({
   TOO_MANY_LOGIN_ATTEMPTS: 'محاولات دخول فاشلة كثيرة. حاول مرة أخرى بعد {minutes} دقيقة.',
   SESSION_ENDED: 'انتهت الجلسة. سجّل الدخول مرة أخرى.',
 
+  // --- any request ---
+  PERMISSION_DENIED: 'ليست لديك صلاحية: {permission}',
+
+  // --- users and roles ---
+  USER_DISABLED: 'هذا المستخدم موقوف. راجع مدير النظام.',
+  USER_NOT_FOUND: 'المستخدم رقم {userId} غير موجود',
+  ROLE_NOT_FOUND: 'الدور رقم {roleId} غير موجود',
+  ROLE_IN_USE: 'لا يمكن حذف الدور "{role}": لدى {users} من المستخدمين',
+  PERMISSION_UNKNOWN: 'صلاحية غير معروفة: {permission}',
+  ADMIN_USER_FIXED: 'المستخدم admin لديه كل الصلاحيات ولا يمكن إيقافه أو تعديله من هنا، ويغيّر كلمة مروره بنفسه',
+  PASSWORD_TOO_SHORT: 'كلمة المرور قصيرة: {minLength} أحرف على الأقل',
+  CURRENT_PASSWORD_WRONG: 'كلمة المرور الحالية غير صحيحة',
+
   // --- any change ---
   SERVER_BUSY: 'الخادم مشغول بتعديلات مستخدمين آخرين، فلم يُحفظ هذا التعديل. حاول مرة أخرى.',
 
