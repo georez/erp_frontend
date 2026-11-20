@@ -18,6 +18,7 @@ import {
   missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -34,6 +35,7 @@ import { TextDateTimeField } from '@/components/ui/DateTimeFields';
  * 3. Their batches (إدخال التشغيلات): each product's units split by batch number and expiry date, which must add up
  *    to its quantity before the invoice is posted. The products can still change then; a product is removed only by
  *    its own delete button, which takes its batches with it.
+ * 4. Optionally, in the same step, the serials of the pieces that have one (السيريالات): at most a batch's quantity.
  *
  * Posting receives the batches and posts the journal entry; what the supplier is owed is the total rounded to 2
  * decimals. A posted invoice can't change.
@@ -163,6 +165,8 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   const batchRows = useMemo(() => lines.flatMap((line) => line.batches.map((batch) => ({
     ...batch, lineId: line.id, productId: line.productId, productName: line.productName,
   }))), [lines]);
+  // The batches as the serials section's rows
+  const serialRows = useMemo(() => batchRows.map((row) => ({ ...row, rowId: row.id })), [batchRows]);
   const batchesIncomplete = lines.some((line) => line.batchedQuantity !== line.quantity);
   // The batch row's products: the invoice's, with their barcodes for a scanner
   const batchProductOptions = useMemo(() => products.options.filter(
@@ -337,6 +341,9 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
       </EntryRow>}
       <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={120}
         emptyText="أدخل تشغيلات كل صنف: الصنف والتشغيلة والصلاحية والكمية ثم OK" />
+      <SerialsSection rows={serialRows} editable={isDraft}
+        onAdd={(batchId, serialNumber) => doc.sendToDraft(`/batches/${batchId}/serials`, 'POST', { serialNumber })}
+        onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
     </>}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}

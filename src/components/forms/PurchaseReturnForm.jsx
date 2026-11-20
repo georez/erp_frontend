@@ -17,6 +17,7 @@ import {
   checkOptionalDiscount, checkQuantity, hasErrors, headerProblem, missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -32,7 +33,9 @@ import { openPrintout } from '@/components/print/printPages';
  * Then the entry row sends one line at a time: a product, its batch (number and expiry date, chosen together by typing
  * part of either), the quantity and a discount. Posting takes the goods out of their batch, debits the supplier with
  * the total (rounded to 2 decimals), and puts the difference between what the supplier credits and what the goods cost
- * on purchase price differences.
+ * on purchase price differences. Optionally, the serials of a line's pieces that have one (السيريالات), at most its
+ * quantity: pieces of its batch in the warehouse, and against an invoice ones the invoice brought in; a batch holding
+ * serialized pieces gives the line's other units from its pieces without a serial.
  */
 
 const EMPTY_HEADER = { supplierId: null, warehouseId: null, purchaseInvoiceId: null, description: '' };
@@ -156,7 +159,9 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
   const discountRef = useRef(null);
   const okRef = useRef(null);
 
-  const lines = purchaseReturn?.lines ?? [];
+  const lines = useMemo(() => purchaseReturn?.lines ?? [], [purchaseReturn]);
+  // Each line is a batch: the serials section's rows
+  const serialRows = useMemo(() => lines.map((line) => ({ ...line, rowId: line.id })), [lines]);
 
   // --- the invoice the goods came on ---
 
@@ -312,6 +317,10 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
 
     <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والصلاحية والكمية ثم OK'} />
+
+    {purchaseReturn && <SerialsSection rows={serialRows} editable={editable}
+      onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       // Not while the goods' cost isn't known: a line's stock isn't enough to return (posting would refuse it)

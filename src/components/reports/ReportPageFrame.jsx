@@ -26,9 +26,11 @@ export default function ReportPageFrame({ report, controls, emptyText, children 
 
   return <Box sx={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
     overflow: 'hidden', p: 1, gap: 1, boxSizing: 'border-box' }}>
-    {/* A link field (e.g. the account) wide enough for a record's name */}
+    {/* A link field (e.g. the account) wide enough for a record's name; a choices field as wide as its text, in the
+        row with the others rather than a line of its own */}
     <Stack direction="row" spacing={1} useFlexGap sx={{ flexShrink: 0, flexWrap: 'wrap', alignItems: 'flex-start',
-      '& .MuiAutocomplete-root': { minWidth: 400, maxWidth: '100%' } }}>
+      '& .MuiAutocomplete-root': { minWidth: 400, maxWidth: '100%' },
+      '& > .MuiFormControl-fullWidth:has(.MuiSelect-select)': { width: 'auto', minWidth: 330 } }}>
       {metadata && <FormFields formFields={paramForm.paramFields} formValues={paramForm.paramValues}
         setFormValues={paramForm.setParamValues} isValid={paramForm.paramValidity}
         setIsValid={paramForm.setParamValidity} tryToSubmit={paramForm.showParamErrors} />}

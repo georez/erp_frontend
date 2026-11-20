@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { formatExpiry } from '@/utils/expiryDates';
 import { useOptions } from './document/comboboxOptions';
 import { DocumentActions, Total } from './document/DocumentActions';
@@ -11,6 +11,7 @@ import {
   checkBatchNumber, checkExpiry, checkQuantity, checkRequiredDiscount, hasErrors, headerProblem, missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -20,7 +21,7 @@ import { openPrintout } from '@/components/print/printPages';
  * description) is typed in and saved as it's left. Each entry row line is a batch: a product's batch (its number and
  * expiry date), its quantity and the discount off the public price its units cost, all required. Posting receives the
  * stock and posts the journal entry; a posted opening balance can't change (a mistake is corrected by a stock
- * adjustment).
+ * adjustment). Optionally, the serials of a line's pieces that have one (السيريالات): at most its quantity.
  */
 
 const EMPTY_HEADER = { warehouseId: null, description: '' };
@@ -100,7 +101,9 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
   const discountRef = useRef(null);
   const okRef = useRef(null);
 
-  const lines = openingBalance?.lines ?? [];
+  const lines = useMemo(() => openingBalance?.lines ?? [], [openingBalance]);
+  // Each line is a batch: the serials section's rows
+  const serialRows = useMemo(() => lines.map((line) => ({ ...line, rowId: line.id })), [lines]);
 
   /** Sends the line; the row is cleared at once, so the next batch can be typed while it's sent. */
   const saveEntry = () => {
@@ -161,6 +164,10 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
       onEdit={(line) => entryRow.fill(entryFromLine(line), quantityRef)}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية والخصم ثم OK'} />
+
+    {openingBalance && <SerialsSection rows={serialRows} editable={editable}
+      onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}

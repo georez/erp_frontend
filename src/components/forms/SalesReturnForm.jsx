@@ -20,6 +20,7 @@ import {
   missingProduct, underMinimumQuestion,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -35,6 +36,9 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
  * is credited at the discount a sale would get (another only for a user who may change discounts; either is asked
  * about first when it's under the product's minimum); its goods come back at the cost entered as a discount off the
  * public price, which every line must have (the warehouse's average is shown as a hint).
+ *
+ * Optionally, the serials of a line's pieces that have one (السيريالات), at most its quantity: against an invoice, ones
+ * it sold from that batch; without one, new serials or ones coming back into their own batch.
  *
  * Once the return has lines, its customer, warehouse and invoice stay. Posting puts the goods back into their batches
  * and credits the customer with the total (rounded to 2 decimals).
@@ -184,7 +188,9 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
   const costDiscountRef = useRef(null);
   const okRef = useRef(null);
 
-  const lines = salesReturn?.lines ?? [];
+  const lines = useMemo(() => salesReturn?.lines ?? [], [salesReturn]);
+  // Each line is a batch: the serials section's rows
+  const serialRows = useMemo(() => lines.map((line) => ({ ...line, rowId: line.id })), [lines]);
   const hasLines = lines.length > 0;
   const mayChangeDiscounts = permissions.has(SALES_CHANGE_DISCOUNTS);
 
@@ -362,6 +368,10 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
 
     <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والكمية ثم OK'} />
+
+    {salesReturn && <SerialsSection rows={serialRows} editable={editable}
+      onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: postReturn, disabled: !hasLines || salesReturn?.stockValue == null }}

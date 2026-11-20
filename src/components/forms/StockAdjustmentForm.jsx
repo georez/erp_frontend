@@ -1,6 +1,6 @@
 'use client';
 
-import { FormControlLabel, Switch } from '@mui/material';
+import { Alert, FormControlLabel, Switch } from '@mui/material';
 import { Big } from 'bigdecimal.js';
 import { useMemo, useRef, useState } from 'react';
 import { formatExpiry } from '@/utils/expiryDates';
@@ -15,9 +15,11 @@ import {
   checkBatchNumber, checkCountedQuantity, checkExpiry, checkOptionalDiscount, hasErrors, headerProblem, missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The stock adjustment document: the stock counted in one warehouse. Its header (warehouse, description) is typed in
@@ -31,6 +33,10 @@ import { openPrintout } from '@/components/print/printPages';
  * While a draft is entered, a floating panel (the header's toggle shows or hides it) lists the batches the warehouse
  * has of the entry row's product, with their quantities; a click on one puts it into the entry row, its quantity as
  * the count, to be changed.
+ *
+ * The serialized pieces found on the shelf are scanned for their line (السيريالات), at most its count. Posting loses the
+ * batch's serials in stock that weren't scanned (listed, and asked about first) and receives the ones scanned that
+ * aren't in stock, which need the line's discount; the rest of the count is pieces without a serial.
  */
 
 const EMPTY_HEADER = { warehouseId: null, description: '' };
@@ -154,11 +160,16 @@ const gridColumns = (isPosted, onDelete) => [
 ];
 
 /**
- * Whether posting would be refused: no lines, a line without a value yet (أدخل الخصم), or no difference to post (every
- * count equals the stock).
+ * Whether posting would be refused: no lines, a line without a value yet (أدخل الخصم), or nothing to post (every count
+ * equals the stock, and no serial is lost or scanned; a scanned one may be found).
  */
 const cantPost = (lines) => lines.length === 0 || lines.some((line) => line.value == null)
-  || lines.every((line) => Big(line.difference).signum() === 0);
+  || lines.every((line) => Big(line.difference).signum() === 0 && line.missingSerials.length === 0
+    && line.serials.length === 0);
+
+/** "name batch: S1، S2" for each line with serials not scanned. */
+const missingSerialsText = (lines) => lines.filter((line) => line.missingSerials.length > 0)
+  .map((line) => `${line.productName} ${line.batchNumber}: ${line.missingSerials.join('، ')}`).join(' — ');
 
 /** The grid's total row: the lines' value added up, exactly (bigdecimal.js); none while a line has no value yet. */
 function totalRow(lines) {
@@ -192,6 +203,12 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
   const okRef = useRef(null);
 
   const lines = useMemo(() => adjustment?.lines ?? [], [adjustment]);
+  // Each line is a batch, taking serials up to its count: the serials section's rows
+  const serialRows = useMemo(() => lines.map((line) => ({
+    ...line, rowId: line.id, quantity: line.countedQuantity,
+  })), [lines]);
+  const missingSerials = missingSerialsText(lines);
+  const confirm = useConfirm();
   const productName = products.options.find((option) => option.value === entry.productId)?.label;
   const totals = useMemo(() => totalRow(lines), [lines]);
 
@@ -222,6 +239,18 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
 
   const columnDefs = gridColumns(isPosted, (line) => doc.sendToDraft(`/lines/${line.id}`, 'DELETE'));
 
+  /** Posts once the user confirms losing the serials in stock that weren't scanned, when there are some. */
+  const post = async () => {
+    if (missingSerials && !await confirm({
+      title: 'ترحيل التسوية؟', message: `سيريالات في الرصيد لم تُمسح وستُسجَّل عجزاً:
+${missingSerials}`,
+      confirmLabel: 'ترحيل', color: 'warning',
+    })) {
+      return;
+    }
+    doc.sendToDraft('/post', 'POST');
+  };
+
   return <DocumentWindow>
     <HeaderRow>
       <DocumentTitle title={adjustment ? `تسوية رقم ${adjustment.id}` : 'تسوية جديدة'}
@@ -237,6 +266,10 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
 
     <DocumentAlerts loadError={doc.loadError} optionsError={warehouses.error ?? products.error}
       headerWarning={entryRow.errors.header} />
+    {missingSerials && <Alert severity={isPosted ? 'info' : 'warning'} sx={{ flexShrink: 0 }}>
+      {(isPosted ? 'سيريالات خرجت عجزاً: ' : 'سيريالات في الرصيد لم تُمسح (تُسجَّل عجزاً عند الترحيل): ')
+        + missingSerials}
+    </Alert>}
 
     {editable && <EntryRow fieldRefs={[productRef, batchRef, expiryRef, countedRef, discountRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={entry.productId}
@@ -264,8 +297,12 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية الفعلية ثم OK'} />
 
+    {adjustment && <SerialsSection rows={serialRows} editable={editable}
+      onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
+
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
-      nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: cantPost(lines) }}
+      nextStep={{ onClick: post, disabled: cantPost(lines) }}
       onDeleteDraft={deleteThisDraft} onNew={newAdjustment}
       onPrint={adjustment ? () => openPrintout('stock-adjustment', adjustment.id) : undefined} />
   </DocumentWindow>;

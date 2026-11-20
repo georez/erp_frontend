@@ -13,13 +13,17 @@ const WAREHOUSE_COLUMNS = [
   { name: 'quantity', label: 'الكمية', inputType: 'number' },
   { name: 'reserved_quantity', label: 'محجوز', inputType: 'number' },
   { name: 'free_quantity', label: 'متاح للبيع', inputType: 'number' },
+  { name: 'serialized_quantity', label: 'منها بسيريال', inputType: 'number' },
   { name: 'average_discount_percent', label: 'متوسط الخصم %', inputType: 'number' },
   { name: 'average_cost', label: 'متوسط تكلفة الوحدة', inputType: 'number' },
   { name: 'value', label: 'القيمة بالتكلفة', inputType: 'number', format: 'amount' },
   { name: 'public_value', label: 'القيمة بسعر الجمهور', inputType: 'number', format: 'amount' },
 ];
 
-/** The stock now, per batch in each warehouse: reserved is what the drafts named of the batch. */
+/**
+ * The stock now, per batch in each warehouse: reserved is what the drafts named of the batch; its serialized pieces
+ * listed.
+ */
 const BATCH_COLUMNS = [
   { name: 'warehouse_name', label: 'المخزن' },
   { name: 'batch_number', label: 'رقم التشغيلة' },
@@ -27,8 +31,18 @@ const BATCH_COLUMNS = [
   { name: 'quantity', label: 'الكمية', inputType: 'number' },
   { name: 'reserved_quantity', label: 'محجوز منها بالاسم', inputType: 'number' },
   { name: 'free_quantity', label: 'متاح منها', inputType: 'number' },
+  { name: 'serialized_quantity', label: 'منها بسيريال', inputType: 'number' },
   { name: 'value', label: 'القيمة بالتكلفة', inputType: 'number', format: 'amount' },
   { name: 'public_value', label: 'القيمة بسعر الجمهور', inputType: 'number', format: 'amount' },
+];
+
+/** The serialized pieces in stock now, one per row: reserved when an unposted sales invoice names it. */
+const SERIAL_COLUMNS = [
+  { name: 'warehouse_name', label: 'المخزن' },
+  { name: 'batch_number', label: 'رقم التشغيلة' },
+  { name: 'expiry_date', label: 'تاريخ الصلاحية', inputType: 'date' },
+  { name: 'serial_number', label: 'السيريال' },
+  { name: 'reserved_quantity', label: 'محجوز', inputType: 'number' },
 ];
 
 const quantityText = (quantity) => formatDecimal(Big(quantity));
@@ -94,12 +108,14 @@ function OperationsTable({ title, operations, total }) {
  * what's reserved and free, and by batch, its batches.
  *
  * @param {object} props.summary  movementSummary of the report's rows
- * @param {{warehouses: Array<object>, batches: Array<object>}} props.stock  the stock now (splitStockRows)
+ * @param {{warehouses: Array<object>, batches: Array<object>, serials: Array<object>}} props.stock  the stock now
+ *   (splitStockRows)
  * @param {boolean} props.byBatch
+ * @param {boolean} props.withSerials  by batch and serials: the serials in stock now, one per row
  * @param {string|number|null} props.warehouseId  the warehouse the movements are of; null for all of them (the stock
  *   now is always every warehouse's)
  */
-export default function MovementSummary({ summary, stock, byBatch, warehouseId, openLink }) {
+export default function MovementSummary({ summary, stock, byBatch, withSerials, warehouseId, openLink }) {
   const { publicPrice, opening, operations, totalIn, totalOut, closing } = summary;
   const figure = ({ quantity, value }) => ({ quantity: quantityText(quantity), value: formatAmount(value) });
   const chosenWarehouse = warehouseId === null ? null
@@ -138,6 +154,14 @@ export default function MovementSummary({ summary, stock, byBatch, warehouseId, 
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>التشغيلات الآن</Typography>
       <FilterGrid rows={stock.batches} columns={BATCH_COLUMNS} autoHeight openLink={openLink}
         totalRow={(shown) => stockTotalRow(shown, publicPrice, 'warehouse_name')} />
+    </Box>}
+
+    {withSerials && <Box>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>السيريالات الآن</Typography>
+      {stock.serials.length === 0
+        ? <Typography color="text.secondary">لا توجد قطع بسيريال في المخازن.</Typography>
+        : <FilterGrid rows={stock.serials} columns={SERIAL_COLUMNS} autoHeight openLink={openLink}
+          totalRow={(shown) => ({ warehouse_name: `الإجمالي (${shown.length})` })} />}
     </Box>}
   </Box>;
 }

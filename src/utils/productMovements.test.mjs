@@ -35,6 +35,8 @@ test('a tab shows the batch columns by batch only, and may name a column its own
   const fields = (byBatch) => tabColumns(tab('sales'), byBatch).map(({ field }) => field);
   assert.ok(!fields(false).includes('batch_number'));
   assert.deepEqual(fields(true).slice(2, 5), ['warehouse_name', 'batch_number', 'expiry_date']);
+  assert.deepEqual(tabColumns(tab('sales'), true, true).map(({ field }) => field).slice(2, 6),
+    ['warehouse_name', 'batch_number', 'expiry_date', 'serial_number'], 'one row per serial');
 
   const party = tabColumns(tab('sales'), false).find(({ field }) => field === 'party_name');
   assert.equal(party.header, 'العميل');
@@ -82,9 +84,9 @@ test('every operation is in the summary, in its order, even without movements', 
 test('the stock is split into warehouses and batches, and totalled with its average discount', () => {
   const stock = [
     { row_kind: 'warehouse', warehouse_name: 'main', quantity: '17', reserved_quantity: '0', free_quantity: '17',
-      value: '1275', public_value: '1700' },
+      serialized_quantity: '3', value: '1275', public_value: '1700' },
     { row_kind: 'warehouse', warehouse_name: 'branch', quantity: '5', reserved_quantity: '2', free_quantity: '3',
-      value: '400', public_value: '500' },
+      serialized_quantity: '0', value: '400', public_value: '500' },
     { row_kind: 'batch', warehouse_name: 'main', batch_number: 'A', quantity: '17' },
   ];
   const { warehouses, batches } = splitStockRows(stock);
@@ -92,7 +94,7 @@ test('the stock is split into warehouses and batches, and totalled with its aver
   assert.equal(batches.length, 1);
 
   assert.deepEqual(stockTotalRow(warehouses, '100', 'warehouse_name'), {
-    warehouse_name: 'الإجمالي (2)', quantity: '22', reserved_quantity: '2', free_quantity: '20', value: '1675',
-    public_value: '2200', average_discount_percent: '23.864',
+    warehouse_name: 'الإجمالي (2)', quantity: '22', reserved_quantity: '2', free_quantity: '20',
+    serialized_quantity: '3', value: '1675', public_value: '2200', average_discount_percent: '23.864',
   });
 });

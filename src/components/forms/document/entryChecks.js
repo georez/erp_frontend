@@ -12,6 +12,7 @@ import { formatAmount } from './amounts';
 // The documents' description columns are varchar(500); batches.batch_number is varchar(50)
 export const MAX_DESCRIPTION_LENGTH = 500;
 export const MAX_BATCH_NUMBER_LENGTH = 50;
+export const MAX_SERIAL_NUMBER_LENGTH = 50;
 
 export const REQUIRED = 'مطلوب';
 export const DISCOUNT_ERROR = 'من 0 إلى 100، حتى 3 أرقام عشرية';
@@ -108,6 +109,18 @@ export function checkBatchNumber(text) {
     return { error: `الحد الأقصى ${MAX_BATCH_NUMBER_LENGTH} حرف` };
   }
   return { number };
+}
+
+/** A piece's serial number: { serialNumber } (trimmed, its case kept, as the backend keeps it) or { error }. */
+export function checkSerialNumber(text) {
+  const serialNumber = text.trim();
+  if (serialNumber === '') {
+    return { error: REQUIRED };
+  }
+  if (serialNumber.length > MAX_SERIAL_NUMBER_LENGTH) {
+    return { error: `الحد الأقصى ${MAX_SERIAL_NUMBER_LENGTH} حرف` };
+  }
+  return { serialNumber };
 }
 
 /** An expiry date as typed (utils/expiryDates): { date } (ISO) or { error }. */

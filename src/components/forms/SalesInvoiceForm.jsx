@@ -21,6 +21,7 @@ import {
   checkOptionalDiscount, checkQuantity, hasErrors, headerProblem, missingProduct, underMinimumQuestion,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
+import { SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -39,8 +40,9 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
  *    discount under the product's minimum is asked about first. A draft reserves what its lines sold: the quantity
  *    shows what's free to sell, and what of it would be sold.
  * 3. Optionally, their batches (إدخال التشغيلات): batches named for some or all of a product's units, from the
- *    warehouse's, each with what's free of it. Posting chooses the batches of the other units itself (FEFO or LIFO, in
- *    الإعدادات), and says which products those are first.
+ *    warehouse's, each with its pieces without a serial that are free; and the serialized pieces, scanned by their
+ *    serials (السيريالات). Posting chooses the batches of the other units itself (FEFO or LIFO, in الإعدادات), passing
+ *    by batches holding serialized pieces, and says which products those are first.
  *
  * Posting straight from the products, without the batches phase, is for users who may. It's refused when the
  * customer's balance plus the total goes over their credit limit, and warns first about lines sold under their cost
@@ -251,6 +253,10 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const hasNamedBatches = lines.some((line) => line.batches.length > 0);
   // A posted invoice's batches are those its goods were taken from
   const showsBatches = batchesPhase || isPosted;
+  // The serials section's rows: the lines that sold some, each taking serials for its units not named by batch
+  const serialRows = useMemo(() => lines.filter((line) => isNonZero(line.quantity)).map((line) => ({
+    ...line, rowId: line.id, limit: Big(line.quantity).subtract(Big(line.batchedQuantity)).toPlainString(),
+  })), [lines]);
   const batchRows = useMemo(() => lines.flatMap((line) => line.batches.map((batch) => ({
     ...batch, lineId: line.id, productId: line.productId, productName: line.productName,
   }))), [lines]);
@@ -542,6 +548,9 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
       <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={100}
         emptyText={isPosted ? 'لم يُسحب شيء من المخزون'
           : `حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${batchOrderLabel})`} />
+      <SerialsSection rows={serialRows} editable={isDraft && batchesPhase}
+        onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+        onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
     </>}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}

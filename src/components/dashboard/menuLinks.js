@@ -121,6 +121,8 @@ export const MENU_MODULES = [
       reportLink('تقرير تسويات المخزون', 'stockAdjustmentsReport'),
       reportLink('تقرير التحويلات المخزنية', 'stockTransfersReport'),
       reportLink('تقرير التشغيلات والصلاحية', 'stockBatchesReport'),
+      reportLink('تقرير السيريالات في المخزون', 'serialsInStockReport'),
+      reportLink('تقرير تاريخ سيريال', 'serialHistoryReport'),
       reportLink('تقرير حركات المخزون', 'stockMovementsReport'),
     ],
   },

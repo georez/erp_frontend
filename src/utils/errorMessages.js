@@ -126,6 +126,10 @@ export const ERROR_MESSAGES = Object.freeze({
   STOCK_DOCUMENT_EMPTY: 'المستند ليس به أسطر',
   STOCK_BATCH_NOT_FOUND: 'السطر {line}: لا توجد تشغيلة "{batchNumber}" للصنف "{productName}"',
   STOCK_BATCH_INSUFFICIENT: 'السطر {line}: رصيد التشغيلة "{batchNumber}" من "{productName}" غير كافٍ (المتاح {available})',
+  STOCK_SERIAL_IN_STOCK: 'السطر {line}: السيريال "{serialNumber}" من "{productName}" موجود بالفعل في "{warehouseName}"',
+  STOCK_SERIAL_OTHER_BATCH: 'السطر {line}: السيريال "{serialNumber}" من "{productName}" تابع للتشغيلة "{batchNumber}"',
+  STOCK_SERIAL_NOT_IN_BATCH: 'السطر {line}: السيريال "{serialNumber}" من "{productName}" غير موجود في التشغيلة "{batchNumber}" بهذا المخزن',
+  STOCK_SERIALS_REQUIRED: 'السطر {line}: في التشغيلة "{batchNumber}" من "{productName}" {withoutSerial} قطعة فقط بدون سيريال؛ حدّد سيريالات الباقي',
 
   // --- stock documents, alike ---
   WAREHOUSE_REQUIRED: 'حدّد المخزن',
@@ -141,6 +145,18 @@ export const ERROR_MESSAGES = Object.freeze({
   BATCH_NUMBER_REQUIRED: 'أدخل رقم التشغيلة',
   BATCH_NUMBER_TOO_LONG: 'رقم التشغيلة أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   BATCH_EXPIRY_REQUIRED: 'أدخل تاريخ صلاحية التشغيلة',
+  SERIAL_NUMBER_REQUIRED: 'أدخل رقم السيريال',
+  SERIAL_NUMBER_TOO_LONG: 'رقم السيريال أطول من المسموح (الحد الأقصى {maxLength} حرف)',
+  SERIAL_ON_DOCUMENT: 'السيريال "{serialNumber}" من "{productName}" مُدخل في المستند بالفعل',
+  SERIAL_IN_STOCK: 'السيريال "{serialNumber}" من "{productName}" موجود بالفعل في "{warehouseName}"',
+  SERIAL_OTHER_BATCH: 'السيريال "{serialNumber}" من "{productName}" تابع للتشغيلة "{batchNumber}"',
+  SERIAL_NOT_ON_INVOICE: 'السيريال "{serialNumber}" من "{productName}" لم يُبع في هذه الفاتورة',
+  SERIAL_NOT_FROM_INVOICE: 'السيريال "{serialNumber}" من "{productName}" لم يرد في هذه الفاتورة',
+  SERIAL_NOT_IN_WAREHOUSE: 'السيريال "{serialNumber}" من "{productName}" غير موجود في "{warehouseName}"',
+  SERIAL_NAMED_ELSEWHERE: 'السيريال "{serialNumber}" من "{productName}" محجوز لفاتورة المبيعات رقم {invoiceId}',
+  SERIALS_NEEDED: 'باقي "{productName}" ({quantity}) في تشغيلات بها قطع بسيريال: حدّد سيريالاتها أو تشغيلاتها',
+  SERIALS_OVER_QUANTITY: 'سيريالات التشغيلة "{batchNumber}" من "{productName}" ({serials}) أكثر من كميتها ({quantity})',
+  DOCUMENT_SERIAL_NOT_FOUND: 'السيريال رقم {serialId} غير موجود في المستند',
 
   // --- stock adjustments ---
   STOCK_ADJUSTMENT_NOT_FOUND: 'تسوية المخزون رقم {adjustmentId} غير موجودة',

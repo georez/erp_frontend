@@ -85,6 +85,26 @@ export const MOVEMENT_TABS = Object.freeze([
   },
 ]);
 
+// The report's detail (p_detail) and, by serials, its view (p_serials_view): the choices' texts, as report.json has them
+export const BY_BATCH = 'حسب التشغيلة';
+export const BY_SERIAL = 'حسب التشغيلة والسيريالات';
+export const SERIALS_TABLE = 'صفوف التشغيلات وجدول السيريالات';
+
+/**
+ * What the rows were run with: by batch (by serials too), with serials, and whether the movements are split into a row
+ * per serial (the default view by serials) or keep their batch rows with a serials table of their own.
+ */
+export function detailOf(runParams) {
+  const withSerials = runParams.p_detail === BY_SERIAL;
+  const serialsTable = withSerials && runParams.p_serials_view === SERIALS_TABLE;
+  return {
+    byBatch: runParams.p_detail === BY_BATCH || withSerials,
+    withSerials,
+    splitBySerial: withSerials && !serialsTable,
+    serialsTable,
+  };
+}
+
 /** Whether the row is the balance before the period (row_order 0), not a movement. */
 export const isOpeningRow = (row) => Number(row.row_order) === 0;
 
@@ -96,12 +116,16 @@ export function tabRows(rows, tab) {
 
 /**
  * The tab's columns as {field, header}: header is the tab's own name for it, or undefined for the report's label.
- * The batch columns only by batch.
+ * The batch columns only by batch; the serial too when the rows are one per serial.
  */
-export function tabColumns(tab, byBatch) {
+export function tabColumns(tab, byBatch, bySerial = false) {
   return tab.columns.flatMap((column) => {
     if (column === BATCH) {
-      return byBatch ? [{ field: 'batch_number' }, { field: 'expiry_date' }] : [];
+      if (!byBatch) {
+        return [];
+      }
+      const batch = [{ field: 'batch_number' }, { field: 'expiry_date' }];
+      return bySerial ? [...batch, { field: 'serial_number' }] : batch;
     }
     const [field, header] = Array.isArray(column) ? column : [column, undefined];
     return [{ field, header }];
@@ -197,7 +221,13 @@ export function splitStockRows(rows) {
   return {
     warehouses: rows.filter((row) => row.row_kind === 'warehouse'),
     batches: rows.filter((row) => row.row_kind === 'batch'),
+    serials: rows.filter((row) => row.row_kind === 'serial'),
   };
+}
+
+/** The serials table's rows of the tab: the serials its kinds of document moved (every one for the first tab). */
+export function tabSerialRows(serialRows, tab) {
+  return serialRows.filter((row) => tab.documentTypes === null || tab.documentTypes.includes(row.document_type));
 }
 
 /**
@@ -216,6 +246,7 @@ export function stockTotalRow(rows, publicPrice, labelColumn) {
     quantity: plain(quantity),
     reserved_quantity: plain(sum(rows, 'reserved_quantity')),
     free_quantity: plain(sum(rows, 'free_quantity')),
+    serialized_quantity: plain(sum(rows, 'serialized_quantity')),
     value: plain(value),
     public_value: plain(sum(rows, 'public_value')),
     average_discount_percent: discountOff(value, quantity, publicPrice),
