@@ -237,6 +237,7 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     // Chosen: on to the quantity
     if (batch) {
       quantityRef.current?.focus();
+      quantityRef.current?.select();
     }
   };
 

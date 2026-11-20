@@ -63,12 +63,18 @@ export function LinesGrid({
   };
   return <Box sx={{ flex, minHeight }}>
     <AgGridProvider modules={modules}>
+      {/* The no-rows template is read once, when the grid is created: a new text (e.g. once the document is posted)
+          needs a new grid */}
       <AgGridReact
+        key={emptyText}
         rowData={rows}
         columnDefs={columnDefs}
         pinnedBottomRowData={pinnedBottomRowData}
         getRowId={({ data }) => String(data.id)}
         onRowClicked={handleRowClicked}
+        // A cell is redrawn only when its own value changes: one coloured by another field (a unit price under its
+        // cost) is redrawn with the rest of its row
+        onRowDataUpdated={({ api }) => api.refreshCells({ force: true })}
         rowStyle={readOnly ? undefined : { cursor: 'pointer' }}
         defaultColDef={{ sortable: false, resizable: true, wrapHeaderText: true, autoHeaderHeight: true }}
         enableRtl

@@ -145,6 +145,18 @@ export function useDocument({
   const sendToDraft = (path, method, body) =>
     requests.enqueue(() => sendAndShow(draftIdRef.current, path, method, body));
 
+  /**
+   * Loads the document again and shows it: what it was shown with may have changed since (another document took stock
+   * or changed costs). Its fresh version, or undefined when it couldn't be loaded.
+   */
+  const reload = async () => {
+    try {
+      return await mutateCache(urlOf(draftIdRef.current));
+    } catch {
+      return undefined;
+    }
+  };
+
   /** Deletes the draft once the user confirms the question ("حذف مسودة ... رقم 4؟"); true if it was deleted. */
   const deleteDraft = async (question) => {
     if (!await confirm({ title: question, confirmLabel: 'حذف', color: 'error' })) {
@@ -198,6 +210,7 @@ export function useDocument({
     createFromHeader,
     addLine,
     sendToDraft,
+    reload,
     sendAndOpenAnswer,
     deleteDraft,
     openDocument,

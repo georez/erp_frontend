@@ -171,6 +171,7 @@ const BACKEND_CODES = {
   SALES_STOCK_INSUFFICIENT: ['productName', 'available'],
   SALES_BATCH_NOT_FOUND: ['productName', 'batchNumber'],
   SALES_BATCH_INSUFFICIENT: ['productName', 'batchNumber', 'available'],
+  SALES_BATCH_EXPIRED: ['productName', 'batchNumber'],
   SALES_BATCHES_OVER_QUANTITY: ['productName', 'quantity', 'batched'],
   SALES_POST_NEEDS_BATCHES_PHASE: [],
   SALES_CREDIT_LIMIT_EXCEEDED: ['customerName', 'creditLimit', 'balance', 'total'],

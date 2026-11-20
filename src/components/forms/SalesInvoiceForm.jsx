@@ -32,21 +32,25 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
  * 1. The header (customer, warehouse, description) is typed in and saved as each field is left. The first product's
  *    OK creates the draft; once it has lines, the customer and the warehouse stay (its lines were priced and reserved
  *    for them).
- * 2. Its products: the entry row sends a product and its quantity. The discount is worked out by the backend (the
- *    product's average discount less the customer's tier's) and recorded; a user who may change discounts may type
- *    another. A discount under the product's minimum is asked about first. A draft reserves its lines: the quantity
- *    shows what's free to sell.
+ * 2. Its products: the entry row sends a product and the quantity the customer asked for. The backend sells as much
+ *    of it as is free (unexpired stock less what other drafts hold), 0 when none is, and records what was asked for:
+ *    the shortfall is demand for the shortages report. The discount is worked out by the backend (the product's
+ *    average discount less the customer's tier's) and recorded; a user who may change discounts may type another. A
+ *    discount under the product's minimum is asked about first. A draft reserves what its lines sold: the quantity
+ *    shows what's free to sell, and what of it would be sold.
  * 3. Optionally, their batches (إدخال التشغيلات): batches named for some or all of a product's units, from the
  *    warehouse's, each with what's free of it. Posting chooses the batches of the other units itself (FEFO or LIFO, in
  *    الإعدادات), and says which products those are first.
  *
  * Posting straight from the products, without the batches phase, is for users who may. It's refused when the
- * customer's balance plus the total goes over their credit limit, and warns first about lines sold under their cost.
- * A posted invoice can't change; it shows the batches its goods were taken from.
+ * customer's balance plus the total goes over their credit limit, and warns first about lines sold under their cost
+ * and an invoice that sold nothing (it posts with zero totals and an empty entry, keeping its requests). Lines that
+ * sold nothing post nothing and aren't printed. A posted invoice can't change; it shows the batches its goods were
+ * taken from.
  */
 
 const EMPTY_HEADER = { customerId: null, warehouseId: null, description: '' };
-const EMPTY_LINE = { productId: null, quantity: '', discountPercent: '' };
+const EMPTY_LINE = { productId: null, requestedQuantity: '', discountPercent: '' };
 // quantityFilled: the quantity is what was left of the product without a batch, filled in (not typed)
 const EMPTY_BATCH = { productId: null, batch: null, quantity: '', quantityFilled: false };
 const NO_BATCHES = [];
@@ -95,22 +99,27 @@ function batchOptionsUrl(productId, warehouseId, invoiceId) {
 const unitPriceAt = (publicPrice, discountPercent) =>
   Big(publicPrice).multiply(Big(100).subtract(Big(discountPercent))).divide(Big(100));
 
+/** What a line requesting the quantity sells: as much of it as is free, none when nothing is (as the backend works out). */
+function soldOf(requested, available) {
+  const free = Big(available).signum() > 0 ? Big(available) : Big(0);
+  return Big(requested).compareTo(free) > 0 ? free : Big(requested);
+}
+
 /**
  * The product entry row's errors by field, and the line to send when it has none.
  *
- * @param batched the units of the line named in batches before the draft went back to its products phase; null for none
+ * @param available what's free of the product; null while it isn't known
+ * @param batched   the units of the line named in batches before the draft went back to its products phase; null for
+ *                  none
  */
 function checkLineEntry(entry, available, batched) {
-  const quantity = checkQuantity(entry.quantity);
+  const quantity = checkQuantity(entry.requestedQuantity);
   const discount = checkOptionalDiscount(entry.discountPercent);
-  const overAvailable = quantity.quantity != null && available != null
-    && Big(quantity.quantity).compareTo(Big(available)) > 0;
-  const underBatched = quantity.quantity != null && batched != null
-    && Big(quantity.quantity).compareTo(Big(batched)) < 0;
+  const sold = quantity.quantity != null && available != null ? soldOf(quantity.quantity, available) : null;
+  const underBatched = sold != null && batched != null && sold.compareTo(Big(batched)) < 0;
   const errors = {
     productId: missingProduct(entry.productId),
-    quantity: quantity.error ?? (overAvailable ? `المتاح ${formatAmount(available)} فقط` : null)
-      ?? (underBatched ? `حُدّدت تشغيلات لـ ${formatAmount(batched)}` : null),
+    requestedQuantity: quantity.error ?? (underBatched ? `حُدّدت تشغيلات لـ ${formatAmount(batched)}` : null),
     discountPercent: discount.error,
   };
   if (hasErrors(errors)) {
@@ -118,8 +127,18 @@ function checkLineEntry(entry, available, batched) {
   }
   return {
     errors,
-    line: { productId: entry.productId, quantity: quantity.quantity, discountPercent: discount.discount },
+    line: { productId: entry.productId, requestedQuantity: quantity.quantity, discountPercent: discount.discount },
   };
+}
+
+/** Under the requested quantity: what's free, and what of the quantity typed would be sold when that's less. */
+function requestedHelp(requested, available) {
+  const free = `المتاح ${formatAmount(available)}`;
+  const quantity = checkQuantity(requested).quantity;
+  if (quantity == null || Big(quantity).compareTo(Big(available)) <= 0) {
+    return free;
+  }
+  return `${free} · يُباع ${formatAmount(soldOf(quantity, available).toPlainString())} فقط`;
 }
 
 /** The batch entry row's errors by field, and the batch to send when it has none. */
@@ -139,14 +158,24 @@ function checkBatchEntry(entry, invoiceLine) {
   };
 }
 
-/** Whether the line asks for more than the warehouse has free of its product. */
+/** Whether the line sold more than the warehouse has free of its product now (another document took some since). */
 const isShort = (line) => line.available != null && Big(line.quantity).compareTo(Big(line.available)) > 0;
+
+/** Whether the line sold less than the customer asked for. */
+const isUnmet = (line) => Big(line.quantity).compareTo(Big(line.requestedQuantity)) < 0;
 
 const unitPriceColumn = {
   field: 'unitPrice', headerName: 'سعر الوحدة', flex: 1, minWidth: 90,
   valueFormatter: ({ value }) => formatAmount(value),
   cellStyle: ({ data }) => ({ ...NUMBER_CELL, ...(data.belowCost && { color: LOSS_COLOR, fontWeight: 700 }) }),
   tooltipValueGetter: ({ data }) => (data.belowCost ? 'تحت التكلفة' : undefined),
+};
+
+const soldColumn = {
+  field: 'quantity', headerName: 'المباع', flex: 1, minWidth: 80,
+  valueFormatter: ({ value }) => formatAmount(value),
+  cellStyle: ({ data }) => ({ ...NUMBER_CELL, ...(isUnmet(data) && { color: LOSS_COLOR, fontWeight: 700 }) }),
+  tooltipValueGetter: ({ data }) => (isUnmet(data) ? 'أقل من المطلوب' : undefined),
 };
 
 const availableColumn = {
@@ -164,7 +193,8 @@ const batchedColumn = {
 // showsUnbatched: in the batches phase, or back in the products phase with batches named before
 const lineColumns = ({ showsUnbatched, isPosted, readOnly, onDelete }) => [
   textColumn('productName', 'الصنف', { flex: 2, minWidth: 140 }),
-  amountColumn('quantity', 'الكمية', 80),
+  amountColumn('requestedQuantity', 'المطلوب', 80),
+  soldColumn,
   ...(isPosted ? [] : [availableColumn]),
   ...(showsUnbatched && !isPosted ? [batchedColumn] : []),
   amountColumn('publicPrice', 'سعر الجمهور', 85),
@@ -224,8 +254,10 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   const batchRows = useMemo(() => lines.flatMap((line) => line.batches.map((batch) => ({
     ...batch, lineId: line.id, productId: line.productId, productName: line.productName,
   }))), [lines]);
+  // A line that sold nothing has no units to name batches for
   const batchProductOptions = useMemo(() => products.options.filter(
-    (option) => lines.some((line) => line.productId === option.value)), [products.options, lines]);
+    (option) => lines.some((line) => line.productId === option.value && isNonZero(line.quantity))),
+  [products.options, lines]);
   const lineOfProduct = (productId) => lines.find((line) => line.productId === productId);
   const mayChangeDiscounts = permissions.has(SALES_CHANGE_DISCOUNTS);
   const batchOrderLabel = BATCH_ORDER_LABELS[settings?.salesBatchOrder] ?? BATCH_ORDER_LABELS.FEFO;
@@ -237,8 +269,9 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     entersProducts ? linePricingUrl(header, lineRow.entry.productId, invoice?.id) : null,
     fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
-  // What the line gets without a discount typed: its own, or the one worked out for a new line
-  const discountItGets = existingLine?.discountPercent ?? pricing?.discountPercent ?? null;
+  // What the line gets without a discount typed: its own once it has sold some, else the one worked out for a new line
+  const keepsItsDiscount = existingLine != null && isNonZero(existingLine.quantity);
+  const discountItGets = (keepsItsDiscount ? existingLine.discountPercent : pricing?.discountPercent) ?? null;
   const productOption = products.options.find((option) => option.value === lineRow.entry.productId);
   const discountShown = parsePercent(lineRow.entry.discountPercent) ? lineRow.entry.discountPercent : discountItGets;
   const entryBelowCost = productOption?.detail != null && discountShown != null && pricing?.unitCost != null
@@ -256,7 +289,9 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     if (headerWarning || !line) {
       return;
     }
-    const question = underMinimumQuestion(line.discountPercent ?? discountItGets,
+    // Nothing to sell: its discount doesn't matter yet, so it isn't asked about
+    const sellsSome = pricing == null || soldOf(line.requestedQuantity, pricing.available).signum() > 0;
+    const question = sellsSome && underMinimumQuestion(line.discountPercent ?? discountItGets,
       pricing?.minimumDiscountPercent ?? null, products.labelOf(line.productId));
     if (question && !await confirm(question)) {
       discountRef.current?.focus();
@@ -267,9 +302,13 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     productRef.current?.focus();
   };
 
-  /** A product's line into the entry row, to change its quantity; its discount stays unless another is typed. */
-  const editLine = (line) => lineRow.fill({ productId: line.productId, quantity: line.quantity, discountPercent: '' },
-    quantityRef);
+  /**
+   * A product's line into the entry row, to change the quantity requested (or sell what's free now, sent again as it
+   * is); its discount stays unless another is typed.
+   */
+  const editLine = (line) => lineRow.fill({
+    productId: line.productId, requestedQuantity: line.requestedQuantity, discountPercent: '',
+  }, quantityRef);
 
   /** Deletes a product's line, with the batches named for it before going back to the products: asked first then. */
   const deleteLine = async (line) => {
@@ -300,10 +339,12 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     };
   });
 
+  /** The batch row's batch; the quantity is focused next, selected, so typing replaces the one filled in. */
   const chooseBatch = (batch) => {
     batchRow.setEntry((previous) => ({ ...previous, batch }));
     if (batch) {
       batchQuantityRef.current?.focus();
+      batchQuantityRef.current?.select();
     }
   };
 
@@ -335,24 +376,40 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
   // --- posting ---
 
   const shortLines = lines.filter(isShort);
+  const nothingSold = hasLines && lines.every((line) => !isNonZero(line.quantity));
   const belowCostLines = lines.filter((line) => line.belowCost);
   const overCreditLimit = invoice?.overCreditLimit === true;
 
   /**
    * Posts once the user confirms what posting would do that they may not expect: once batches were named (in the
-   * batches phase, or before going back to the products), the units without a batch get theirs chosen; and lines sold
-   * under their cost.
+   * batches phase, or before going back to the products), the units without a batch get theirs chosen; lines sold
+   * under their cost; and an invoice that sold nothing. The invoice is loaded again first: costs and stock may have
+   * changed since it was shown (a line now under its cost shows in red, and is warned about).
    */
   const post = async () => {
+    const current = await doc.reload();
+    if (!current) {
+      return;
+    }
+    const currentLines = current.lines;
+    // Can't be posted now: the alerts the reloaded invoice shows say why
+    if (current.overCreditLimit || currentLines.some(isShort)) {
+      return;
+    }
     const warnings = [];
-    const unbatched = batchesPhase || hasNamedBatches ? lines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
+    if (currentLines.every((line) => !isNonZero(line.quantity))) {
+      warnings.push('لم يتوفر أي من الكميات المطلوبة: تُرحَّل الفاتورة بقيمة صفر ودون حركة مخزون، وتبقى الكميات المطلوبة مسجّلة');
+    }
+    const unbatched = batchesPhase || hasNamedBatches
+      ? currentLines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
     if (unbatched.length > 0) {
       warnings.push(`لم تُحدَّد تشغيلات لكل الكميات؛ ستُختار تشغيلات الباقي تلقائياً (${batchOrderLabel}):\n`
         + listed(unbatched, (line) => formatAmount(line.unbatchedQuantity)));
     }
-    if (belowCostLines.length > 0) {
+    const currentBelowCost = currentLines.filter((line) => line.belowCost);
+    if (currentBelowCost.length > 0) {
       warnings.push('أصناف تُباع بأقل من تكلفتها:\n'
-        + listed(belowCostLines, (line) => `سعر الوحدة ${formatAmount(line.unitPrice)}، التكلفة ${formatAmount(line.unitCost)}`));
+        + listed(currentBelowCost, (line) => `سعر الوحدة ${formatAmount(line.unitPrice)}، التكلفة ${formatAmount(line.unitCost)}`));
     }
     if (warnings.length > 0 && !await confirm({
       title: 'ترحيل الفاتورة؟', message: warnings.join('\n\n'), confirmLabel: 'ترحيل', color: 'success',
@@ -435,9 +492,13 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
         + `(${formatAmount(invoice.creditLimit)}): لا يمكن ترحيلها`}
     </Alert>}
     {isDraft && shortLines.length > 0 && <Alert severity="warning">
-      {`الكمية أكبر من المتاح للبيع: ${shortLines.map((line) => line.productName).join('، ')}. `
-        + (batchesPhase ? 'ارجع إلى الأصناف وقلّل الكمية أو احذف الصنف قبل الترحيل'
-          : 'قلّل الكمية أو احذف الصنف قبل الترحيل')}
+      {`المباع أكبر من المتاح للبيع الآن: ${shortLines.map((line) => line.productName).join('، ')}. `
+        + (batchesPhase ? 'ارجع إلى الأصناف وأدخل الصنف مرة أخرى ليُباع المتاح، أو احذفه، قبل الترحيل'
+          : 'أدخل الصنف مرة أخرى ليُباع المتاح، أو احذفه، قبل الترحيل')}
+    </Alert>}
+    {nothingSold && <Alert severity="info">
+      {isPosted ? 'لم يتوفر أي من الكميات المطلوبة: رُحّلت الفاتورة بقيمة صفر'
+        : 'لم يتوفر أي من الكميات المطلوبة: تُرحَّل الفاتورة بقيمة صفر ودون حركة مخزون'}
     </Alert>}
     {isDraft && belowCostLines.length > 0 && <Alert severity="info">
       {`تُباع بأقل من تكلفتها: ${belowCostLines.map((line) => line.productName).join('، ')}`}
@@ -446,11 +507,11 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
     {/* Phase 1, the products: one at a time; Enter moves to the next field */}
     {entersProducts && <EntryRow fieldRefs={[productRef, quantityRef, discountRef, okRef]}>
       <ProductField productRef={productRef} options={products.options} value={lineRow.entry.productId}
-        onChange={lineRow.setField('productId', ['quantity'])}
+        onChange={lineRow.setField('productId', ['requestedQuantity'])}
         error={lineRow.errors.productId ?? pricingError?.message} />
-      <EntryField label="الكمية" kind="numeric" value={lineRow.entry.quantity} onChange={lineRow.setField('quantity')}
-        inputRef={quantityRef} error={lineRow.errors.quantity}
-        helperText={pricing ? `المتاح ${formatAmount(pricing.available)}` : undefined} />
+      <EntryField label="الكمية المطلوبة" kind="numeric" value={lineRow.entry.requestedQuantity}
+        onChange={lineRow.setField('requestedQuantity')} inputRef={quantityRef} error={lineRow.errors.requestedQuantity}
+        helperText={pricing ? requestedHelp(lineRow.entry.requestedQuantity, pricing.available) : undefined} />
       <EntryField label="الخصم %" kind="decimal" value={lineRow.entry.discountPercent}
         onChange={lineRow.setField('discountPercent')} inputRef={discountRef} disabled={!mayChangeDiscounts}
         placeholder={discountItGets == null ? undefined : formatAmount(discountItGets)} minWidth={150}
@@ -459,7 +520,7 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
       <OkButton okRef={okRef} onClick={saveLine} updating={existingLine != null} />
     </EntryRow>}
     <LinesGrid rows={lines} columnDefs={lineColumnDefs} readOnly={!entersProducts} onEdit={editLine} minHeight={120}
-      emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل أصناف الفاتورة: الصنف والكمية ثم OK'} />
+      emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل أصناف الفاتورة: الصنف والكمية المطلوبة ثم OK'} />
 
     {/* Phase 2, optional: batches named for the products' units */}
     {showsBatches && <>
@@ -479,7 +540,8 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
         <OkButton okRef={batchOkRef} onClick={saveBatch} updating={editingExistingBatch} />
       </EntryRow>}
       <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={100}
-        emptyText={`حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${batchOrderLabel})`} />
+        emptyText={isPosted ? 'لم يُسحب شيء من المخزون'
+          : `حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${batchOrderLabel})`} />
     </>}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}

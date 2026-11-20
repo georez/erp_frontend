@@ -207,6 +207,7 @@ export const ERROR_MESSAGES = Object.freeze({
   SALES_STOCK_INSUFFICIENT: 'المتاح للبيع من "{productName}" {available} فقط (الرصيد مطروحاً منه المحجوز لفواتير أخرى)',
   SALES_BATCH_NOT_FOUND: 'لا توجد تشغيلة "{batchNumber}" للصنف "{productName}"',
   SALES_BATCH_INSUFFICIENT: 'المتاح من التشغيلة "{batchNumber}" للصنف "{productName}" {available} فقط',
+  SALES_BATCH_EXPIRED: 'التشغيلة "{batchNumber}" للصنف "{productName}" منتهية الصلاحية ولا تُباع',
   SALES_BATCHES_OVER_QUANTITY: 'تشغيلات "{productName}" مجموعها {batched}، أكثر من الكمية {quantity}',
   SALES_POST_NEEDS_BATCHES_PHASE: 'ليس لديك صلاحية الترحيل دون إدخال التشغيلات؛ انتقل إلى إدخال التشغيلات أولاً',
   SALES_CREDIT_LIMIT_EXCEEDED: 'رصيد "{customerName}" {balance} ومع الفاتورة ({total}) يتجاوز حد الائتمان {creditLimit}',

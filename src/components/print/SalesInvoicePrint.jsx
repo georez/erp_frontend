@@ -9,13 +9,15 @@ import { DocumentTotals, ProductLines, hasVatLines } from './ProductLines';
 /**
  * A sales invoice's printout (GET /api/sales-invoices/{id}/print): each product's line with the batches it takes and
  * their expiry dates, the totals, the total in words, and the customer's balance before and after it. Costs aren't
- * printed. A draft's batches are those named so far; posting chooses the rest. When no line has VAT, neither the VAT
+ * printed, nor a line that sold none of what was requested. A draft's batches are those named so far; posting chooses
+ * the rest. When no line has VAT, neither the VAT
  * column nor the VAT total is printed. Amounts are rounded to two decimals; quantities and percents are exact.
  */
 export default function SalesInvoicePrint({ id }) {
   const { data, error } = useSWR(`/api/sales-invoices/${id}/print`, fetchJson, { revalidateOnFocus: false });
   const invoice = data?.invoice;
-  const hasVat = invoice != null && hasVatLines(invoice.lines);
+  const soldLines = invoice?.lines.filter((line) => line.quantity !== '0') ?? [];
+  const hasVat = invoice != null && hasVatLines(soldLines);
 
   return <PrintDocument title="فاتورة مبيعات" number={invoice?.id ?? null} error={error}
     mark={invoice != null && invoice.status !== 'POSTED' ? 'مسودة' : null}
@@ -25,7 +27,7 @@ export default function SalesInvoicePrint({ id }) {
       { label: 'المخزن', value: invoice.warehouseName },
     ] : []}>
     {invoice && <>
-      <ProductLines lines={invoice.lines} hasVat={hasVat}
+      <ProductLines lines={soldLines} hasVat={hasVat}
         batchesOf={(line) => line.batches.map((batch) => ({ key: batch.id, ...batch }))} />
       <div className="summary">
         <DocumentTotals document={invoice} hasVat={hasVat} balances={{

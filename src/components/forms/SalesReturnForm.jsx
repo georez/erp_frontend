@@ -193,8 +193,10 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
   const invoiceId = header.salesInvoiceId;
   const againstInvoice = invoiceId != null;
   const { data: invoice } = useSWR(againstInvoice ? invoiceUrl(invoiceId) : null, fetchJson);
+  // Against an invoice, the products it sold some of
   const productOptions = useMemo(() => (againstInvoice
-    ? products.options.filter((option) => invoice?.lines.some((line) => line.productId === option.value))
+    ? products.options.filter((option) => invoice?.lines.some((line) => line.productId === option.value
+      && isNonZero(line.quantity)))
     : products.options), [againstInvoice, invoice, products.options]);
 
   // The invoice number as typed, until the field is left; then the header's invoice is shown
@@ -276,6 +278,7 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     setEntry((previous) => ({ ...previous, batch }));
     if (batch) {
       quantityRef.current?.focus();
+      quantityRef.current?.select();
     }
   };
 

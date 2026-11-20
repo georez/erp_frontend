@@ -250,6 +250,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
     batchRow.setEntry((previous) => ({ ...previous, batch }));
     if (batch) {
       batchQuantityRef.current?.focus();
+      batchQuantityRef.current?.select();
     }
   };
 
