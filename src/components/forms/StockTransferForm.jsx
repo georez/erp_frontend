@@ -1,7 +1,7 @@
 'use client';
 
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import { Alert, Typography } from '@mui/material';
+import { Alert, Button, Typography } from '@mui/material';
 import { Big } from 'bigdecimal.js';
 import useSWR from 'swr';
 import { useMemo, useRef } from 'react';
@@ -29,11 +29,13 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
  *    field is left. The first product's OK creates the draft; once it has lines, the warehouses stay.
  * 2. Its products: the entry row sends a product and its quantity, at most what the first warehouse has.
  * 3. Optionally, their batches (إدخال التشغيلات): batches named for some or all of a product's units, from the first
- *    warehouse's pieces without a serial; and the serialized pieces, scanned by their serials (السيريالات). Posting
- *    chooses the batches of the other units itself, earliest expiry first, passing by batches holding serialized
- *    pieces, and says which products those are first.
+ *    warehouse's pieces without a serial; and the serialized pieces, scanned by their serials (السيريالات), or named
+ *    by تعبئة السيريالات تلقائياً as posting would choose them, to be looked over. Posting chooses the batches of the
+ *    other units itself, earliest expiry first: batches holding no serialized pieces, then the others' pieces without a
+ *    serial and then their serialized pieces. It says first which products and which serials those are.
  *
- * A draft may also be posted straight from its products (ترحيل مباشر). It reserves nothing: when another document
+ * A draft may also be posted straight from its products (ترحيل مباشر). It takes only free stock (المتاح): what draft
+ * sales invoices hold isn't its, by quantity, by batch or by serial. It reserves nothing itself: when another document
  * takes its stock first, it shows the line as short and can't be posted. A posted transfer can't change; it shows the
  * batches its goods were moved from, which the second warehouse received.
  */
@@ -45,6 +47,16 @@ const EMPTY_BATCH = { productId: null, batch: null, quantity: '', quantityFilled
 const NO_BATCHES = [];
 
 const AUTOMATIC_BATCHES = 'الأقرب انتهاءً أولاً';
+// The most serials the posting confirmation lists one by one
+const LISTED_SERIALS = 30;
+
+/** The serials posting would choose, for its confirmation: one per line, the rest counted. */
+function listedSerials(serials) {
+  const shown = serials.slice(0, LISTED_SERIALS)
+    .map((serial) => `- ${serial.productName} · ${serial.batchNumber} · ${serial.serialNumber}`);
+  const more = serials.length - shown.length;
+  return shown.join('\n') + (more > 0 ? `\n… و${formatAmount(String(more))} أخرى` : '');
+}
 
 const headerFrom = (loaded) => ({
   fromWarehouseId: loaded.fromWarehouseId,
@@ -95,7 +107,7 @@ function checkLineEntry(entry, available) {
     && Big(quantity.quantity).compareTo(Big(available)) > 0;
   const errors = {
     productId: missingProduct(entry.productId),
-    quantity: quantity.error ?? (overAvailable ? `الرصيد ${formatAmount(available)} فقط` : null),
+    quantity: quantity.error ?? (overAvailable ? `المتاح ${formatAmount(available)} فقط` : null),
   };
   if (hasErrors(errors)) {
     return { errors, line: null };
@@ -124,7 +136,7 @@ function checkBatchEntry(entry, transferLine) {
 const isShort = (line) => line.available != null && Big(line.quantity).compareTo(Big(line.available)) > 0;
 
 const availableColumn = {
-  field: 'available', headerName: 'الرصيد', flex: 1, minWidth: 80,
+  field: 'available', headerName: 'المتاح', flex: 1, minWidth: 80,
   valueFormatter: ({ value }) => formatAmount(value),
   cellStyle: ({ data }) => ({ ...NUMBER_CELL, ...(isShort(data) && { color: LOSS_COLOR, fontWeight: 700 }) }),
 };
@@ -206,7 +218,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
   const { data: stock, error: stockError } = useSWR(
     editable ? productStockUrl(lineRow.entry.productId, header.fromWarehouseId) : null, fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
-  const stockHelp = stock && `الرصيد ${formatAmount(stock.available)}`
+  const stockHelp = stock && `المتاح ${formatAmount(stock.available)}`
     + (stock.discountPercent ? ` · الخصم المرجح ${formatAmount(stock.discountPercent)}%` : '');
 
   /** Sends the line; the product stays chosen, the rest is cleared at once. */
@@ -284,14 +296,24 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
 
   const shortLines = lines.filter(isShort);
 
-  /** Posts; in the batches phase, once the user confirms that the units without a batch get theirs chosen. */
+  /**
+   * Posts once the user confirms that the units without a batch get theirs chosen (in the batches phase), and which
+   * serialized pieces are chosen with them (in either phase), when there are some.
+   */
   const post = async () => {
     const unbatched = batchesPhase ? lines.filter((line) => isNonZero(line.unbatchedQuantity)) : [];
-    if (unbatched.length > 0 && !await confirm({
-      title: 'ترحيل التحويل؟',
-      message: `لم تُحدَّد تشغيلات لكل الكميات؛ ستُختار تشغيلات الباقي تلقائياً (${AUTOMATIC_BATCHES}):\n`
-        + listed(unbatched, (line) => formatAmount(line.unbatchedQuantity)),
-      confirmLabel: 'ترحيل', color: 'success',
+    // Not known when they can't be read (e.g. no permission): posting chooses them all the same
+    const serials = await fetchJson(`${doc.api}/${transfer.id}/automatic-serials`).catch(() => []);
+    const parts = [];
+    if (unbatched.length > 0) {
+      parts.push(`لم تُحدَّد تشغيلات لكل الكميات؛ ستُختار تشغيلات الباقي تلقائياً (${AUTOMATIC_BATCHES}):\n`
+        + listed(unbatched, (line) => formatAmount(line.unbatchedQuantity)));
+    }
+    if (serials.length > 0) {
+      parts.push(`ستُختار هذه القطع بسيريالاتها:\n${listedSerials(serials)}`);
+    }
+    if (parts.length > 0 && !await confirm({
+      title: 'ترحيل التحويل؟', message: parts.join('\n\n'), confirmLabel: 'ترحيل', color: 'success',
     })) {
       return;
     }
@@ -374,7 +396,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
         <ProductField productRef={batchProductRef} options={batchProductOptions} value={batchRow.entry.productId}
           onChange={chooseBatchProduct} placeholder="صنف من التحويل…" error={batchRow.errors.productId} />
         <BatchPicker options={batchOptions} value={batchRow.entry.batch} inputRef={batchRef}
-          error={batchRow.errors.batch} loading={batchesLoading} loadError={batchOptionsError} availableLabel="الرصيد"
+          error={batchRow.errors.batch} loading={batchesLoading} loadError={batchOptionsError} availableLabel="المتاح"
           onChange={chooseBatch}
           noOptionsText={batchRow.entry.productId == null ? 'اختر الصنف أولاً' : 'لا توجد تشغيلات لهذا الصنف في المخزن'} />
         <EntryField label="الكمية" kind="numeric" value={batchRow.entry.quantity}
@@ -387,7 +409,11 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
       <SerialsSection rows={serialRows} editable={isDraft && batchesPhase}
         onAdd={(lineId, serialNumber, scanned) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST',
           { serialNumber, ...scanned })}
-        onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
+        onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')}
+        actions={<Button size="small" variant="outlined" sx={{ py: 0.25 }}
+          onClick={() => doc.sendToDraft('/automatic-serials', 'POST')}>
+          تعبئة السيريالات تلقائياً
+        </Button>} />
     </>}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}

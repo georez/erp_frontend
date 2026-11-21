@@ -18,7 +18,7 @@ import {
   missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
-import { SerialsSection } from './document/SerialsSection';
+import { confirmPartlySerialized, SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -167,6 +167,13 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
   }))), [lines]);
   // The batches as the serials section's rows
   const serialRows = useMemo(() => batchRows.map((row) => ({ ...row, rowId: row.id })), [batchRows]);
+
+  /** Posts once the user confirms bringing in products partly with serials, when there are some. */
+  const post = async () => {
+    if (await confirmPartlySerialized(confirm, serialRows, 'ترحيل الفاتورة؟')) {
+      doc.sendToDraft('/post', 'POST');
+    }
+  };
   const batchesIncomplete = lines.some((line) => line.batchedQuantity !== line.quantity);
   // The batch row's products: the invoice's, with their barcodes for a scanner
   const batchProductOptions = useMemo(() => products.options.filter(
@@ -274,7 +281,7 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
     ? { label: 'مسودة · التشغيلات', color: 'info' }
     : documentStatus(invoice, { newLabel: 'جديدة', postedLabel: 'مُرحَّلة' });
   const nextStep = batchesPhase
-    ? { onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 || batchesIncomplete }
+    ? { onClick: post, disabled: lines.length === 0 || batchesIncomplete }
     : {
       label: 'إدخال التشغيلات', icon: <PlaylistAddIcon />, disabled: lines.length === 0, endpoint: '/batches-phase',
       onClick: () => doc.sendToDraft('/batches-phase', 'POST'),

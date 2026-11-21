@@ -20,7 +20,7 @@ import {
   missingProduct, underMinimumQuestion,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
-import { SerialsSection } from './document/SerialsSection';
+import { confirmPartlySerialized, SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -301,7 +301,11 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     }
   };
 
+  /** Posts once the user confirms bringing back products partly with serials, when there are some. */
   const postReturn = async () => {
+    if (!await confirmPartlySerialized(confirm, serialRows, 'ترحيل المرتجع؟')) {
+      return;
+    }
     await doc.sendToDraft('/post', 'POST');
     if (againstInvoice) {
       await reloadBatches();

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rowForScan, scannedProduct } from './serialScans.js';
+import { partlySerialized, rowForScan, scannedProduct } from './serialScans.js';
 
 const isFull = (row) => row.serials.length >= row.quantity;
 const row = (rowId, productId, batchNumber, expiryDate, quantity = 2, serials = []) => ({
@@ -49,4 +49,14 @@ test('no row of the product, of the lot, or with room left is an error', () => {
     /لا يوجد بند/);
   const full = [row(1, 1, 'A', '2027-05-01', 1, [{ serialNumber: 'S1' }])];
   assert.match(rowForScan(full, [1], { batchNumber: 'A', expiryDate: '2027-05-01' }, isFull).error, /مكتملة/);
+});
+
+test('a product is partly serialized when some of its units on the document have a serial, not all', () => {
+  const rows = [
+    row(1, 1, 'A', '2027-05-01', 3, [{}, {}]), row(2, 1, 'B', '2027-06-01', 2, []),
+    row(3, 2, 'A', '2027-05-01', 2, [{}, {}]),
+    row(4, 3, 'A', '2027-05-01', 4, []),
+  ];
+  assert.deepEqual(partlySerialized(rows), [{ productName: 'product 1', quantity: 5, serials: 2 }],
+    'product 2 all with serials, product 3 none');
 });

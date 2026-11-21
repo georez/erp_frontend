@@ -9,7 +9,7 @@ import useSWR from 'swr';
 import { formatExpiry } from '@/utils/expiryDates';
 import { fetchJson } from '@/utils/fetchJson';
 import { GROUP_SEPARATOR, gtinOf, isSeparatorKey, parseDataMatrix, scannedCharacter } from '@/utils/gs1';
-import { rowForScan, scannedProduct } from '@/utils/serialScans';
+import { partlySerialized, rowForScan, scannedProduct } from '@/utils/serialScans';
 import { formatAmount } from './amounts';
 import { useOptions } from './comboboxOptions';
 import { EntryRow, OkButton } from './EntryFields';
@@ -76,6 +76,28 @@ const serialColumns = ({ readOnly, onDelete }) => [
 const EMPTY_PACK = { gtin: '', batchNumber: '', expiry: '' };
 
 /**
+ * Before posting a document that brings stock in: true once the user confirms bringing in the products whose units are
+ * partly with serials and partly without, or straight away when there are none.
+ *
+ * @param confirm useConfirm()'s
+ * @param rows    the serials section's rows
+ * @param title   the dialog's title, e.g. "ترحيل الفاتورة؟"
+ */
+export async function confirmPartlySerialized(confirm, rows, title) {
+  const partly = partlySerialized(rows);
+  if (partly.length === 0) {
+    return true;
+  }
+  const listed = partly.map((product) => `- ${product.productName}: ${formatAmount(String(product.serials))} من `
+    + `${formatAmount(String(product.quantity))} وحدة بسيريال`).join('\n');
+  return confirm({
+    title,
+    message: `أصناف بعض وحداتها بسيريال وبعضها بدون:\n${listed}\nالوحدات الباقية تُسجَّل بدون سيريال.`,
+    confirmLabel: 'ترحيل', color: 'warning',
+  });
+}
+
+/**
  * @param rows     the rows: { rowId, productId, productName, batchNumber and expiryDate (none for a product line),
  *                 quantity, limit (optional: fewer serials than its quantity), serials: [{ id, serialNumber,
  *                 batchNumber, expiryDate }] }
@@ -85,8 +107,9 @@ const EMPTY_PACK = { gtin: '', batchNumber: '', expiry: '' };
  * @param onDelete (serial id): deletes one
  * @param onScanPiece (productId, { batchNumber, expiryDate, serialNumber }): a receiving document's or a count's: sends a scanned
  *                 pack, which goes on its lot's row, made or raised by one as needed; none where rows only take serials
+ * @param actions  the document's own buttons, beside the section's title (e.g. the transfer's automatic serials)
  */
-export function SerialsSection({ rows, editable, onAdd, onDelete, onScanPiece }) {
+export function SerialsSection({ rows, editable, onAdd, onDelete, onScanPiece, actions }) {
   const [mode, setMode] = useState(rememberedMode);
   const [rowId, setRowId] = useState(null);
   const [serialNumber, setSerialNumber] = useState('');
@@ -330,6 +353,7 @@ export function SerialsSection({ rows, editable, onAdd, onDelete, onScanPiece })
         <ToggleButton value={BY_HAND} sx={{ py: 0.25 }}>إدخال يدوي</ToggleButton>
         <ToggleButton value={BY_SCAN} sx={{ py: 0.25 }}>مسح DataMatrix</ToggleButton>
       </ToggleButtonGroup>}
+      {editable && actions}
     </Stack>
     {editable && !byScan && <EntryRow fieldRefs={[rowRef, serialRef, okRef]}>
       {rowField}

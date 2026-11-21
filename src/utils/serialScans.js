@@ -50,3 +50,20 @@ export function scannedProduct(rows, productIds) {
   return onDocument.length === 1 ? { productId: onDocument[0] }
     : { error: 'أكثر من صنف بهذا الـ GTIN: أدخل سيريال العبوة يدوياً' };
 }
+
+/**
+ * The products a document brings in partly with serials and partly without: some of their units have a serial, not
+ * all, adding up their rows (SerialsSection's: quantity and serials). For the warning before posting.
+ *
+ * @returns {Array<{productName: string, quantity: number, serials: number}>}
+ */
+export function partlySerialized(rows) {
+  const byProduct = new Map();
+  for (const row of rows) {
+    const product = byProduct.get(row.productId) ?? { productName: row.productName, quantity: 0, serials: 0 };
+    product.quantity += Number(row.quantity);
+    product.serials += row.serials.length;
+    byProduct.set(row.productId, product);
+  }
+  return [...byProduct.values()].filter((product) => product.serials > 0 && product.serials < product.quantity);
+}

@@ -11,10 +11,11 @@ import {
   checkBatchNumber, checkExpiry, checkQuantity, checkRequiredDiscount, hasErrors, headerProblem, missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
-import { SerialsSection } from './document/SerialsSection';
+import { confirmPartlySerialized, SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 /*
  * The opening balance document: the stock a warehouse starts with, against Capital. Its header (warehouse,
@@ -104,6 +105,14 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
   const lines = useMemo(() => openingBalance?.lines ?? [], [openingBalance]);
   // Each line is a batch: the serials section's rows
   const serialRows = useMemo(() => lines.map((line) => ({ ...line, rowId: line.id })), [lines]);
+  const confirm = useConfirm();
+
+  /** Posts once the user confirms bringing in products partly with serials, when there are some. */
+  const post = async () => {
+    if (await confirmPartlySerialized(confirm, serialRows, 'ترحيل الرصيد الافتتاحي؟')) {
+      doc.sendToDraft('/post', 'POST');
+    }
+  };
 
   /** Sends the line; the row is cleared at once, so the next batch can be typed while it's sent. */
   const saveEntry = () => {
@@ -173,7 +182,7 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
         : undefined} />
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
-      nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}
+      nextStep={{ onClick: post, disabled: lines.length === 0 }}
       onDeleteDraft={deleteThisDraft} onNew={newOpeningBalance}
       onPrint={openingBalance ? () => openPrintout('opening-balance', openingBalance.id) : undefined}>
       <Total label="القيمة" value={openingBalance?.totalValue ?? '0'} strong />

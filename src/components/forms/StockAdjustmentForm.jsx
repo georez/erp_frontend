@@ -15,7 +15,7 @@ import {
   checkBatchNumber, checkCountedQuantity, checkExpiry, checkOptionalDiscount, hasErrors, headerProblem, missingProduct,
 } from './document/entryChecks';
 import { amountColumn, deleteColumn, expiryColumn, LinesGrid, textColumn } from './document/LinesGrid';
-import { SerialsSection } from './document/SerialsSection';
+import { confirmPartlySerialized, SerialsSection } from './document/SerialsSection';
 import { useDocument } from './document/useDocument';
 import { useEntryRow } from './document/useEntryRow';
 import { openPrintout } from '@/components/print/printPages';
@@ -239,8 +239,14 @@ export default function StockAdjustmentForm({ formId, formTitle, adjustmentId })
 
   const columnDefs = gridColumns(isPosted, (line) => doc.sendToDraft(`/lines/${line.id}`, 'DELETE'));
 
-  /** Posts once the user confirms losing the serials in stock that weren't scanned, when there are some. */
+  /**
+   * Posts once the user confirms counting products partly with serials, and losing the serials in stock that weren't
+   * scanned, when there are some.
+   */
   const post = async () => {
+    if (!await confirmPartlySerialized(confirm, serialRows, 'ترحيل التسوية؟')) {
+      return;
+    }
     if (missingSerials && !await confirm({
       title: 'ترحيل التسوية؟', message: `سيريالات في الرصيد لم تُمسح وستُسجَّل عجزاً:
 ${missingSerials}`,
