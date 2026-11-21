@@ -17,6 +17,7 @@ export const ERROR_MESSAGES = Object.freeze({
     'رقم غير صحيح في الحقل "{field}" (الحد الأقصى {integerDigits} رقم قبل العلامة العشرية و{decimals} بعدها)',
   PRODUCT_FIELD_FIXED:
     'لا يمكن تغيير "{field}" للصنف "{productName}" بعد أن صارت له حركات مخزون؛ أضف صنفاً جديداً بالقيمة الجديدة (ويمكن أن يحمل نفس الباركود)',
+  GTIN_INVALID: 'القيمة في "{field}" ليست GTIN صحيحاً: 8 أو 12 أو 13 أو 14 رقماً، آخرها رقم التحقق',
   FIELD_VALUE_TAKEN: 'القيمة المدخلة في "{field}" موجودة في سجل آخر',
   FIELD_TOO_LONG: 'النص في الحقل "{field}" أطول من المسموح (الحد الأقصى {maxLength} حرف)',
   FIELD_INVALID_CHOICE: 'اختيار غير صحيح في الحقل "{field}"',
@@ -150,6 +151,11 @@ export const ERROR_MESSAGES = Object.freeze({
   SERIAL_ON_DOCUMENT: 'السيريال "{serialNumber}" من "{productName}" مُدخل في المستند بالفعل',
   SERIAL_IN_STOCK: 'السيريال "{serialNumber}" من "{productName}" موجود بالفعل في "{warehouseName}"',
   SERIAL_OTHER_BATCH: 'السيريال "{serialNumber}" من "{productName}" تابع للتشغيلة "{batchNumber}"',
+  SCANNED_PRODUCT_NOT_ON_DOCUMENT: 'الصنف "{productName}" ليس في الفاتورة',
+  SCANNED_LINE_COMPLETE: 'كل وحدات "{productName}" ({quantity}) لها تشغيلاتها: لا مكان لعبوة أخرى',
+  SCANNED_LINE_DISCOUNT_UNKNOWN: 'أدخل سطراً للصنف "{productName}" بخصمه أولاً، ثم امسح عبواته',
+  SERIAL_SCAN_MISMATCH:
+    'السيريال "{serialNumber}" من "{productName}" مسجل في التشغيلة "{batchNumber}" بصلاحية {expiry}، والعبوة الممسوحة تقول التشغيلة "{scannedBatchNumber}" بصلاحية {scannedExpiry}',
   SERIAL_NOT_ON_INVOICE: 'السيريال "{serialNumber}" من "{productName}" لم يُبع في هذه الفاتورة',
   SERIAL_NOT_FROM_INVOICE: 'السيريال "{serialNumber}" من "{productName}" لم يرد في هذه الفاتورة',
   SERIAL_NOT_IN_WAREHOUSE: 'السيريال "{serialNumber}" من "{productName}" غير موجود في "{warehouseName}"',

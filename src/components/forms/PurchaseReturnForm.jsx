@@ -318,9 +318,9 @@ export default function PurchaseReturnForm({ formId, formTitle, returnId }) {
     <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والصلاحية والكمية ثم OK'} />
 
-    {purchaseReturn && <SerialsSection rows={serialRows} editable={editable}
+    <SerialsSection rows={serialRows} editable={editable}
       onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
-      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       // Not while the goods' cost isn't known: a line's stock isn't enough to return (posting would refuse it)

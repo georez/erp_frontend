@@ -369,9 +369,12 @@ export default function SalesReturnForm({ formId, formTitle, returnId }) {
     <LinesGrid rows={lines} columnDefs={columnDefs} readOnly={isPosted} onEdit={editLine}
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT : 'أدخل الأصناف المرتجعة: الصنف والتشغيلة والكمية ثم OK'} />
 
-    {salesReturn && <SerialsSection rows={serialRows} editable={editable}
+    <SerialsSection rows={serialRows} editable={editable}
       onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
-      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')}
+      // A scanned pack goes on a draft; before the first line makes one, there is nothing to put it on
+      onScanPiece={salesReturn ? (productId, piece) => doc.sendToDraft('/scanned-pieces', 'POST', { productId, ...piece })
+        : undefined} />
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: postReturn, disabled: !hasLines || salesReturn?.stockValue == null }}

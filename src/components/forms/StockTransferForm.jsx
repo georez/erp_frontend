@@ -385,7 +385,8 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
       <LinesGrid rows={batchRows} columnDefs={batchColumnDefs} readOnly={isPosted} onEdit={editBatch} minHeight={100}
         emptyText={`حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${AUTOMATIC_BATCHES})`} />
       <SerialsSection rows={serialRows} editable={isDraft && batchesPhase}
-        onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+        onAdd={(lineId, serialNumber, scanned) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST',
+          { serialNumber, ...scanned })}
         onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
     </>}
 

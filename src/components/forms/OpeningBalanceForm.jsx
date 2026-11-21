@@ -165,9 +165,12 @@ export default function OpeningBalanceForm({ formId, formTitle, openingBalanceId
       emptyText={doc.isNew ? NEW_DOCUMENT_HINT
         : 'أدخل التشغيلات واحدة واحدة: الصنف والتشغيلة والصلاحية والكمية والخصم ثم OK'} />
 
-    {openingBalance && <SerialsSection rows={serialRows} editable={editable}
+    <SerialsSection rows={serialRows} editable={editable}
       onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
-      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />}
+      onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')}
+      // A scanned pack goes on a draft; before the first line makes one, there is nothing to put it on
+      onScanPiece={openingBalance ? (productId, piece) => doc.sendToDraft('/scanned-pieces', 'POST', { productId, ...piece })
+        : undefined} />
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending}
       nextStep={{ onClick: () => doc.sendToDraft('/post', 'POST'), disabled: lines.length === 0 }}

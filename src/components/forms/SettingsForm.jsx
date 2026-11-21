@@ -31,6 +31,9 @@ const COMPANY_FIELDS = [
   { name: 'companyCommercialRegisterNo', label: 'رقم السجل التجاري', maxLength: 30, dir: 'ltr' },
 ];
 
+// What a DataMatrix scanner types for GS1's group separator: a function key or one character (the backend's V8)
+const SCANNER_GROUP_SEPARATOR = 'scannerGroupSeparator';
+
 /**
  * The tenant's settings (/api/settings). A choice is saved as soon as it's made, a text when the cursor leaves it, and
  * the logo when its file is chosen; the form then shows the settings as the backend has them.
@@ -124,6 +127,17 @@ export default function SettingsForm() {
             <FormControlLabel key={value} value={value} control={<Radio />} label={label} />)}
         </RadioGroup>
       </FormControl>
+
+      <Stack spacing={1.5} component="fieldset" sx={{ border: 0, m: 0, p: 0 }}>
+        <FormLabel component="legend" sx={{ mb: 1.5 }}>ماسح DataMatrix</FormLabel>
+        <TextField label="فاصل المجموعات في ماسح DataMatrix" size="small" disabled={saving}
+          value={edits[SCANNER_GROUP_SEPARATOR] ?? settings[SCANNER_GROUP_SEPARATOR] ?? ''}
+          onChange={(event) => setEdits((current) => ({ ...current, [SCANNER_GROUP_SEPARATOR]: event.target.value }))}
+          onBlur={() => saveText(SCANNER_GROUP_SEPARATOR)}
+          helperText={'ما يكتبه الماسح بين حقول الكود: مفتاح من F1 إلى F12 (مثل F8) أو حرف واحد (مثل |)؛'
+            + ' فارغ إذا كان الماسح يكتب فاصل GS بنفسه'}
+          slotProps={{ htmlInput: { maxLength: 3, dir: 'ltr' } }} />
+      </Stack>
 
       <Stack spacing={1.5} component="fieldset" sx={{ border: 0, m: 0, p: 0 }}>
         <FormLabel component="legend" sx={{ mb: 1.5 }}>بيانات الشركة في المطبوعات</FormLabel>

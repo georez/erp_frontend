@@ -549,7 +549,8 @@ export default function SalesInvoiceForm({ formId, formTitle, invoiceId }) {
         emptyText={isPosted ? 'لم يُسحب شيء من المخزون'
           : `حدّد تشغيلات ما تريد من الأصناف ثم OK؛ تُختار تشغيلات الباقي عند الترحيل (${batchOrderLabel})`} />
       <SerialsSection rows={serialRows} editable={isDraft && batchesPhase}
-        onAdd={(lineId, serialNumber) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST', { serialNumber })}
+        onAdd={(lineId, serialNumber, scanned) => doc.sendToDraft(`/lines/${lineId}/serials`, 'POST',
+          { serialNumber, ...scanned })}
         onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
     </>}
 

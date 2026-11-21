@@ -343,7 +343,8 @@ export default function PurchaseInvoiceForm({ formId, formTitle, invoiceId }) {
         emptyText="أدخل تشغيلات كل صنف: الصنف والتشغيلة والصلاحية والكمية ثم OK" />
       <SerialsSection rows={serialRows} editable={isDraft}
         onAdd={(batchId, serialNumber) => doc.sendToDraft(`/batches/${batchId}/serials`, 'POST', { serialNumber })}
-        onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')} />
+        onDelete={(serialId) => doc.sendToDraft(`/serials/${serialId}`, 'DELETE')}
+        onScanPiece={(productId, piece) => doc.sendToDraft('/scanned-pieces', 'POST', { productId, ...piece })} />
     </>}
 
     <DocumentActions api={doc.api} isNew={doc.isNew} isDraft={isDraft} pending={doc.pending} nextStep={nextStep}
