@@ -5,7 +5,8 @@ import { Box, Tab, Tabs, Typography } from '@mui/material';
 import { useOpenLink } from '@/utils/useOpenLink';
 import { parseJsonObject, totalsRow } from '@/utils/reportutils';
 import {
-  detailOf, isOpeningRow, MOVEMENT_TABS, movementSummary, splitStockRows, tabColumns, tabRows, tabSerialRows,
+  BY_SERIAL, detailOf, isOpeningRow, MOVEMENT_TABS, movementSerialRows, movementSummary, splitStockRows, tabColumns,
+  tabRows, tabSerialRows,
 } from '@/utils/productMovements';
 import ReportPageFrame from '../ReportPageFrame';
 import { useReportPage, useReportRun } from '../useReportPage';
@@ -53,9 +54,10 @@ function gridColumns(tab, detail, oneWarehouse, metadataColumns) {
  *   balance at the end, and its stock in every warehouse now, with what's reserved and free;
  * - every movement in order, each with the balance after it, in all warehouses and in its own;
  * - a tab per kind of document, with its details (a sale's customer, discount, cost and profit...).
- * By batch, each document's batches are rows of their own. By batch and serials, either each serialized piece is a row
- * of its own (the rest of its batch another), or the batch rows stay and a table under them lists each serial the
- * tab's documents moved; and the summary lists the serials in stock now. Every tab sorts and filters by any column;
+ * By batch, each document's batches are rows of their own. By batch and serials (the only detail that offers the
+ * serials' view), either each serialized piece is a row of its own (the rest of its batch another), or the batch rows
+ * stay and a table under them lists each serial the tab's documents moved, or a row's own once it's clicked; and the
+ * summary lists the serials in stock now. Every tab sorts and filters by any column;
  * its total row adds up the rows the filters leave.
  *
  * The rows come from productMovementsReport, productStockReport and productSerialMovementsReport; the page's state is
@@ -65,6 +67,8 @@ function gridColumns(tab, detail, oneWarehouse, metadataColumns) {
 export default function ProductMovements({ formId, formTitle = 'حركة صنف', execute, requestTime, params }) {
   const openLink = useOpenLink();
   const [tabKey, setTabKey] = useState(SUMMARY_TAB);
+  // The movement row clicked for its serials, and its tab's key
+  const [selected, setSelected] = useState(null);
 
   const report = useReportPage({
     reportName: 'productMovementsReport',
@@ -109,10 +113,20 @@ export default function ProductMovements({ formId, formTitle = 'حركة صنف'
     columns: gridColumns(tab, { byBatch, splitBySerial }, warehouseId !== null, metadata?.columns ?? []),
   })), [rows, serialsRun.rows, byBatch, splitBySerial, warehouseId, metadata]);
   const shownTab = tabs.find((tab) => tab.key === tabKey);
+  // The row clicked, while it's one of the tab's rows (a new run's rows are other rows)
+  const selectedRow = selected && shownTab && selected.tabKey === shownTab.key && shownTab.rows.includes(selected.row)
+    ? selected.row : null;
+  const shownSerialRows = useMemo(() => (shownTab && selectedRow
+    ? movementSerialRows(shownTab.serialRows, selectedRow) : shownTab?.serialRows), [shownTab, selectedRow]);
+  // The serials' view is a choice of the by batch and serials detail only
+  const { paramForm } = report;
+  const paramFields = useMemo(() => paramForm.paramFields.filter((field) => field.fieldName !== 'p_serials_view'
+    || paramForm.paramValues.p_detail === BY_SERIAL), [paramForm.paramFields, paramForm.paramValues.p_detail]);
 
   // The reports run together: the page shows any one's error, and waits for them all
   const frame = {
     ...report,
+    paramForm: { ...paramForm, paramFields },
     loading: report.loading || stockRun.loading || serialsRun.loading,
     runError: report.runError || stockRun.runError || serialsRun.runError,
     clearRunError: () => {
@@ -123,6 +137,7 @@ export default function ProductMovements({ formId, formTitle = 'حركة صنف'
   };
   const movementsGrid = shownTab && <FilterGrid key={shownTab.key} rows={shownTab.rows} columns={shownTab.columns}
     openLink={openLink} pinnedTopRows={shownTab.key === 'all' ? openingRows : undefined}
+    onRowSelected={serialsTable ? (row) => setSelected(row && { tabKey: shownTab.key, row }) : undefined}
     totalRow={(shown) => totalsRow(shown, {
       label: 'الإجمالي', labelColumn: 'entry_datetime', columns: shownTab.totals, countRows: true,
     })} />;
@@ -138,9 +153,12 @@ export default function ProductMovements({ formId, formTitle = 'حركة صنف'
         {shownTab && !serialsTable && movementsGrid}
         {shownTab && serialsTable && <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Box sx={{ flex: 1, minHeight: 0 }}>{movementsGrid}</Box>
-          <Typography variant="subtitle2" sx={{ flexShrink: 0 }}>السيريالات</Typography>
+          <Typography variant="subtitle2" sx={{ flexShrink: 0 }}>
+            {selectedRow ? 'سيريالات السطر المختار (اضغط عليه مرة أخرى لعرض الكل)'
+              : 'السيريالات (اضغط على سطر لعرض سيريالاته فقط)'}
+          </Typography>
           <Box sx={{ flex: 1, minHeight: 0 }}>
-            <FilterGrid key={`${shownTab.key}-serials`} rows={shownTab.serialRows} columns={SERIAL_MOVEMENT_COLUMNS}
+            <FilterGrid key={`${shownTab.key}-serials`} rows={shownSerialRows} columns={SERIAL_MOVEMENT_COLUMNS}
               openLink={openLink}
               totalRow={(shown) => ({ entry_datetime: `الإجمالي (عدد الصفوف: ${shown.length})` })} />
           </Box>

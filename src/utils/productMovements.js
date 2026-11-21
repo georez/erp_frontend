@@ -252,3 +252,16 @@ export function stockTotalRow(rows, publicPrice, labelColumn) {
     average_discount_percent: discountOff(value, quantity, publicPrice),
   };
 }
+
+/**
+ * The serials table's rows of a movement row (by batch): the serials its document moved in or out of that batch in that
+ * warehouse. The serials report says the direction in Arabic (وارد / منصرف), the movements report as in / out.
+ */
+export function movementSerialRows(serialRows, row) {
+  const direction = row.direction === 'in' ? 'وارد' : 'منصرف';
+  return serialRows.filter((serial) => serial.document_type === row.document_type
+    && String(serial.document_id) === String(row.document_id)
+    && String(serial.warehouse_id) === String(row.warehouse_id)
+    && serial.batch_number === row.batch_number
+    && serial.direction === direction);
+}

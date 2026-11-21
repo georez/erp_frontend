@@ -52,6 +52,11 @@ const LOCALE_TEXT = {
   noRowsToShow: 'لا توجد صفوف',
 };
 
+/** One row at a time, selected by a click and deselected by another, without a checkbox. */
+const CLICK_SELECTION = {
+  mode: 'singleRow', checkboxes: false, enableClickSelection: true, enableSelectionWithoutKeys: true,
+};
+
 const isEmpty = (value) => value === null || value === undefined || value === '';
 
 /** Numbers come as decimal text: compared exactly, empty cells first. */
@@ -124,8 +129,12 @@ function columnDef(column, openLink) {
  * @param {boolean} [props.autoHeight]  as tall as its rows (a short table in a scrolling tab), instead of filling the
  *   space it's given
  * @param {function} props.openLink  opens a linked cell as a dashboard window (useOpenLink)
+ * @param {function(object|null)} [props.onRowSelected]  makes a row selectable by clicking it (clicked again, it's
+ *   deselected): called with the selected row, or null when none is; the pinned rows aren't selectable
  */
-export default function FilterGrid({ rows, columns, totalRow, pinnedTopRows, autoHeight = false, openLink }) {
+export default function FilterGrid({
+  rows, columns, totalRow, pinnedTopRows, autoHeight = false, openLink, onRowSelected,
+}) {
   // The same definitions while the columns stay, so a filter's new total row doesn't redo the columns' widths
   const columnDefs = useMemo(() => columns.map((column) => columnDef(column, openLink)), [columns, openLink]);
   // The rows the filters leave, in the grid's order, for the total row
@@ -144,6 +153,8 @@ export default function FilterGrid({ rows, columns, totalRow, pinnedTopRows, aut
     autoSizeColumns(event);
   };
   const totalRows = totalRow && rows.length > 0 ? [totalRow(shownRows)] : [];
+  const rowSelection = onRowSelected ? CLICK_SELECTION : undefined;
+  const onSelectionChanged = onRowSelected ? ({ api }) => onRowSelected(api.getSelectedRows()[0] ?? null) : undefined;
 
   return <Box sx={autoHeight ? { width: '100%' } : { width: '100%', height: '100%' }}>
     <AgGridProvider modules={modules}>
@@ -157,6 +168,8 @@ export default function FilterGrid({ rows, columns, totalRow, pinnedTopRows, aut
         pinnedTopRowData={pinnedTopRows}
         pinnedBottomRowData={totalRows}
         getRowStyle={pinnedRowStyle}
+        rowSelection={rowSelection}
+        onSelectionChanged={onSelectionChanged}
         domLayout={autoHeight ? 'autoHeight' : 'normal'}
         localeText={LOCALE_TEXT}
         // Every column is drawn, also those scrolled out of view, so auto-sizing can measure them all

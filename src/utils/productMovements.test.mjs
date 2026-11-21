@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  discountOff, MOVEMENT_TABS, movementSummary, splitStockRows, stockTotalRow, tabColumns, tabRows,
+  discountOff, MOVEMENT_TABS, movementSerialRows, movementSummary, splitStockRows, stockTotalRow, tabColumns, tabRows,
 } from './productMovements.js';
 import { Big } from 'bigdecimal.js';
 
@@ -97,4 +97,23 @@ test('the stock is split into warehouses and batches, and totalled with its aver
     warehouse_name: 'الإجمالي (2)', quantity: '22', reserved_quantity: '2', free_quantity: '20',
     serialized_quantity: '3', value: '1675', public_value: '2200', average_discount_percent: '23.864',
   });
+});
+
+test('a movement row\'s serials are those its document moved, in its direction, batch and warehouse', () => {
+  const serial = (number, overrides) => ({
+    document_type: 'stock_transfer', document_id: 4, warehouse_id: 1, batch_number: 'A', direction: 'منصرف',
+    serial_number: number, ...overrides,
+  });
+  const serials = [
+    serial('S1'), serial('S2'),
+    // The same transfer's piece coming into the other warehouse, another batch's, another document's
+    serial('S1', { warehouse_id: 2, direction: 'وارد' }), serial('S3', { batch_number: 'B' }),
+    serial('S4', { document_id: 5 }), serial('S5', { document_type: 'sales_invoice' }),
+  ];
+  const row = { document_type: 'stock_transfer', document_id: '4', warehouse_id: '1', batch_number: 'A',
+    direction: 'out' };
+
+  assert.deepEqual(movementSerialRows(serials, row).map((s) => s.serial_number), ['S1', 'S2']);
+  assert.deepEqual(movementSerialRows(serials, { ...row, warehouse_id: '2', direction: 'in' })
+    .map((s) => `${s.serial_number} ${s.warehouse_id}`), ['S1 2']);
 });

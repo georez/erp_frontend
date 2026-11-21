@@ -45,6 +45,10 @@ const SERIAL_COLUMNS = [
   { name: 'reserved_quantity', label: 'محجوز', inputType: 'number' },
 ];
 
+// Up to this many serials the table is as tall as its rows; more, and it keeps this height and scrolls
+const SERIALS_SHOWN_IN_FULL = 8;
+const SERIALS_TABLE_HEIGHT = 460;
+
 const quantityText = (quantity) => formatDecimal(Big(quantity));
 const percentText = (percent) => (percent === null ? '' : formatDecimal(Big(percent)));
 
@@ -160,8 +164,11 @@ export default function MovementSummary({ summary, stock, byBatch, withSerials, 
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>السيريالات الآن</Typography>
       {stock.serials.length === 0
         ? <Typography color="text.secondary">لا توجد قطع بسيريال في المخازن.</Typography>
-        : <FilterGrid rows={stock.serials} columns={SERIAL_COLUMNS} autoHeight openLink={openLink}
-          totalRow={(shown) => ({ warehouse_name: `الإجمالي (${shown.length})` })} />}
+        : <Box sx={stock.serials.length > SERIALS_SHOWN_IN_FULL ? { height: SERIALS_TABLE_HEIGHT } : undefined}>
+          <FilterGrid rows={stock.serials} columns={SERIAL_COLUMNS} openLink={openLink}
+            autoHeight={stock.serials.length <= SERIALS_SHOWN_IN_FULL}
+            totalRow={(shown) => ({ warehouse_name: `الإجمالي (${shown.length})` })} />
+        </Box>}
     </Box>}
   </Box>;
 }
