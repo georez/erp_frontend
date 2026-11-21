@@ -34,9 +34,9 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
  *    other units itself, earliest expiry first: batches holding no serialized pieces, then the others' pieces without a
  *    serial and then their serialized pieces. It says first which products and which serials those are.
  *
- * A draft may also be posted straight from its products (ترحيل مباشر). It takes only free stock (المتاح): what draft
- * sales invoices hold isn't its, by quantity, by batch or by serial. It reserves nothing itself: when another document
- * takes its stock first, it shows the line as short and can't be posted. A posted transfer can't change; it shows the
+ * A draft may also be posted straight from its products (ترحيل مباشر). It may take any of the stock, what draft sales
+ * invoices hold too (they show short then). It reserves nothing itself: when another document takes its stock first,
+ * it shows the line as short and can't be posted. A posted transfer can't change; it shows the
  * batches its goods were moved from, which the second warehouse received.
  */
 
@@ -107,7 +107,7 @@ function checkLineEntry(entry, available) {
     && Big(quantity.quantity).compareTo(Big(available)) > 0;
   const errors = {
     productId: missingProduct(entry.productId),
-    quantity: quantity.error ?? (overAvailable ? `المتاح ${formatAmount(available)} فقط` : null),
+    quantity: quantity.error ?? (overAvailable ? `الرصيد ${formatAmount(available)} فقط` : null),
   };
   if (hasErrors(errors)) {
     return { errors, line: null };
@@ -136,7 +136,7 @@ function checkBatchEntry(entry, transferLine) {
 const isShort = (line) => line.available != null && Big(line.quantity).compareTo(Big(line.available)) > 0;
 
 const availableColumn = {
-  field: 'available', headerName: 'المتاح', flex: 1, minWidth: 80,
+  field: 'available', headerName: 'الرصيد', flex: 1, minWidth: 80,
   valueFormatter: ({ value }) => formatAmount(value),
   cellStyle: ({ data }) => ({ ...NUMBER_CELL, ...(isShort(data) && { color: LOSS_COLOR, fontWeight: 700 }) }),
 };
@@ -218,7 +218,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
   const { data: stock, error: stockError } = useSWR(
     editable ? productStockUrl(lineRow.entry.productId, header.fromWarehouseId) : null, fetchJson);
   const existingLine = lineOfProduct(lineRow.entry.productId);
-  const stockHelp = stock && `المتاح ${formatAmount(stock.available)}`
+  const stockHelp = stock && `الرصيد ${formatAmount(stock.available)}`
     + (stock.discountPercent ? ` · الخصم المرجح ${formatAmount(stock.discountPercent)}%` : '');
 
   /** Sends the line; the product stays chosen, the rest is cleared at once. */
@@ -396,7 +396,7 @@ export default function StockTransferForm({ formId, formTitle, transferId }) {
         <ProductField productRef={batchProductRef} options={batchProductOptions} value={batchRow.entry.productId}
           onChange={chooseBatchProduct} placeholder="صنف من التحويل…" error={batchRow.errors.productId} />
         <BatchPicker options={batchOptions} value={batchRow.entry.batch} inputRef={batchRef}
-          error={batchRow.errors.batch} loading={batchesLoading} loadError={batchOptionsError} availableLabel="المتاح"
+          error={batchRow.errors.batch} loading={batchesLoading} loadError={batchOptionsError} availableLabel="الرصيد"
           onChange={chooseBatch}
           noOptionsText={batchRow.entry.productId == null ? 'اختر الصنف أولاً' : 'لا توجد تشغيلات لهذا الصنف في المخزن'} />
         <EntryField label="الكمية" kind="numeric" value={batchRow.entry.quantity}

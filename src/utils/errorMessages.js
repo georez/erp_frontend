@@ -251,10 +251,8 @@ export const ERROR_MESSAGES = Object.freeze({
   STOCK_TRANSFER_HAS_LINES: 'لا يمكن تغيير المخزنين بعد إدخال أصناف التحويل رقم {transferId}؛ احذف الأصناف أولاً',
   STOCK_TRANSFER_TO_WAREHOUSE_REQUIRED: 'حدّد المخزن المحوَّل إليه',
   STOCK_TRANSFER_SAME_WAREHOUSE: 'المخزن المحوَّل إليه هو نفسه المحوَّل منه؛ اختر مخزناً آخر',
-  STOCK_TRANSFER_STOCK_INSUFFICIENT:
-    'المتاح من "{productName}" في المخزن المحوَّل منه {available} فقط (بعد ما تحجزه فواتير المبيعات المسودة)',
-  STOCK_TRANSFER_BATCH_INSUFFICIENT:
-    'المتاح من التشغيلة "{batchNumber}" للصنف "{productName}" في المخزن المحوَّل منه {available} فقط (قطع بدون سيريال، بعد ما تحجزه فواتير المبيعات المسودة)',
+  STOCK_TRANSFER_STOCK_INSUFFICIENT: 'رصيد "{productName}" في المخزن المحوَّل منه {available} فقط',
+  STOCK_TRANSFER_BATCH_INSUFFICIENT: 'رصيد التشغيلة "{batchNumber}" للصنف "{productName}" في المخزن المحوَّل منه {available} فقط',
   STOCK_TRANSFER_BATCHES_OVER_QUANTITY: 'تشغيلات "{productName}" مجموعها {batched}، أكثر من الكمية {quantity}',
 
   // --- settings ---
